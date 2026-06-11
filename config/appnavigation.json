@@ -1,0 +1,84 @@
+{
+    "WPFInstall": {
+        "Content": "Installa/Aggiorna applicazioni",
+        "Category": "____Azioni",
+        "Type": "Button",
+        "Order": "1",
+        "Description": "Installa o aggiorna le applicazioni selezionate"
+    },
+    "WPFUninstall": {
+        "Content": "Disinstalla applicazioni",
+        "Category": "____Azioni",
+        "Type": "Button",
+        "Order": "2",
+        "Description": "Disinstalla le applicazioni selezionate"
+    },
+    "WPFInstallUpgrade": {
+        "Content": "Aggiorna tutte le applicazioni",
+        "Category": "____Azioni",
+        "Type": "Button",
+        "Order": "3",
+        "Description": "Aggiorna tutte le applicazioni all'ultima versione"
+    },
+    "WingetRadioButton": {
+        "Content": "WinGet",
+        "Category": "__Gestore pacchetti",
+        "Type": "RadioButton",
+        "GroupName": "PackageManagerGroup",
+        "Checked": true,
+        "Order": "1",
+        "Description": "Usa WinGet per la gestione dei pacchetti"
+    },
+    "ChocoRadioButton": {
+        "Content": "Chocolatey",
+        "Category": "__Gestore pacchetti",
+        "Type": "RadioButton",
+        "GroupName": "PackageManagerGroup",
+        "Checked": false,
+        "Order": "2",
+        "Description": "Usa Chocolatey per la gestione dei pacchetti"
+    },
+    "WPFCollapseAllCategories": {
+        "Content": "Comprimi tutte le categorie",
+        "Category": "__Selezione",
+        "Type": "Button",
+        "Order": "1",
+        "Description": "Comprimi tutte le categorie di applicazioni"
+    },
+    "WPFExpandAllCategories": {
+        "Content": "Espandi tutte le categorie",
+        "Category": "__Selezione",
+        "Type": "Button",
+        "Order": "2",
+        "Description": "Espandi tutte le categorie di applicazioni"
+    },
+    "WPFClearInstallSelection": {
+        "Content": "Azzera selezione",
+        "Category": "__Selezione",
+        "Type": "Button",
+        "Order": "3",
+        "Description": "Azzera la selezione delle applicazioni"
+    },
+    "WPFGetInstalled": {
+        "Content": "Mostra app installate",
+        "Category": "__Selezione",
+        "Type": "Button",
+        "Order": "4",
+        "Description": "Mostra le applicazioni installate"
+    },
+    "WPFselectedAppsButton": {
+        "Content": "App selezionate: 0",
+        "Category": "__Selezione",
+        "Type": "Button",
+        "Order": "5",
+        "Description": "Mostra le applicazioni selezionate"
+    },
+    "WPFToggleFOSSHighlight": {
+        "Content": "Evidenzia FOSS",
+        "Category": "__Selezione",
+        "Type": "Toggle",
+        "Checked": true,
+        "Order": "6",
+        "Description": "Attiva/disattiva l'evidenziazione verde per le applicazioni FOSS"
+    }
+}
