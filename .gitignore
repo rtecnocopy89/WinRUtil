@@ -4,4 +4,5 @@ tools/Test-XamlLoad.ps1
 xaml/inputApp.xaml
 xaml/inputTweaks.xaml
 xaml/inputFeatures.xaml
+.vs/
 # Note: winrutil.ps1 is intentionally committed — it is the file served via `irm ... | iex`.
