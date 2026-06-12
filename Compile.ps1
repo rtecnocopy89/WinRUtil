@@ -137,10 +137,12 @@ Remove-Item "xaml\inputApp.xaml" -ErrorAction SilentlyContinue
 Remove-Item "xaml\inputTweaks.xaml" -ErrorAction SilentlyContinue
 Remove-Item "xaml\inputFeatures.xaml" -ErrorAction SilentlyContinue
 
-# Write as UTF-8 WITH BOM so the script (which now contains Italian accents, em-dashes,
-# arrows and the (c) symbol) is read correctly by Windows PowerShell 5.1, PowerShell 7 and irm|iex.
-$utf8Bom = [System.Text.UTF8Encoding]::new($true)
-[System.IO.File]::WriteAllText((Join-Path $workingdir $scriptname), ($script_content -join "`r`n"), $utf8Bom)
+# Write as UTF-8 WITHOUT BOM: a BOM survives `irm | iex` as a literal U+FEFF character at the
+# start of the string and breaks parsing (the opening <# is seen as the token '<U+FEFF><#').
+# GitHub raw serves the file with charset=utf-8, so irm decodes accents correctly without a BOM,
+# and PowerShell 7 reads BOM-less files as UTF-8 by default.
+$utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+[System.IO.File]::WriteAllText((Join-Path $workingdir $scriptname), ($script_content -join "`r`n"), $utf8NoBom)
 Write-Progress -Activity "Compiling" -Completed
 
 Update-Progress -Activity "Validating" -StatusMessage "Checking winrutil.ps1 Syntax" -Percent 0
