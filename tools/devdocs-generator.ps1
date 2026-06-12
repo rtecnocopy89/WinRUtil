@@ -1,4 +1,4 @@
-<#
+﻿<#
     .DESCRIPTION
     Generates Hugo markdown docs from config/tweaks.json and config/feature.json.
     Run by the GitHub Actions docs workflow before Hugo build.

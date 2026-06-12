@@ -1,4 +1,4 @@
-    function Add-SelectedAppsMenuItem {
+﻿    function Add-SelectedAppsMenuItem {
         <#
         .SYNOPSIS
             This is a helper function that generates and adds the Menu Items to the Selected Apps Popup.

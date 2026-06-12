@@ -1,9 +1,9 @@
-function Write-Win11ISOLog {
+﻿function Write-Win11ISOLog {
     param([string]$Message)
     $ts = (Get-Date).ToString("HH:mm:ss")
     $sync["WPFWin11ISOStatusLog"].Dispatcher.Invoke([action]{
         $current = $sync["WPFWin11ISOStatusLog"].Text
-        if ($current -eq "Ready. Please select a Windows 11 ISO to begin.") {
+        if ($current -eq "Pronto. Seleziona una ISO di Windows 11 per iniziare.") {
             $sync["WPFWin11ISOStatusLog"].Text = "[$ts] $Message"
         } else {
             $sync["WPFWin11ISOStatusLog"].Text += "`n[$ts] $Message"
@@ -40,8 +40,8 @@ function Invoke-WinUtilISOBrowse {
 function Invoke-WinUtilISOMountAndVerify {
     $isoPath = $sync["WPFWin11ISOPath"].Text
 
-    if ([string]::IsNullOrWhiteSpace($isoPath) -or $isoPath -eq "No ISO selected...") {
-        [System.Windows.MessageBox]::Show("Please select an ISO file first.", "No ISO Selected", "OK", "Warning")
+    if ([string]::IsNullOrWhiteSpace($isoPath) -or $isoPath -eq "Nessuna ISO selezionata...") {
+        [System.Windows.MessageBox]::Show("Seleziona prima un file ISO.", "Nessuna ISO selezionata", "OK", "Warning")
         return
     }
 
@@ -475,7 +475,7 @@ function Invoke-WinUtilISOCleanAndReset {
                 $sync["Win11ISOImageInfo"]   = $null
                 $sync["Win11ISOUSBDisks"]    = $null
 
-                $sync["WPFWin11ISOPath"].Text                   = "No ISO selected..."
+                $sync["WPFWin11ISOPath"].Text                   = "Nessuna ISO selezionata..."
                 $sync["WPFWin11ISOFileInfo"].Visibility          = "Collapsed"
                 $sync["WPFWin11ISOVerifyResultPanel"].Visibility = "Collapsed"
                 $sync["WPFWin11ISOOptionUSB"].Visibility         = "Collapsed"
@@ -490,7 +490,7 @@ function Invoke-WinUtilISOCleanAndReset {
                 $sync.progressBarTextBlock.ToolTip = ""
                 $sync.ProgressBar.Value            = 0
 
-                $sync["WPFWin11ISOStatusLog"].Text   = "Ready. Please select a Windows 11 ISO to begin."
+                $sync["WPFWin11ISOStatusLog"].Text   = "Pronto. Seleziona una ISO di Windows 11 per iniziare."
             })
         } catch {
             Log "ERROR during Clean & Reset: $_"

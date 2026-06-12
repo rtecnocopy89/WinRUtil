@@ -1,4 +1,4 @@
-function Invoke-WPFImpex {
+﻿function Invoke-WPFImpex {
     <#
 
     .SYNOPSIS

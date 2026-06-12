@@ -1,4 +1,4 @@
-function Initialize-InstallAppEntry {
+﻿function Initialize-InstallAppEntry {
     <#
         .SYNOPSIS
             Creates the app entry to be placed on the install tab for a given app

@@ -1,4 +1,4 @@
-function Invoke-WPFRunspace {
+﻿function Invoke-WPFRunspace {
 
     <#
 

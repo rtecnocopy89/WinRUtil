@@ -1,4 +1,4 @@
-function Invoke-WPFFixesWinget {
+﻿function Invoke-WPFFixesWinget {
 
     <#
 

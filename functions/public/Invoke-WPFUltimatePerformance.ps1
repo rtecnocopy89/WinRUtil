@@ -1,4 +1,4 @@
-function Invoke-WPFUltimatePerformance {
+﻿function Invoke-WPFUltimatePerformance {
     param(
         [switch]$Do
     )

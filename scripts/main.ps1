@@ -1,4 +1,4 @@
-# Create enums
+﻿# Create enums
 Add-Type @"
 public enum PackageManagers
 {
@@ -490,10 +490,11 @@ $sync["AboutMenuItem"].Add_Click({
 WinRUtil — Windows toolkit
 Maintainer : <a href="https://github.com/rtecnocopy89">@rtecnocopy89</a>
 GitHub     : <a href="https://github.com/rtecnocopy89/WinRUtil">rtecnocopy89/WinRUtil</a>
+Copyright  : © 2026 rtecnocopy89 — © 2022 CT Tech Group LLC
 Based on   : <a href="https://github.com/ChrisTitusTech/winutil">ChrisTitusTech/winutil</a> (MIT)
 Version    : $($sync.version)
 "@
-    Show-CustomDialog -Title "About" -Message $authorInfo
+    Show-CustomDialog -Title "Informazioni" -Message $authorInfo
 })
 $sync["DocumentationMenuItem"].Add_Click({
     Write-Debug "Documentation clicked"

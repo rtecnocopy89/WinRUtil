@@ -1,4 +1,4 @@
-function Show-WPFInstallAppBusy {
+﻿function Show-WPFInstallAppBusy {
     <#
     .SYNOPSIS
         Displays a busy overlay in the install app area of the WPF form.

@@ -1,4 +1,4 @@
-function Get-LocalizedYesNo {
+﻿function Get-LocalizedYesNo {
     <#
     .SYNOPSIS
     This function runs choice.exe and captures its output to extract yes no in a localized Windows

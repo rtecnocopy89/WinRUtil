@@ -1,4 +1,4 @@
-function Invoke-WPFPresets {
+﻿function Invoke-WPFPresets {
     <#
 
     .SYNOPSIS

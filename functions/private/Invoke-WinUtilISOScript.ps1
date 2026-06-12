@@ -1,4 +1,4 @@
-function Invoke-WinUtilISOScript {
+﻿function Invoke-WinUtilISOScript {
     <#
     .SYNOPSIS
         Applies WinUtil modifications to a mounted Windows 11 install.wim image.

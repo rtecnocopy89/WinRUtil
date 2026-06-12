@@ -1,4 +1,4 @@
-function Find-TweaksByNameOrDescription {
+﻿function Find-TweaksByNameOrDescription {
     <#
         .SYNOPSIS
             Searches through the Tweaks on the Tweaks Tab and hides all entries that do not match the search string

@@ -1,4 +1,4 @@
-function Invoke-WPFPanelAutologin {
+﻿function Invoke-WPFPanelAutologin {
     <#
 
     .SYNOPSIS

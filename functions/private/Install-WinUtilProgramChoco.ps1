@@ -1,4 +1,4 @@
-function Install-WinUtilProgramChoco {
+﻿function Install-WinUtilProgramChoco {
     <#
     .SYNOPSIS
     Manages the installation or uninstallation of a list of Chocolatey packages.

@@ -1,4 +1,4 @@
-function Invoke-WPFUIThread {
+﻿function Invoke-WPFUIThread {
     <#
 
     .SYNOPSIS

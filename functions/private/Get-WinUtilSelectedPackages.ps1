@@ -1,4 +1,4 @@
-function Get-WinUtilSelectedPackages
+﻿function Get-WinUtilSelectedPackages
 {
      <#
     .SYNOPSIS

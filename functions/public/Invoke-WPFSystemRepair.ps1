@@ -1,4 +1,4 @@
-function Invoke-WPFSystemRepair {
+﻿function Invoke-WPFSystemRepair {
     <#
     .SYNOPSIS
         Checks for system corruption using SFC, and DISM

@@ -1,4 +1,4 @@
-function Invoke-WinUtilRemoveEdge {
+﻿function Invoke-WinUtilRemoveEdge {
   New-Item -Path "$Env:SystemRoot\SystemApps\Microsoft.MicrosoftEdge_8wekyb3d8bbwe\MicrosoftEdge.exe" -Force
 
   $Path = Resolve-Path -Path "$Env:ProgramFiles (x86)\Microsoft\Edge\Application\*\Installer\setup.exe" | Select-Object -Last 1

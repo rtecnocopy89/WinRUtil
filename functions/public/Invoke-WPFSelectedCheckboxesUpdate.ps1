@@ -1,4 +1,4 @@
-function Invoke-WPFSelectedCheckboxesUpdate{
+﻿function Invoke-WPFSelectedCheckboxesUpdate{
     <#
         .SYNOPSIS
             This is a helper function that is called by the Checked and Unchecked events of the Checkboxes.

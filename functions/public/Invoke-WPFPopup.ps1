@@ -1,4 +1,4 @@
-function Invoke-WPFPopup {
+﻿function Invoke-WPFPopup {
     param (
         [ValidateSet("Show", "Hide", "Toggle")]
         [string]$Action = "",

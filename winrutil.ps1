@@ -1,10 +1,11 @@
-<#
+﻿<#
 .NOTES
-    WinRUtil ??? Windows toolkit
+    WinRUtil — Windows toolkit
     Maintainer     : @rtecnocopy89
     GitHub         : https://github.com/rtecnocopy89/WinRUtil
+    Copyright       : (c) 2026 rtecnocopy89 — (c) 2022 CT Tech Group LLC
     Based on       : ChrisTitusTech/winutil (MIT)
-    Version        : 26.06.11
+    Version        : 26.06.12
 #>
 
 param (
@@ -78,7 +79,7 @@ Add-Type -AssemblyName System.Windows.Forms
 # Variable to sync between runspaces
 $sync = [Hashtable]::Synchronized(@{})
 $sync.PSScriptRoot = $PSScriptRoot
-$sync.version = "26.06.11"
+$sync.version = "26.06.12"
 $sync.configs = @{}
 $sync.Buttons = [System.Collections.Generic.List[PSObject]]::new()
 $sync.preferences = @{}
@@ -1322,64 +1323,25 @@ function Invoke-WinUtilAssets {
 
   switch ($type) {
       'logo' {
-          $LogoPathData1 = @"
-M 18.00,14.00
-C 18.00,14.00 45.00,27.74 45.00,27.74
-45.00,27.74 57.40,34.63 57.40,34.63
-57.40,34.63 59.00,43.00 59.00,43.00
-59.00,43.00 59.00,83.00 59.00,83.00
-55.35,81.66 46.99,77.79 44.72,74.79
-41.17,70.10 42.01,59.80 42.00,54.00
-42.00,51.62 42.20,48.29 40.98,46.21
-38.34,41.74 25.78,38.60 21.28,33.79
-16.81,29.02 18.00,20.20 18.00,14.00 Z
+          # WinRUtil mark: a hexagonal nut (utility/tools symbol) in the brand neon-mint.
+          # Outer hexagon ring (flat-top) with a hexagonal hole, drawn even-odd.
+          $LogoNutData = @"
+F0
+M 89.84,27.00 L 50.00,4.00 L 10.16,27.00 L 10.16,73.00 L 50.00,96.00 L 89.84,73.00 Z
+M 69.05,39.00 L 50.00,28.00 L 30.95,39.00 L 30.95,61.00 L 50.00,72.00 L 69.05,61.00 Z
 "@
-          $LogoPath1 = New-Object Windows.Shapes.Path
-          $LogoPath1.Data = [Windows.Media.Geometry]::Parse($LogoPathData1)
-          $LogoPath1.Fill = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#0567ff")
+          $LogoNut = New-Object Windows.Shapes.Path
+          $LogoNut.Data = [Windows.Media.Geometry]::Parse($LogoNutData)
+          $LogoNut.Fill = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#3DF5A0")
 
-          $LogoPathData2 = @"
-M 107.00,14.00
-C 109.01,19.06 108.93,30.37 104.66,34.21
-100.47,37.98 86.38,43.10 84.60,47.21
-83.94,48.74 84.01,51.32 84.00,53.00
-83.97,57.04 84.46,68.90 83.26,72.00
-81.06,77.70 72.54,81.42 67.00,83.00
-67.00,83.00 67.00,43.00 67.00,43.00
-67.00,43.00 67.99,35.63 67.99,35.63
-67.99,35.63 80.00,28.26 80.00,28.26
-80.00,28.26 107.00,14.00 107.00,14.00 Z
-"@
-          $LogoPath2 = New-Object Windows.Shapes.Path
-          $LogoPath2.Data = [Windows.Media.Geometry]::Parse($LogoPathData2)
-          $LogoPath2.Fill = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#0567ff")
+          # Inner accent dot at the center of the hole for a two-tone, distinctive look.
+          $LogoDotData = "M 58.00,50.00 A 8,8 0 1,0 42.00,50.00 A 8,8 0 1,0 58.00,50.00 Z"
+          $LogoDot = New-Object Windows.Shapes.Path
+          $LogoDot.Data = [Windows.Media.Geometry]::Parse($LogoDotData)
+          $LogoDot.Fill = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#2BD389")
 
-          $LogoPathData3 = @"
-M 19.00,46.00
-C 21.36,47.14 28.67,50.71 30.01,52.63
-31.17,54.30 30.99,57.04 31.00,59.00
-31.04,65.41 30.35,72.16 33.56,78.00
-38.19,86.45 46.10,89.04 54.00,93.31
-56.55,94.69 60.10,97.20 63.00,97.22
-65.50,97.24 68.77,95.36 71.00,94.25
-76.42,91.55 84.51,87.78 88.82,83.68
-94.56,78.20 95.96,70.59 96.00,63.00
-96.01,60.24 95.59,54.63 97.02,52.39
-98.80,49.60 103.95,47.87 107.00,47.00
-107.00,47.00 107.00,67.00 107.00,67.00
-106.90,87.69 96.10,93.85 80.00,103.00
-76.51,104.98 66.66,110.67 63.00,110.52
-60.33,110.41 55.55,107.53 53.00,106.25
-46.21,102.83 36.63,98.57 31.04,93.68
-16.88,81.28 19.00,62.88 19.00,46.00 Z
-"@
-          $LogoPath3 = New-Object Windows.Shapes.Path
-          $LogoPath3.Data = [Windows.Media.Geometry]::Parse($LogoPathData3)
-          $LogoPath3.Fill = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#a3a4a6")
-
-          $canvas.Children.Add($LogoPath1) | Out-Null
-          $canvas.Children.Add($LogoPath2) | Out-Null
-          $canvas.Children.Add($LogoPath3) | Out-Null
+          $canvas.Children.Add($LogoNut) | Out-Null
+          $canvas.Children.Add($LogoDot) | Out-Null
       }
       'checkmark' {
           $canvas.Width = 512
@@ -1801,7 +1763,7 @@ function Write-Win11ISOLog {
     $ts = (Get-Date).ToString("HH:mm:ss")
     $sync["WPFWin11ISOStatusLog"].Dispatcher.Invoke([action]{
         $current = $sync["WPFWin11ISOStatusLog"].Text
-        if ($current -eq "Ready. Please select a Windows 11 ISO to begin.") {
+        if ($current -eq "Pronto. Seleziona una ISO di Windows 11 per iniziare.") {
             $sync["WPFWin11ISOStatusLog"].Text = "[$ts] $Message"
         } else {
             $sync["WPFWin11ISOStatusLog"].Text += "`n[$ts] $Message"
@@ -1838,8 +1800,8 @@ function Invoke-WinUtilISOBrowse {
 function Invoke-WinUtilISOMountAndVerify {
     $isoPath = $sync["WPFWin11ISOPath"].Text
 
-    if ([string]::IsNullOrWhiteSpace($isoPath) -or $isoPath -eq "No ISO selected...") {
-        [System.Windows.MessageBox]::Show("Please select an ISO file first.", "No ISO Selected", "OK", "Warning")
+    if ([string]::IsNullOrWhiteSpace($isoPath) -or $isoPath -eq "Nessuna ISO selezionata...") {
+        [System.Windows.MessageBox]::Show("Seleziona prima un file ISO.", "Nessuna ISO selezionata", "OK", "Warning")
         return
     }
 
@@ -1863,7 +1825,7 @@ function Invoke-WinUtilISOMountAndVerify {
 
         if (-not (Test-Path $wimPath) -and -not (Test-Path $esdPath)) {
             Dismount-DiskImage -ImagePath $isoPath
-            Write-Win11ISOLog "ERROR: install.wim/install.esd not found ??? not a valid Windows ISO."
+            Write-Win11ISOLog "ERROR: install.wim/install.esd not found — not a valid Windows ISO."
             [System.Windows.MessageBox]::Show(
                 "This does not appear to be a valid Windows ISO.`n`ninstall.wim / install.esd was not found.",
                 "Invalid ISO", "OK", "Error")
@@ -2258,7 +2220,7 @@ function Invoke-WinUtilISOCleanAndReset {
                     Log "Temp directory deleted successfully."
                 }
             } else {
-                Log "No temp directory found ??? resetting UI."
+                Log "No temp directory found — resetting UI."
             }
 
             SetProgress "Resetting UI..." 95
@@ -2273,7 +2235,7 @@ function Invoke-WinUtilISOCleanAndReset {
                 $sync["Win11ISOImageInfo"]   = $null
                 $sync["Win11ISOUSBDisks"]    = $null
 
-                $sync["WPFWin11ISOPath"].Text                   = "No ISO selected..."
+                $sync["WPFWin11ISOPath"].Text                   = "Nessuna ISO selezionata..."
                 $sync["WPFWin11ISOFileInfo"].Visibility          = "Collapsed"
                 $sync["WPFWin11ISOVerifyResultPanel"].Visibility = "Collapsed"
                 $sync["WPFWin11ISOOptionUSB"].Visibility         = "Collapsed"
@@ -2288,7 +2250,7 @@ function Invoke-WinUtilISOCleanAndReset {
                 $sync.progressBarTextBlock.ToolTip = ""
                 $sync.ProgressBar.Value            = 0
 
-                $sync["WPFWin11ISOStatusLog"].Text   = "Ready. Please select a Windows 11 ISO to begin."
+                $sync["WPFWin11ISOStatusLog"].Text   = "Pronto. Seleziona una ISO di Windows 11 per iniziare."
             })
         } catch {
             Log "ERROR during Clean & Reset: $_"
@@ -2505,7 +2467,7 @@ function Invoke-WinUtilISOScript {
             -Log             { param($m) Write-Host $m }
 
     .NOTES
-        WinRUtil ??? https://github.com/rtecnocopy89/WinRUtil
+        WinRUtil — https://github.com/rtecnocopy89/WinRUtil
         Based on ChrisTitusTech/winutil (MIT)
     #>
     param (
@@ -2565,7 +2527,7 @@ function Invoke-WinUtilISOScript {
         }
     }
 
-    # ?????? 1. Remove provisioned AppX packages ??????????????????????????????????????????????????????????????????????????????????????????????????????
+    # ── 1. Remove provisioned AppX packages ──────────────────────────────────
     & $Log "Removing provisioned AppX packages..."
 
     $packages = & dism /English "/image:$ScratchDir" /Get-ProvisionedAppxPackages |
@@ -2596,7 +2558,7 @@ function Invoke-WinUtilISOScript {
     $packages | Where-Object { $pkg = $_; $packagePrefixes | Where-Object { $pkg -like "*$_*" } } |
         ForEach-Object { & dism /English "/image:$ScratchDir" /Remove-ProvisionedAppxPackage "/PackageName:$_" }
 
-    # ?????? 2. Inject current system drivers (optional) ?????????????????????????????????????????????????????????????????????????????????
+    # ── 2. Inject current system drivers (optional) ───────────────────────────
     if ($InjectCurrentSystemDrivers) {
         & $Log "Exporting all drivers from running system..."
         $driverExportRoot = Join-Path $env:TEMP "WinUtil_DriverExport_$(Get-Random)"
@@ -2614,7 +2576,7 @@ function Invoke-WinUtilISOScript {
                     & $Log "Injecting current system drivers into boot.wim..."
                     Invoke-BootWimInject -BootWimPath $bootWim -DriverDir $driverExportRoot -Logger $Log
                 } else {
-                    & $Log "Warning: boot.wim not found ??? skipping boot.wim driver injection."
+                    & $Log "Warning: boot.wim not found — skipping boot.wim driver injection."
                 }
             }
         } catch {
@@ -2626,7 +2588,7 @@ function Invoke-WinUtilISOScript {
         & $Log "Driver injection skipped."
     }
 
-    # ?????? 3. Registry tweaks ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+    # ── 3. Registry tweaks ────────────────────────────────────────────────────
     & $Log "Loading offline registry hives..."
     reg load HKLM\zCOMPONENTS "$ScratchDir\Windows\System32\config\COMPONENTS"
     reg load HKLM\zDEFAULT    "$ScratchDir\Windows\System32\config\default"
@@ -2700,7 +2662,7 @@ function Invoke-WinUtilISOScript {
                     & $Log "Pre-staged setup script: $relPath"
                 }
             } else {
-                & $Log "Warning: no <Extensions><File> nodes found in autounattend.xml ??? setup scripts not pre-staged."
+                & $Log "Warning: no <Extensions><File> nodes found in autounattend.xml — setup scripts not pre-staged."
             }
         } catch {
             & $Log "Warning: could not pre-stage setup scripts from autounattend.xml: $_"
@@ -2712,7 +2674,7 @@ function Invoke-WinUtilISOScript {
             & $Log "Written autounattend.xml to ISO root ($isoDest)."
         }
     } else {
-        & $Log "Warning: autounattend.xml content is empty ??? skipping OOBE bypass file."
+        & $Log "Warning: autounattend.xml content is empty — skipping OOBE bypass file."
     }
 
     & $Log "Disabling reserved storage..."
@@ -2780,7 +2742,7 @@ function Invoke-WinUtilISOScript {
     reg unload HKLM\zSOFTWARE
     reg unload HKLM\zSYSTEM
 
-    # ?????? 4. Delete scheduled task definition files ???????????????????????????????????????????????????????????????????????????????????????
+    # ── 4. Delete scheduled task definition files ─────────────────────────────
     & $Log "Deleting scheduled task definition files..."
     $tasksPath = "$ScratchDir\Windows\System32\Tasks"
     Remove-Item "$tasksPath\Microsoft\Windows\Application Experience\Microsoft Compatibility Appraiser" -Force
@@ -2796,7 +2758,7 @@ function Invoke-WinUtilISOScript {
     Remove-Item "$tasksPath\Microsoft\WindowsUpdate"                                                   -Recurse -Force
     & $Log "Scheduled task files deleted."
 
-    # ?????? 5. Remove ISO support folder ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+    # ── 5. Remove ISO support folder ─────────────────────────────────────────
     if ($ISOContentsDir -and (Test-Path $ISOContentsDir)) {
         & $Log "Removing ISO support\ folder..."
         Remove-Item -Path (Join-Path $ISOContentsDir "support") -Recurse -Force
@@ -3522,7 +3484,7 @@ function Reset-WPFCheckBoxes {
 
     if($doToggles) {
         # Restore toggle switch states from imported config.
-        # Only act on toggles that are explicitly listed in the import ??? toggles absent
+        # Only act on toggles that are explicitly listed in the import — toggles absent
         # from the export file were not part of the saved config and should keep whatever
         # state the live system already has (set during UI initialisation via Get-WinUtilToggleStatus).
         $importedToggles = $sync.selectedToggles
@@ -6564,22 +6526,52 @@ Function Show-WinRUtilLogo {
         .SYNOPSIS
             Displays the WinRUtil logo in ASCII art.
         .DESCRIPTION
-            Prints the WinRUtil banner to the console.
+            Prints the WinRUtil banner with a green gradient based on the
+            project's #3DF5A0 accent color when the console supports ANSI
+            escape sequences (Windows Terminal, PowerShell 7+), falling back
+            to standard console colors elsewhere.
         .EXAMPLE
             Show-WinRUtilLogo
     #>
 
-    $asciiArt = @"
- __        __ _       ____   _   _ _   _ _
- \ \      / /(_) _ __ |  _ \ | | | | |_(_) |
-  \ \ /\ / / | || '_ \| |_) || | | | __| | |
-   \ V  V /  | || | | |  _ < | |_| | |_| | |
-    \_/\_/   |_||_| |_|_| \_\ \___/ \__|_|_|
+    $logo = @(
+        '██╗    ██╗██╗███╗   ██╗██████╗ ██╗   ██╗████████╗██╗██╗'
+        '██║    ██║██║████╗  ██║██╔══██╗██║   ██║╚══██╔══╝██║██║'
+        '██║ █╗ ██║██║██╔██╗ ██║██████╔╝██║   ██║   ██║   ██║██║'
+        '██║███╗██║██║██║╚██╗██║██╔══██╗██║   ██║   ██║   ██║██║'
+        '╚███╔███╔╝██║██║ ╚████║██║  ██║╚██████╔╝   ██║   ██║███████╗'
+        ' ╚══╝╚══╝ ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝ ╚═════╝    ╚═╝   ╚═╝╚══════╝'
+    )
 
-=======  WinRUtil - Windows toolkit  =======
-"@
+    $width = 60
+    $tagline = 'WinRUtil  •  Windows Toolkit'
+    if ($sync.version) { $tagline += "  •  v$($sync.version)" }
+    $rule = [string][char]0x2500 * $width
+    $centered = (' ' * [math]::Max(0, [math]::Floor(($width - $tagline.Length) / 2))) + $tagline
 
-    Write-Host $asciiArt -ForegroundColor Green
+    $supportsAnsi = ($null -ne $env:WT_SESSION) -or
+                    ($PSVersionTable.PSVersion.Major -ge 7) -or
+                    ($Host.UI.PSObject.Properties['SupportsVirtualTerminal'] -and $Host.UI.SupportsVirtualTerminal)
+
+    Write-Host ''
+    if ($supportsAnsi) {
+        $esc = [char]27
+        # Gradient: theme accent #3DF5A0 (top) -> darker green #1EA86C (bottom)
+        $gradient = @('61;245;160', '55;230;150', '49;214;139', '42;199;129', '36;183;119', '30;168;108')
+        for ($i = 0; $i -lt $logo.Count; $i++) {
+            Write-Host "$esc[1m$esc[38;2;$($gradient[$i])m$($logo[$i])$esc[0m"
+        }
+        # Rules use the theme's secondary green #2BD389
+        Write-Host "$esc[38;2;43;211;137m$rule$esc[0m"
+        Write-Host "$esc[1m$esc[97m$centered$esc[0m"
+        Write-Host "$esc[38;2;43;211;137m$rule$esc[0m"
+    } else {
+        foreach ($line in $logo) { Write-Host $line -ForegroundColor Green }
+        Write-Host $rule -ForegroundColor DarkGreen
+        Write-Host $centered -ForegroundColor White
+        Write-Host $rule -ForegroundColor DarkGreen
+    }
+    Write-Host ''
 }
 $sync.configs.applications = @'
 {
@@ -11518,7 +11510,7 @@ $inputXML = @'
 
         <!-- Offline banner -->
         <Border Name="WPFOfflineBanner" Grid.Row="0" Grid.Column="1" Background="#8B0000" Visibility="Collapsed" Padding="6,4">
-            <TextBlock Text="&#x26A0; Modalit?? offline - Nessuna connessione a Internet" Foreground="White" FontWeight="Bold"
+            <TextBlock Text="&#x26A0; Modalità offline - Nessuna connessione a Internet" Foreground="White" FontWeight="Bold"
                 HorizontalAlignment="Center" FontSize="13" Background="Transparent"/>
         </Border>
         <Grid Grid.Row="1" Grid.Column="1" Name="WPFTitleBar" Background="Transparent">
@@ -11622,7 +11614,7 @@ $inputXML = @'
                     Margin="0,0,2,0"
                     FontFamily="Segoe MDL2 Assets"
                     Content="&#xE8D3;"
-                    ToolTip="Regola la dimensione del testo per l'accessibilit??"
+                    ToolTip="Regola la dimensione del testo per l'accessibilità"
                 />
                     <Popup Name="FontScalingPopup"
                     IsOpen="False"
@@ -11849,13 +11841,13 @@ $inputXML = @'
                                              Foreground="{DynamicResource MainForegroundColor}">
                                         <Run FontWeight="Bold">Configurazione di sicurezza bilanciata</Run>
                                         <LineBreak/>
-                                         - Aggiornamenti delle funzionalit?? ritardati di 365 giorni
+                                         - Aggiornamenti delle funzionalità ritardati di 365 giorni
                                         <LineBreak/>
                                          - Aggiornamenti di sicurezza installati dopo 4 giorni
                                         <LineBreak/>
                                          - Impedisce a Windows Update di installare driver
                                         <LineBreak/><LineBreak/>
-                                        <Run FontWeight="SemiBold">Aggiornamenti funzionalit??:</Run> nuove funzionalit?? e possibili bug
+                                        <Run FontWeight="SemiBold">Aggiornamenti funzionalità:</Run> nuove funzionalità e possibili bug
                                         <LineBreak/>
                                         <Run FontWeight="SemiBold">Aggiornamenti di sicurezza:</Run> patch di sicurezza critiche
                                     <LineBreak/><LineBreak/>
@@ -11884,7 +11876,7 @@ $inputXML = @'
                                         <LineBreak/>
                                          - Usare solo su sistemi isolati
                                         <LineBreak/><LineBreak/>
-                                        <Run FontStyle="Italic" FontSize="11">Avviso: senza aggiornamenti di sicurezza il sistema sar?? vulnerabile.</Run>
+                                        <Run FontStyle="Italic" FontSize="11">Avviso: senza aggiornamenti di sicurezza il sistema sarà vulnerabile.</Run>
                                     </TextBlock>
                                 </StackPanel>
                             </Border>
@@ -11906,7 +11898,7 @@ $inputXML = @'
                     <!-- Steps 1-4 -->
                     <StackPanel Grid.Row="0">
 
-                            <!-- ????????? STEP 1 : Select Windows 11 ISO ????????????????????????????????????????????? -->
+                            <!-- STEP 1 : Select Windows 11 ISO -->
                             <Grid Name="WPFWin11ISOSelectSection" Margin="5" HorizontalAlignment="Left" MinWidth="{DynamicResource ButtonWidth}">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
@@ -11995,7 +11987,7 @@ $inputXML = @'
                                 </Border>
                             </Grid>
 
-                            <!-- ????????? STEP 2 : Mount & Verify ISO ???????????????????????????????????????????????????????????? -->
+                            <!-- STEP 2 : Mount and Verify ISO -->
                             <Grid Name="WPFWin11ISOMountSection"
                                   Margin="5"
                                   Visibility="Collapsed"
@@ -12062,7 +12054,7 @@ $inputXML = @'
                                 </Border>
                             </Grid>
 
-                            <!-- ????????? STEP 3 : Modify install.wim ??????????????????????????????????????????????????????????????? -->
+                            <!-- STEP 3 : Modify install.wim -->
                             <StackPanel Name="WPFWin11ISOModifySection"
                                         Margin="5"
                                         Visibility="Collapsed"
@@ -12074,9 +12066,9 @@ $inputXML = @'
                                 <TextBlock FontSize="{DynamicResource FontSize}"
                                            Foreground="{DynamicResource MainForegroundColor}"
                                            TextWrapping="Wrap" Margin="0,0,0,12">
-                                    Il contenuto della ISO verr?? estratto in una cartella di lavoro temporanea,
-                                    install.wim verr?? modificato (componenti rimossi, ottimizzazioni applicate)
-                                    e il risultato verr?? riassemblato. L'operazione pu?? richiedere diversi minuti
+                                    Il contenuto della ISO verrà estratto in una cartella di lavoro temporanea,
+                                    install.wim verrà modificato (componenti rimossi, ottimizzazioni applicate)
+                                    e il risultato verrà riassemblato. L'operazione può richiedere diversi minuti
                                     a seconda dell'hardware.
                                 </TextBlock>
                                 <Button Name="WPFWin11ISOModifyButton"
@@ -12086,7 +12078,7 @@ $inputXML = @'
                                         Height="{DynamicResource ButtonHeight}"/>
                             </StackPanel>
 
-                            <!-- ????????? STEP 4 : Output Options ??????????????????????????????????????????????????????????????????????????? -->
+                            <!-- STEP 4 : Output Options -->
                             <StackPanel Name="WPFWin11ISOOutputSection"
                                         Margin="5"
                                         Visibility="Collapsed"
@@ -12112,7 +12104,7 @@ $inputXML = @'
                                             Margin="12,0,0,0"/>
                                 </Grid>
 
-                                <!-- ?????? Choice prompt buttons ?????? -->
+                                <!-- Choice prompt buttons -->
                                 <Grid Margin="0,0,0,12">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
@@ -12127,14 +12119,14 @@ $inputXML = @'
                                             Height="{DynamicResource ButtonHeight}"/>
                                     <Button Grid.Column="2"
                                             Name="WPFWin11ISOChooseUSBButton"
-                                            Content="Scrivi direttamente su unit?? USB (CANCELLA L'UNIT??)"
+                                            Content="Scrivi direttamente su unità USB (CANCELLA L'UNITÀ)"
                                             Foreground="OrangeRed"
                                             HorizontalAlignment="Stretch"
                                             Width="Auto" Padding="12,0"
                                             Height="{DynamicResource ButtonHeight}"/>
                                 </Grid>
 
-                                <!-- ?????? USB write sub-panel (revealed on USB choice) ?????? -->
+                                <!-- USB write sub-panel (revealed on USB choice) -->
                                 <Border Name="WPFWin11ISOOptionUSB"
                                         Style="{StaticResource BorderStyle}"
                                         Visibility="Collapsed"
@@ -12143,9 +12135,9 @@ $inputXML = @'
                                         <TextBlock FontSize="{DynamicResource FontSize}"
                                                    Foreground="{DynamicResource MainForegroundColor}"
                                                    TextWrapping="Wrap" Margin="0,0,0,8">
-                                            <Run FontWeight="Bold" Foreground="OrangeRed">!! Tutti i dati sull'unit?? USB selezionata verranno cancellati definitivamente !!</Run>
+                                            <Run FontWeight="Bold" Foreground="OrangeRed">!! Tutti i dati sull'unità USB selezionata verranno cancellati definitivamente !!</Run>
                                             <LineBreak/>
-                                            Seleziona qui sotto un'unit?? USB rimovibile, poi clicca Cancella e scrivi.
+                                            Seleziona qui sotto un'unità USB rimovibile, poi clicca Cancella e scrivi.
                                         </TextBlock>
                                         <!-- USB drive selector row -->
                                         <Grid Margin="0,0,0,8">
@@ -12188,7 +12180,7 @@ $inputXML = @'
                                    FontSize="{DynamicResource FontSize}" FontWeight="Bold"
                                    Foreground="{DynamicResource MainForegroundColor}"
                                    Margin="0,0,0,4">
-                            Registro attivit?
+                            Registro attività
                         </TextBlock>
                         <TextBox Grid.Row="1"
                                  Name="WPFWin11ISOStatusLog"
@@ -12253,7 +12245,7 @@ $inputXML = @'
                     <Border Grid.Row="2" Background="{DynamicResource GroupBorderBackgroundColor}" CornerRadius="12"
                             BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="10" Margin="6,2,6,6">
                         <StackPanel>
-                            <TextBlock Text="Registro attivit??" FontSize="{DynamicResource FontSize}" FontWeight="Bold"
+                            <TextBlock Text="Registro attività" FontSize="{DynamicResource FontSize}" FontWeight="Bold"
                                        Foreground="{DynamicResource MainForegroundColor}" Margin="0,0,0,4"/>
                             <TextBox Name="WPFPrinterStatusLog" IsReadOnly="True" TextWrapping="Wrap" Height="90"
                                      VerticalScrollBarVisibility="Auto" Background="Transparent"
@@ -12271,498 +12263,7 @@ $inputXML = @'
 
 '@
 $WinUtilAutounattendXml = @'
-<?xml version="1.0" encoding="utf-8"?>
-<unattend xmlns="urn:schemas-microsoft-com:unattend" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State">
-    <settings pass="offlineServicing"></settings>
-    <settings pass="windowsPE">
-        <component name="Microsoft-Windows-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
-            <UserData>
-                <AcceptEula>true</AcceptEula>
-            </UserData>
-            <UseConfigurationSet>false</UseConfigurationSet>
-            <RunSynchronous>
-                <RunSynchronousCommand wcm:action="add">
-                    <Order>1</Order>
-                    <Path>reg.exe add "HKLM\SYSTEM\Setup\LabConfig" /v BypassTPMCheck /t REG_DWORD /d 1 /f</Path>
-                </RunSynchronousCommand>
-                <RunSynchronousCommand wcm:action="add">
-                    <Order>2</Order>
-                    <Path>reg.exe add "HKLM\SYSTEM\Setup\LabConfig" /v BypassSecureBootCheck /t REG_DWORD /d 1 /f</Path>
-                </RunSynchronousCommand>
-                <RunSynchronousCommand wcm:action="add">
-                    <Order>3</Order>
-                    <Path>reg.exe add "HKLM\SYSTEM\Setup\LabConfig" /v BypassRAMCheck /t REG_DWORD /d 1 /f</Path>
-                </RunSynchronousCommand>
-            </RunSynchronous>
-        </component>
-    </settings>
-    <settings pass="generalize"></settings>
-    <settings pass="specialize">
-        <component name="Microsoft-Windows-Deployment" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
-            <RunSynchronous>
-                <RunSynchronousCommand wcm:action="add">
-                    <Order>1</Order>
-                    <Path>powershell.exe -WindowStyle "Normal" -NoProfile -Command "$xml = [xml]::new(); $xml.Load('C:\Windows\Panther\unattend.xml'); $sb = [scriptblock]::Create( $xml.unattend.Extensions.ExtractScript ); Invoke-Command -ScriptBlock $sb -ArgumentList $xml;"</Path>
-                </RunSynchronousCommand>
-                <RunSynchronousCommand wcm:action="add">
-                    <Order>2</Order>
-                    <Path>powershell.exe -WindowStyle "Normal" -ExecutionPolicy "Unrestricted" -NoProfile -File "C:\Windows\Setup\Scripts\Specialize.ps1"</Path>
-                </RunSynchronousCommand>
-                <RunSynchronousCommand wcm:action="add">
-                    <Order>3</Order>
-                    <Path>reg.exe load "HKU\DefaultUser" "C:\Users\Default\NTUSER.DAT"</Path>
-                </RunSynchronousCommand>
-                <RunSynchronousCommand wcm:action="add">
-                    <Order>4</Order>
-                    <Path>powershell.exe -WindowStyle "Normal" -ExecutionPolicy "Unrestricted" -NoProfile -File "C:\Windows\Setup\Scripts\DefaultUser.ps1"</Path>
-                </RunSynchronousCommand>
-                <RunSynchronousCommand wcm:action="add">
-                    <Order>5</Order>
-                    <Path>reg.exe unload "HKU\DefaultUser"</Path>
-                </RunSynchronousCommand>
-            </RunSynchronous>
-        </component>
-    </settings>
-    <settings pass="auditSystem"></settings>
-    <settings pass="auditUser"></settings>
-    <settings pass="oobeSystem">
-        <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
-            <OOBE>
-                <ProtectYourPC>3</ProtectYourPC>
-                <HideEULAPage>true</HideEULAPage>
-                <HideWirelessSetupInOOBE>true</HideWirelessSetupInOOBE>
-                <HideOnlineAccountScreens>true</HideOnlineAccountScreens>
-            </OOBE>
-            <FirstLogonCommands>
-                <SynchronousCommand wcm:action="add">
-                    <Order>1</Order>
-                    <CommandLine>powershell.exe -WindowStyle "Normal" -ExecutionPolicy "Unrestricted" -NoProfile -File "C:\Windows\Setup\Scripts\FirstLogon.ps1"</CommandLine>
-                </SynchronousCommand>
-            </FirstLogonCommands>
-        </component>
-    </settings>
-    <Extensions xmlns="https://schneegans.de/windows/unattend-generator/">
-        <ExtractScript>
-param(
-    [xml]$Document
-);
-foreach( $file in $Document.unattend.Extensions.File ) {
-    $path = [System.Environment]::ExpandEnvironmentVariables( $file.GetAttribute( 'path' ) );
-    mkdir -Path( $path | Split-Path -Parent ) -ErrorAction 'SilentlyContinue';
-    $encoding = switch( [System.IO.Path]::GetExtension( $path ) ) {
-        { $_ -in '.ps1', '.xml' } { [System.Text.Encoding]::UTF8; }
-        { $_ -in '.reg', '.vbs', '.js' } { [System.Text.UnicodeEncoding]::new( $false, $true ); }
-        default { [System.Text.Encoding]::Default; }
-    };
-    $bytes = $encoding.GetPreamble() + $encoding.GetBytes( $file.InnerText.Trim() );
-    [System.IO.File]::WriteAllBytes( $path, $bytes );
-}
-        </ExtractScript>
-        <File path="C:\Windows\Setup\Scripts\TaskbarLayoutModification.xml">
-&lt;LayoutModificationTemplate xmlns="http://schemas.microsoft.com/Start/2014/LayoutModification" xmlns:defaultlayout="http://schemas.microsoft.com/Start/2014/FullDefaultLayout" xmlns:start="http://schemas.microsoft.com/Start/2014/StartLayout" xmlns:taskbar="http://schemas.microsoft.com/Start/2014/TaskbarLayout" Version="1"&gt;
-    &lt;CustomTaskbarLayoutCollection PinListPlacement="Replace"&gt;
-        &lt;defaultlayout:TaskbarLayout&gt;
-            &lt;taskbar:TaskbarPinList&gt;
-                &lt;taskbar:DesktopApp DesktopApplicationLinkPath="#leaveempty" /&gt;
-            &lt;/taskbar:TaskbarPinList&gt;
-        &lt;/defaultlayout:TaskbarLayout&gt;
-    &lt;/CustomTaskbarLayoutCollection&gt;
-&lt;/LayoutModificationTemplate&gt;
-        </File>
-        <File path="C:\Windows\Setup\Scripts\UnlockStartLayout.vbs">
-HKU = &amp;H80000003
-Set reg = GetObject("winmgmts://./root/default:StdRegProv")
-Set fso = CreateObject("Scripting.FileSystemObject")
-If reg.EnumKey(HKU, "", sids) = 0 Then
-    If Not IsNull(sids) Then
-        For Each sid In sids
-            key = sid + "\Software\Policies\Microsoft\Windows\Explorer"
-            name = "LockedStartLayout"
-            If reg.GetDWORDValue(HKU, key, name, existing) = 0 Then
-                reg.SetDWORDValue HKU, key, name, 0
-            End If
-        Next
-    End If
-End If
-        </File>
-        <File path="C:\Windows\Setup\Scripts\UnlockStartLayout.xml">
-&lt;Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task"&gt;
-    &lt;Triggers&gt;
-        &lt;EventTrigger&gt;
-            &lt;Enabled&gt;true&lt;/Enabled&gt;
-            &lt;Subscription&gt;&amp;lt;QueryList&amp;gt;&amp;lt;Query Id="0" Path="Application"&amp;gt;&amp;lt;Select Path="Application"&amp;gt;*[System[Provider[@Name='UnattendGenerator'] and EventID=1]]&amp;lt;/Select&amp;gt;&amp;lt;/Query&amp;gt;&amp;lt;/QueryList&amp;gt;&lt;/Subscription&gt;
-        &lt;/EventTrigger&gt;
-    &lt;/Triggers&gt;
-    &lt;Principals&gt;
-        &lt;Principal id="Author"&gt;
-            &lt;UserId&gt;S-1-5-18&lt;/UserId&gt;
-            &lt;RunLevel&gt;LeastPrivilege&lt;/RunLevel&gt;
-        &lt;/Principal&gt;
-    &lt;/Principals&gt;
-    &lt;Settings&gt;
-        &lt;MultipleInstancesPolicy&gt;IgnoreNew&lt;/MultipleInstancesPolicy&gt;
-        &lt;DisallowStartIfOnBatteries&gt;false&lt;/DisallowStartIfOnBatteries&gt;
-        &lt;StopIfGoingOnBatteries&gt;false&lt;/StopIfGoingOnBatteries&gt;
-        &lt;AllowHardTerminate&gt;true&lt;/AllowHardTerminate&gt;
-        &lt;StartWhenAvailable&gt;false&lt;/StartWhenAvailable&gt;
-        &lt;RunOnlyIfNetworkAvailable&gt;false&lt;/RunOnlyIfNetworkAvailable&gt;
-        &lt;IdleSettings&gt;
-            &lt;StopOnIdleEnd&gt;true&lt;/StopOnIdleEnd&gt;
-            &lt;RestartOnIdle&gt;false&lt;/RestartOnIdle&gt;
-        &lt;/IdleSettings&gt;
-        &lt;AllowStartOnDemand&gt;true&lt;/AllowStartOnDemand&gt;
-        &lt;Enabled&gt;true&lt;/Enabled&gt;
-        &lt;Hidden&gt;false&lt;/Hidden&gt;
-        &lt;RunOnlyIfIdle&gt;false&lt;/RunOnlyIfIdle&gt;
-        &lt;WakeToRun&gt;false&lt;/WakeToRun&gt;
-        &lt;ExecutionTimeLimit&gt;PT72H&lt;/ExecutionTimeLimit&gt;
-        &lt;Priority&gt;7&lt;/Priority&gt;
-    &lt;/Settings&gt;
-    &lt;Actions Context="Author"&gt;
-        &lt;Exec&gt;
-            &lt;Command&gt;C:\Windows\System32\wscript.exe&lt;/Command&gt;
-            &lt;Arguments&gt;C:\Windows\Setup\Scripts\UnlockStartLayout.vbs&lt;/Arguments&gt;
-        &lt;/Exec&gt;
-    &lt;/Actions&gt;
-&lt;/Task&gt;
-        </File>
-        <File path="C:\Windows\Setup\Scripts\SetStartPins.ps1">
-$json = '{"pinnedList":[]}';
-if( [System.Environment]::OSVersion.Version.Build -lt 20000 ) {
-    return;
-}
-$key = 'Registry::HKLM\SOFTWARE\Microsoft\PolicyManager\current\device\Start';
-New-Item -Path $key -ItemType 'Directory' -ErrorAction 'SilentlyContinue';
-Set-ItemProperty -LiteralPath $key -Name 'ConfigureStartPins' -Value $json -Type 'String';
-        </File>
-        <File path="C:\Windows\Setup\Scripts\SetColorTheme.ps1">
-$lightThemeSystem = 0;
-$lightThemeApps = 0;
-$accentColorOnStart = 0;
-$enableTransparency = 0;
-$htmlAccentColor = '#0078D4';
-&amp; {
-    $params = @{
-        LiteralPath = 'Registry::HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize';
-        Force = $true;
-        Type = 'DWord';
-    };
-    Set-ItemProperty @params -Name 'SystemUsesLightTheme' -Value $lightThemeSystem;
-    Set-ItemProperty @params -Name 'AppsUseLightTheme' -Value $lightThemeApps;
-    Set-ItemProperty @params -Name 'ColorPrevalence' -Value $accentColorOnStart;
-    Set-ItemProperty @params -Name 'EnableTransparency' -Value $enableTransparency;
-};
-&amp; {
-    Add-Type -AssemblyName 'System.Drawing';
-    $accentColor = [System.Drawing.ColorTranslator]::FromHtml( $htmlAccentColor );
-    function ConvertTo-DWord {
-        param(
-            [System.Drawing.Color]
-            $Color
-        );
-        [byte[]]$bytes = @(
-            $Color.R;
-            $Color.G;
-            $Color.B;
-            $Color.A;
-        );
-        return [System.BitConverter]::ToUInt32( $bytes, 0);
-    }
-    $startColor = [System.Drawing.Color]::FromArgb( 0xD2, $accentColor );
-    Set-ItemProperty -LiteralPath 'Registry::HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Accent' -Name 'StartColorMenu' -Value( ConvertTo-DWord -Color $accentColor ) -Type 'DWord' -Force;
-    Set-ItemProperty -LiteralPath 'Registry::HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Accent' -Name 'AccentColorMenu' -Value( ConvertTo-DWord -Color $accentColor ) -Type 'DWord' -Force;
-    Set-ItemProperty -LiteralPath 'Registry::HKCU\Software\Microsoft\Windows\DWM' -Name 'AccentColor' -Value( ConvertTo-DWord -Color $accentColor ) -Type 'DWord' -Force;
-    $params = @{
-        LiteralPath = 'Registry::HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Accent';
-        Name = 'AccentPalette';
-    };
-    $palette = Get-ItemPropertyValue @params;
-    $index = 20;
-    $palette[ $index++ ] = $accentColor.R;
-    $palette[ $index++ ] = $accentColor.G;
-    $palette[ $index++ ] = $accentColor.B;
-    $palette[ $index++ ] = $accentColor.A;
-    Set-ItemProperty @params -Value $palette -Type 'Binary' -Force;
-};
-        </File>
-        <File path="C:\Windows\Setup\Scripts\Specialize.ps1">
-$scripts = @(
-    {
-        reg.exe add "HKLM\SYSTEM\Setup\MoSetup" /v AllowUpgradesWithUnsupportedTPMOrCPU /t REG_DWORD /d 1 /f;
-    };
-    {
-        net.exe accounts /maxpwage:UNLIMITED;
-    };
-    {
-        reg.exe add "HKLM\Software\Policies\Microsoft\Windows\CloudContent" /v "DisableCloudOptimizedContent" /t REG_DWORD /d 1 /f;
-        [System.Diagnostics.EventLog]::CreateEventSource( 'UnattendGenerator', 'Application' );
-    };
-    {
-        Register-ScheduledTask -TaskName 'UnlockStartLayout' -Xml $( Get-Content -LiteralPath 'C:\Windows\Setup\Scripts\UnlockStartLayout.xml' -Raw );
-    };
-    {
-        reg.exe add "HKLM\SYSTEM\CurrentControlSet\Control\FileSystem" /v LongPathsEnabled /t REG_DWORD /d 1 /f
-    };
-    {
-        Remove-Item -LiteralPath 'C:\Users\Public\Desktop\Microsoft Edge.lnk' -ErrorAction 'SilentlyContinue' -Verbose;
-    };
-    {
-        reg.exe add "HKLM\SOFTWARE\Policies\Microsoft\Dsh" /v AllowNewsAndInterests /t REG_DWORD /d 0 /f;
-    };
-    {
-        reg.exe add "HKLM\Software\Policies\Microsoft\Edge" /v HideFirstRunExperience /t REG_DWORD /d 1 /f;
-    };
-    {
-        reg.exe add "HKLM\Software\Policies\Microsoft\Edge\Recommended" /v BackgroundModeEnabled /t REG_DWORD /d 0 /f;
-        reg.exe add "HKLM\Software\Policies\Microsoft\Edge\Recommended" /v StartupBoostEnabled /t REG_DWORD /d 0 /f;
-    };
-    {
-        &amp; 'C:\Windows\Setup\Scripts\SetStartPins.ps1';
-    };
-    {
-        reg.exe add "HKU\.DEFAULT\Control Panel\Accessibility\StickyKeys" /v Flags /t REG_SZ /d 10 /f;
-    };
-    {
-        reg.exe add "HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU" /v NoAutoUpdate /t REG_DWORD /d 1 /f;
-        reg.exe add "HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate" /v DisableWindowsUpdateAccess /t REG_DWORD /d 1 /f;
-    };
-);
-&amp; {
-  [float]$complete = 0;
-  [float]$increment = 100 / $scripts.Count;
-  foreach( $script in $scripts ) {
-    Write-Progress -Id 0 -Activity 'Running scripts to customize your Windows installation. Do not close this window.' -PercentComplete $complete;
-    '*** Will now execute command &#xAB;{0}&#xBB;.' -f $(
-      $str = $script.ToString().Trim() -replace '\s+', ' ';
-      $max = 100;
-      if( $str.Length -le $max ) {
-        $str;
-      } else {
-        $str.Substring( 0, $max - 1 ) + '&#x2026;';
-      }
-    );
-    $start = [datetime]::Now;
-    &amp; $script;
-    '*** Finished executing command after {0:0} ms.' -f [datetime]::Now.Subtract( $start ).TotalMilliseconds;
-    "`r`n" * 3;
-    $complete += $increment;
-  }
-} *&gt;&amp;1 | Out-String -Width 1KB -Stream &gt;&gt; "C:\Windows\Setup\Scripts\Specialize.log";
-        </File>
-        <File path="C:\Windows\Setup\Scripts\UserOnce.ps1">
-$scripts = @(
-    {
-        [System.Diagnostics.EventLog]::WriteEntry( 'UnattendGenerator', "User '$env:USERNAME' has requested to unlock the Start menu layout.", [System.Diagnostics.EventLogEntryType]::Information, 1 );
-    };
-    {
-        Remove-Item -Path "${env:USERPROFILE}\Desktop\*.lnk" -Force -ErrorAction 'SilentlyContinue';
-        Remove-Item -Path "$env:HOMEDRIVE\Users\Default\Desktop\*.lnk" -Force -ErrorAction 'SilentlyContinue';
-    };
-    {
-        $taskbarPath = "$env:AppData\Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar";
-        if( Test-Path $taskbarPath ) {
-            Get-ChildItem -Path $taskbarPath -File | Remove-Item -Force;
-        }
-        Remove-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Taskband' -Name 'FavoritesRemovedChanges' -Force -ErrorAction 'SilentlyContinue';
-        Remove-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Taskband' -Name 'FavoritesChanges' -Force -ErrorAction 'SilentlyContinue';
-        Remove-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Taskband' -Name 'Favorites' -Force -ErrorAction 'SilentlyContinue';
-    };
-    {
-        reg.exe add "HKCU\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32" /ve /f;
-    };
-    {
-        Set-ItemProperty -LiteralPath 'Registry::HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'LaunchTo' -Type 'DWord' -Value 1;
-    };
-    {
-        Set-ItemProperty -LiteralPath 'Registry::HKCU\Software\Microsoft\Windows\CurrentVersion\Search' -Name 'SearchboxTaskbarMode' -Type 'DWord' -Value 0;
-    };
-    {
-        &amp; 'C:\Windows\Setup\Scripts\SetColorTheme.ps1';
-    };
-    {
-        reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings\Windows.SystemToast.Suggested" /f;
-        reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings\Windows.SystemToast.Suggested" /v Enabled /t REG_DWORD /d 0 /f;
-        reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings\Windows.SystemToast.StartupApp" /f;
-        reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings\Windows.SystemToast.StartupApp" /v Enabled /t REG_DWORD /d 0 /f;
-        reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings\Microsoft.SkyDrive.Desktop" /f;
-        reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings\Microsoft.SkyDrive.Desktop" /v Enabled /t REG_DWORD /d 0 /f;
-        reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings\Windows.SystemToast.AccountHealth" /f;
-        reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings\Windows.SystemToast.AccountHealth" /v Enabled /t REG_DWORD /d 0 /f;
-    };
-    {
-        reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Start" /v AllAppsViewMode /t REG_DWORD /d 2 /f;
-        reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v Start_IrisRecommendations /t REG_DWORD /d 0 /f;
-        reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v Start_AccountNotifications /t REG_DWORD /d 0 /f;
-        reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Start" /v ShowAllPinsList /t REG_DWORD /d 0 /f;
-        reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Start" /v ShowFrequentList /t REG_DWORD /d 0 /f;
-        reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Start" /v ShowRecentList /t REG_DWORD /d 0 /f;
-        reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v Start_TrackDocs /t REG_DWORD /d 0 /f;
-    };
-    {
-        Restart-Computer -Force;
-    };
-);
-&amp; {
-  [float]$complete = 0;
-  [float]$increment = 100 / $scripts.Count;
-  foreach( $script in $scripts ) {
-    Write-Progress -Id 0 -Activity 'Running scripts to configure this user account. Do not close this window.' -PercentComplete $complete;
-    '*** Will now execute command &#xAB;{0}&#xBB;.' -f $(
-      $str = $script.ToString().Trim() -replace '\s+', ' ';
-      $max = 100;
-      if( $str.Length -le $max ) {
-        $str;
-      } else {
-        $str.Substring( 0, $max - 1 ) + '&#x2026;';
-      }
-    );
-    $start = [datetime]::Now;
-    &amp; $script;
-    '*** Finished executing command after {0:0} ms.' -f [datetime]::Now.Subtract( $start ).TotalMilliseconds;
-    "`r`n" * 3;
-    $complete += $increment;
-  }
-} *&gt;&amp;1 | Out-String -Width 1KB -Stream &gt;&gt; "$env:TEMP\UserOnce.log";
-        </File>
-        <File path="C:\Windows\Setup\Scripts\DefaultUser.ps1">
-$scripts = @(
-    {
-        reg.exe add "HKU\DefaultUser\Software\Policies\Microsoft\Windows\Explorer" /v "StartLayoutFile" /t REG_SZ /d "C:\Windows\Setup\Scripts\TaskbarLayoutModification.xml" /f;
-        reg.exe add "HKU\DefaultUser\Software\Policies\Microsoft\Windows\Explorer" /v "LockedStartLayout" /t REG_DWORD /d 1 /f;
-    };
-    {
-        reg.exe add "HKU\DefaultUser\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v ShowTaskViewButton /t REG_DWORD /d 0 /f;
-    };
-    {
-        reg.exe add "HKU\DefaultUser\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v TaskbarAl /t REG_DWORD /d 0 /f;
-    };
-    {
-        foreach( $root in 'Registry::HKU\.DEFAULT', 'Registry::HKU\DefaultUser' ) {
-          Set-ItemProperty -LiteralPath "$root\Control Panel\Keyboard" -Name 'InitialKeyboardIndicators' -Type 'String' -Value 2 -Force;
-        }
-    };
-    {
-        reg.exe add "HKU\DefaultUser\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings" /v TaskbarEndTask /t REG_DWORD /d 1 /f;
-    };
-    {
-        reg.exe add "HKU\DefaultUser\Control Panel\Accessibility\StickyKeys" /v Flags /t REG_SZ /d 10 /f;
-    };
-    {
-        reg.exe add "HKU\DefaultUser\Software\Microsoft\Windows\DWM" /v ColorPrevalence /t REG_DWORD /d 0 /f;
-    };
-    {
-        reg.exe add "HKU\DefaultUser\Software\Microsoft\Windows\CurrentVersion\RunOnce" /v "UnattendedSetup" /t REG_SZ /d "powershell.exe -WindowStyle \""Normal\"" -ExecutionPolicy \""Unrestricted\"" -NoProfile -File \""C:\Windows\Setup\Scripts\UserOnce.ps1\""" /f;
-    };
-);
-&amp; {
-  [float]$complete = 0;
-  [float]$increment = 100 / $scripts.Count;
-  foreach( $script in $scripts ) {
-    Write-Progress -Id 0 -Activity 'Running scripts to modify the default user&#x2019;&#x2019;s registry hive. Do not close this window.' -PercentComplete $complete;
-    '*** Will now execute command &#xAB;{0}&#xBB;.' -f $(
-      $str = $script.ToString().Trim() -replace '\s+', ' ';
-      $max = 100;
-      if( $str.Length -le $max ) {
-        $str;
-      } else {
-        $str.Substring( 0, $max - 1 ) + '&#x2026;';
-      }
-    );
-    $start = [datetime]::Now;
-    &amp; $script;
-    '*** Finished executing command after {0:0} ms.' -f [datetime]::Now.Subtract( $start ).TotalMilliseconds;
-    "`r`n" * 3;
-    $complete += $increment;
-  }
-} *&gt;&amp;1 | Out-String -Width 1KB -Stream &gt;&gt; "C:\Windows\Setup\Scripts\DefaultUser.log";
-        </File>
-        <File path="C:\Windows\Setup\Scripts\FirstLogon.ps1">
-$scripts = @(
-    {
-        Remove-Item -LiteralPath @(
-          'C:\Windows\Panther\unattend.xml';
-          'C:\Windows\Panther\unattend-original.xml';
-          'C:\Windows\Setup\Scripts\Wifi.xml';
-          'C:\Windows.old';
-        ) -Recurse -Force -ErrorAction 'SilentlyContinue';
-    };
-    {
-        reg.exe delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v OneDriveSetup /f;
-        reg.exe delete "HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU" /v NoAutoUpdate /f;
-        reg.exe delete "HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU" /v AUOptions /f;
-        reg.exe delete "HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU" /v UseWUServer /f;
-        reg.exe delete "HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate" /v DisableWindowsUpdateAccess /f;
-        reg.exe delete "HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate" /v WUServer /f;
-        reg.exe delete "HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate" /v WUStatusServer /f;
-        reg.exe delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\DeliveryOptimization\Config" /v DODownloadMode /f;
-        reg.exe add "HKLM\Software\Policies\Microsoft\Windows\OneDrive" /v DisableFileSyncNGSC /t REG_DWORD /d 0 /f;
-        reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\GameDVR" /v AppCaptureEnabled /t REG_DWORD /d 0 /f;
-        reg.exe add "HKLM\SYSTEM\CurrentControlSet\Services\BITS" /v Start /t REG_DWORD /d 3 /f;
-        reg.exe add "HKLM\SYSTEM\CurrentControlSet\Services\wuauserv" /v Start /t REG_DWORD /d 3 /f;
-        reg.exe add "HKLM\SYSTEM\CurrentControlSet\Services\UsoSvc" /v Start /t REG_DWORD /d 2 /f;
-        reg.exe add "HKLM\SYSTEM\CurrentControlSet\Services\WaaSMedicSvc" /v Start /t REG_DWORD /d 3 /f;
-    };
-    {
-        reg.exe add "HKLM\SOFTWARE\Microsoft\PolicyManager\current\device\Education" /f;
-        reg.exe add "HKLM\SOFTWARE\Microsoft\PolicyManager\current\device\Start" /f;
-        reg.exe add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Explorer" /f;
-        reg.exe add "HKLM\SOFTWARE\Microsoft\PolicyManager\current\device\Education" /v IsEducationEnvironment /t REG_DWORD /d 1 /f;
-        reg.exe add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Explorer" /v HideRecommendedSection /t REG_DWORD /d 1 /f;
-        reg.exe add "HKLM\SOFTWARE\Microsoft\PolicyManager\current\device\Start" /v HideRecommendedSection /t REG_DWORD /d 1 /f;
-    };
-    {
-        $recallFeature = Get-WindowsOptionalFeature -Online -ErrorAction SilentlyContinue | Where-Object { $_.State -eq 'Enabled' -and $_.FeatureName -like 'Recall' };
-        if( $recallFeature ) {
-            Disable-WindowsOptionalFeature -Online -FeatureName 'Recall' -Remove -ErrorAction SilentlyContinue;
-        }
-    };
-    {
-        $viveDir = Join-Path $env:TEMP 'ViVeTool';
-        $viveZip = Join-Path $env:TEMP 'ViVeTool.zip';
-        Invoke-WebRequest 'https://github.com/thebookisclosed/ViVe/releases/download/v0.3.4/ViVeTool-v0.3.4-IntelAmd.zip' -OutFile $viveZip;
-        Expand-Archive -Path $viveZip -DestinationPath $viveDir -Force;
-        Remove-Item -Path $viveZip -Force;
-        Start-Process -FilePath (Join-Path $viveDir 'ViVeTool.exe') -ArgumentList '/disable /id:47205210' -Wait -NoNewWindow;
-        Remove-Item -Path $viveDir -Recurse -Force;
-    };
-    {
-        Start-Process C:\Windows\System32\OneDriveSetup.exe -ArgumentList /uninstall
-    };
-    {
-        if( (Get-BitLockerVolume -MountPoint $Env:SystemDrive).ProtectionStatus -eq 'On' ) {
-            Disable-BitLocker -MountPoint $Env:SystemDrive;
-        }
-    };
-    {
-        if( (bcdedit | Select-String 'path').Count -eq 2 ) {
-            bcdedit /set `{bootmgr`} timeout 0;
-        }
-    };
-);
-&amp; {
-  [float]$complete = 0;
-  [float]$increment = 100 / $scripts.Count;
-  foreach( $script in $scripts ) {
-    Write-Progress -Id 0 -Activity 'Running scripts to finalize your Windows installation. Do not close this window.' -PercentComplete $complete;
-    '*** Will now execute command &#xAB;{0}&#xBB;.' -f $(
-      $str = $script.ToString().Trim() -replace '\s+', ' ';
-      $max = 100;
-      if( $str.Length -le $max ) {
-        $str;
-      } else {
-        $str.Substring( 0, $max - 1 ) + '&#x2026;';
-      }
-    );
-    $start = [datetime]::Now;
-    &amp; $script;
-    '*** Finished executing command after {0:0} ms.' -f [datetime]::Now.Subtract( $start ).TotalMilliseconds;
-    "`r`n" * 3;
-    $complete += $increment;
-  }
-} *&gt;&amp;1 | Out-String -Width 1KB -Stream &gt;&gt; "C:\Windows\Setup\Scripts\FirstLogon.log";
-        </File>
-    </Extensions>
-</unattend>
+
 '@
 # Create enums
 Add-Type @"
@@ -13253,13 +12754,14 @@ $sync["AboutMenuItem"].Add_Click({
     Invoke-WPFPopup -Action "Hide" -Popups @("Settings")
 
     $authorInfo = @"
-WinRUtil ??? Windows toolkit
+WinRUtil — Windows toolkit
 Maintainer : <a href="https://github.com/rtecnocopy89">@rtecnocopy89</a>
 GitHub     : <a href="https://github.com/rtecnocopy89/WinRUtil">rtecnocopy89/WinRUtil</a>
+Copyright  : © 2026 rtecnocopy89 — © 2022 CT Tech Group LLC
 Based on   : <a href="https://github.com/ChrisTitusTech/winutil">ChrisTitusTech/winutil</a> (MIT)
 Version    : $($sync.version)
 "@
-    Show-CustomDialog -Title "About" -Message $authorInfo
+    Show-CustomDialog -Title "Informazioni" -Message $authorInfo
 })
 $sync["DocumentationMenuItem"].Add_Click({
     Write-Debug "Documentation clicked"
@@ -13292,7 +12794,7 @@ $sync["FontScalingApplyButton"].Add_Click({
     Invoke-WPFPopup -Action "Hide" -Popups @("FontScaling")
 })
 
-# ?????? Win11ISO Tab button handlers ??????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+# ── Win11ISO Tab button handlers ──────────────────────────────────────────────
 
 $sync["WPFTab5BT"].Add_Click({
     $sync["Form"].Dispatcher.BeginInvoke([System.Windows.Threading.DispatcherPriority]::Background, [action]{ Invoke-WinUtilISOCheckExistingWork }) | Out-Null
@@ -13345,7 +12847,7 @@ $sync["WPFWin11ISOCleanResetButton"].Add_Click({
     Invoke-WinUtilISOCleanAndReset
 })
 
-# ??????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+# ──────────────────────────────────────────────────────────────────────────────
 
 $sync["Form"].ShowDialog() | out-null
 Stop-Transcript

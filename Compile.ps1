@@ -11,6 +11,11 @@ $OFS = "`r`n"
 $scriptname = "winrutil.ps1"
 $workingdir = $PSScriptRoot
 
+# Read every source file as UTF-8 so Italian accents, em-dashes, arrows and (c) survive
+# the bundle even when Compile.ps1 is run under Windows PowerShell 5.1 (whose default
+# Get-Content encoding is the ANSI codepage, which would mangle non-ASCII characters).
+$PSDefaultParameterValues['Get-Content:Encoding'] = 'utf8'
+
 # Variable to sync between runspaces
 $sync = [Hashtable]::Synchronized(@{})
 $sync.configs = @{}
@@ -41,6 +46,7 @@ $excludedFiles = @()
 
 # Add directories only if they exist
 if (Test-Path '.\.git\') { $excludedFiles += '.\.git\' }
+if (Test-Path '.\.vs\') { $excludedFiles += '.\.vs\' }
 if (Test-Path '.\binary\') { $excludedFiles += '.\binary\' }
 
 # Add files that should always be excluded
@@ -104,13 +110,20 @@ $xaml
 "@)
 
 Update-Progress "Adding: autounattend.xml" 95
-$autounattendRaw = Get-Content "$workingdir\tools\autounattend.xml" -Raw
-# Strip XML comments (<!-- ... -->, including multi-line)
-$autounattendRaw = [regex]::Replace($autounattendRaw, '<!--.*?-->', '', [System.Text.RegularExpressions.RegexOptions]::Singleline)
-# Drop blank lines and trim trailing whitespace per line
-$autounattendXml = ($autounattendRaw -split "`r?`n" |
-    Where-Object { $_.Trim() -ne '' } |
-    ForEach-Object { $_.TrimEnd() }) -join "`r`n"
+$autounattendPath = "$workingdir\tools\autounattend.xml"
+if (Test-Path $autounattendPath) {
+    $autounattendRaw = Get-Content $autounattendPath -Raw
+    # Strip XML comments (<!-- ... -->, including multi-line)
+    $autounattendRaw = [regex]::Replace($autounattendRaw, '<!--.*?-->', '', [System.Text.RegularExpressions.RegexOptions]::Singleline)
+    # Drop blank lines and trim trailing whitespace per line
+    $autounattendXml = ($autounattendRaw -split "`r?`n" |
+        Where-Object { $_.Trim() -ne '' } |
+        ForEach-Object { $_.TrimEnd() }) -join "`r`n"
+} else {
+    # No answer file present: the Win11 ISO OOBE-bypass step degrades gracefully at runtime.
+    Write-Host "Note: tools\autounattend.xml not found - building without an embedded answer file."
+    $autounattendXml = ""
+}
 $script_content.Add(@"
 `$WinUtilAutounattendXml = @'
 $autounattendXml
@@ -124,7 +137,10 @@ Remove-Item "xaml\inputApp.xaml" -ErrorAction SilentlyContinue
 Remove-Item "xaml\inputTweaks.xaml" -ErrorAction SilentlyContinue
 Remove-Item "xaml\inputFeatures.xaml" -ErrorAction SilentlyContinue
 
-Set-Content -Path "$scriptname" -Value ($script_content -join "`r`n") -Encoding ascii
+# Write as UTF-8 WITH BOM so the script (which now contains Italian accents, em-dashes,
+# arrows and the (c) symbol) is read correctly by Windows PowerShell 5.1, PowerShell 7 and irm|iex.
+$utf8Bom = [System.Text.UTF8Encoding]::new($true)
+[System.IO.File]::WriteAllText((Join-Path $workingdir $scriptname), ($script_content -join "`r`n"), $utf8Bom)
 Write-Progress -Activity "Compiling" -Completed
 
 Update-Progress -Activity "Validating" -StatusMessage "Checking winrutil.ps1 Syntax" -Percent 0

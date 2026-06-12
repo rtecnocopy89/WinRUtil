@@ -1,4 +1,4 @@
-function Set-WinUtilTaskbaritem {
+﻿function Set-WinUtilTaskbaritem {
     <#
 
     .SYNOPSIS

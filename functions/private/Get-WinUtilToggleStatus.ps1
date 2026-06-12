@@ -1,4 +1,4 @@
-Function Get-WinUtilToggleStatus {
+﻿Function Get-WinUtilToggleStatus {
     <#
 
     .SYNOPSIS

@@ -1,4 +1,4 @@
----
+﻿---
 title: "Dev Docs Generator"
 description: "How the devdocs-generator.ps1 script works"
 ---

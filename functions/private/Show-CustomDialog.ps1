@@ -1,4 +1,4 @@
-function Show-CustomDialog {
+﻿function Show-CustomDialog {
     <#
     .SYNOPSIS
     Displays a custom dialog box with an image, heading, message, and an OK button.

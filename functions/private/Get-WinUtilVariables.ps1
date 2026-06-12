@@ -1,4 +1,4 @@
-function Get-WinUtilVariables {
+﻿function Get-WinUtilVariables {
 
     <#
     .SYNOPSIS

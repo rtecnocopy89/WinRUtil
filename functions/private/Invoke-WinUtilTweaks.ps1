@@ -1,4 +1,4 @@
-function Invoke-WinUtilTweaks {
+﻿function Invoke-WinUtilTweaks {
     <#
 
     .SYNOPSIS

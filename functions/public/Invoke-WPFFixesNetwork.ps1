@@ -1,4 +1,4 @@
-function Invoke-WPFFixesNetwork {
+﻿function Invoke-WPFFixesNetwork {
     <#
 
     .SYNOPSIS

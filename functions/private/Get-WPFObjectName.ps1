@@ -1,4 +1,4 @@
-function Get-WPFObjectName {
+﻿function Get-WPFObjectName {
     <#
         .SYNOPSIS
             This is a helper function that generates an objectname with the prefix WPF that can be used as a Powershell Variable after compilation.

@@ -1,4 +1,4 @@
-function Invoke-WPFGetInstalled {
+﻿function Invoke-WPFGetInstalled {
     <#
     TODO: Add the Option to use Chocolatey as Engine
     .SYNOPSIS

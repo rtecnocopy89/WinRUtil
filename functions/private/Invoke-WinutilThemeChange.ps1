@@ -1,4 +1,4 @@
-function Invoke-WinutilThemeChange {
+﻿function Invoke-WinutilThemeChange {
     <#
     .SYNOPSIS
         Toggles between light and dark themes for a Windows utility application.

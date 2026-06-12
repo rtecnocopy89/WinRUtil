@@ -1,4 +1,4 @@
-function Install-WinUtilChoco {
+﻿function Install-WinUtilChoco {
 
     <#
 

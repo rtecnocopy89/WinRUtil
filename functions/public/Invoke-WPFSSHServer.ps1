@@ -1,4 +1,4 @@
-function Invoke-WPFSSHServer {
+﻿function Invoke-WPFSSHServer {
     <#
 
     .SYNOPSIS

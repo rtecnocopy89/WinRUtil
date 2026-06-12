@@ -1,4 +1,4 @@
-function Invoke-WinUtilFontScaling {
+﻿function Invoke-WinUtilFontScaling {
     <#
 
     .SYNOPSIS

@@ -1,4 +1,4 @@
-function Test-WinUtilPackageManager {
+﻿function Test-WinUtilPackageManager {
     <#
 
     .SYNOPSIS

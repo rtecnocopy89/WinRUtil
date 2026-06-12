@@ -1,4 +1,4 @@
-function Invoke-WPFOOSU {
+﻿function Invoke-WPFOOSU {
     <#
     .SYNOPSIS
         Downloads and runs OO Shutup 10

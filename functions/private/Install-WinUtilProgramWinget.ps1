@@ -1,4 +1,4 @@
-Function Install-WinUtilProgramWinget {
+﻿Function Install-WinUtilProgramWinget {
     <#
     .SYNOPSIS
     Runs the designated action on the provided programs using Winget

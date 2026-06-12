@@ -1,4 +1,4 @@
-function Update-WinUtilSelections {
+﻿function Update-WinUtilSelections {
     <#
 
     .SYNOPSIS

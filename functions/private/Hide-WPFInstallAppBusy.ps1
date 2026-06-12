@@ -1,4 +1,4 @@
-function Hide-WPFInstallAppBusy {
+﻿function Hide-WPFInstallAppBusy {
     <#
     .SYNOPSIS
         Hides the busy overlay in the install app area of the WPF form.

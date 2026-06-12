@@ -1,4 +1,4 @@
-Function Invoke-WinUtilCurrentSystem {
+﻿Function Invoke-WinUtilCurrentSystem {
 
     <#
 

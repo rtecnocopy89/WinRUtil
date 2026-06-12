@@ -1,4 +1,4 @@
-function Set-Preferences{
+﻿function Set-Preferences{
 
     param(
         [switch]$save=$false

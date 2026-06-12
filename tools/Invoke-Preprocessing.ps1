@@ -139,7 +139,7 @@ function Invoke-Preprocessing {
 
         # TODO:
         #   make more formatting rules, and document them in WinUtil Official Documentation
-        (Get-Content "$fullFileName").TrimEnd() `
+        (Get-Content "$fullFileName" -Encoding utf8).TrimEnd() `
             -replace ('\t', '    ') `
             -replace ('\)\s*\{', ') {') `
             -replace ('(?<keyword>if|for|foreach)\s*(?<condition>\([.*?]\))\s*\{', '${keyword} ${condition} {') `
@@ -151,7 +151,7 @@ function Invoke-Preprocessing {
             -replace ('\}\s*Catch\s*(?<exceptions>(\[.*?\]\s*(\,)?\s*)+)\s*\{', '} catch ${exceptions} {') `
             -replace ('\}\s*Catch\s*(?<exceptions>\[.*?\])\s*\{', '} catch ${exceptions} {') `
             -replace ('(?<parameter_type>\[[^$0-9]+\])\s*(?<str_after_type>\$.*?)', '${parameter_type}${str_after_type}') `
-        | Set-Content "$fullFileName"
+        | Set-Content "$fullFileName" -Encoding utf8
         $newHashes[$fullFileName] = Get-FileHash -Path $fullFileName -Algorithm $hashingAlgorithm | Select-Object -ExpandProperty Hash
 
         Write-Progress -Activity $ProgressActivity -Status "$ProgressStatusMessage - Finished $i out of $numOfFiles" -PercentComplete (($i/$numOfFiles)*100)

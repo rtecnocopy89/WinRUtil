@@ -1,4 +1,4 @@
-function Set-WinUtilProgressbar{
+﻿function Set-WinUtilProgressbar{
     <#
     .SYNOPSIS
         This function is used to Update the Progress Bar displayed in the winutil GUI.

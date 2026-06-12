@@ -1,4 +1,4 @@
-function Invoke-WinUtilISORefreshUSBDrives {
+﻿function Invoke-WinUtilISORefreshUSBDrives {
     $combo    = $sync["WPFWin11ISOUSBDriveComboBox"]
     $removable = @(Get-Disk | Where-Object { $_.BusType -eq "USB" } | Sort-Object Number)
 

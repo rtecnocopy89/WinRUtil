@@ -1,8 +1,9 @@
-<#
+﻿<#
 .NOTES
     WinRUtil — Windows toolkit
     Maintainer     : @rtecnocopy89
     GitHub         : https://github.com/rtecnocopy89/WinRUtil
+    Copyright       : (c) 2026 rtecnocopy89 — (c) 2022 CT Tech Group LLC
     Based on       : ChrisTitusTech/winutil (MIT)
     Version        : #{replaceme}
 #>

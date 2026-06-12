@@ -1,4 +1,4 @@
-function Initialize-WPFUI {
+﻿function Initialize-WPFUI {
     [OutputType([void])]
     param(
         [Parameter(Mandatory)]

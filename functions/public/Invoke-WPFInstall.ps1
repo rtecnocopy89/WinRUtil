@@ -1,4 +1,4 @@
-function Invoke-WPFInstall {
+﻿function Invoke-WPFInstall {
     <#
     .SYNOPSIS
         Installs the selected programs using winget, if one or more of the selected programs are already installed on the system, winget will try and perform an upgrade if there's a newer version to install.

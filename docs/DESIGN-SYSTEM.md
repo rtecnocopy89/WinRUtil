@@ -1,33 +1,33 @@
-# WinRUtil — Design System (Dark Glassmorphism)
+﻿# WinRUtil — Design System (Dark Glassmorphism)
 
-Generated with ui-ux-pro-max. Identity: OLED dark + frosted glass + neon accent. Distinct from WinUtil (blue/CTT) and MAS.
+Generato con ui-ux-pro-max. Identità: OLED dark + vetro smerigliato + accento neon. Distinto da WinUtil (blu/CTT) e da MAS.
 
-## Tokens
+## Token
 
-| Token | Value | Use |
+| Token | Valore | Utilizzo |
 |---|---|---|
-| bg-deep | `#07090F` | window gradient bottom |
-| bg-base | `#0B0E16` | window gradient mid |
-| bg-elevated | `#121724` | solid panels, combos |
-| glass-surface | `#59161B26` | frosted card/panel fill (~35% α) |
-| glass-surface-hover | `#26FFFFFF` | hover fill (white ~15%) |
-| glass-border | `#1AFFFFFF` | hairline border (white 10%) |
-| foreground | `#F8FAFC` | primary text |
-| foreground-muted | `#8A93A6` | secondary text |
-| accent (neon) | `#3DF5A0` | toggles on, CTAs, active nav, focus glow |
-| accent-strong | `#2BD389` | pressed accent |
-| accent-glow | `#663DF5A0` | glow halo behind active elements |
-| ambient-indigo | `#5E6AD2` | atmospheric background blob |
-| destructive | `#EF4444` | danger actions |
+| bg-deep | `#07090F` | base del gradiente della finestra |
+| bg-base | `#0B0E16` | parte centrale del gradiente della finestra |
+| bg-elevated | `#121724` | pannelli solidi, menu a tendina |
+| glass-surface | `#59161B26` | riempimento smerigliato di card/pannelli (~35% α) |
+| glass-surface-hover | `#26FFFFFF` | riempimento al passaggio del mouse (bianco ~15%) |
+| glass-border | `#1AFFFFFF` | bordo sottile (bianco 10%) |
+| foreground | `#F8FAFC` | testo primario |
+| foreground-muted | `#8A93A6` | testo secondario |
+| accent (neon) | `#3DF5A0` | toggle attivi, CTA, navigazione attiva, bagliore di focus |
+| accent-strong | `#2BD389` | accento premuto |
+| accent-glow | `#663DF5A0` | alone di bagliore dietro gli elementi attivi |
+| ambient-indigo | `#5E6AD2` | macchia atmosferica di sfondo |
+| destructive | `#EF4444` | azioni pericolose |
 
-## Effects
-- Window: radial/linear gradient `#0B0E16 → #07090F` + DWM Acrylic (Win11) for real backdrop blur.
-- Ambient blobs: 2 radial gradients (indigo + green), low opacity (~0.10), behind content.
-- Cards/panels: radius 14, glass fill, 1px hairline border, subtle inner top highlight.
-- Motion: 150–250ms, easing cubic-bezier(0.16,1,0.3,1); scale 0.97→1.0 on press; accent glow on hover/active.
+## Effetti
+- Finestra: gradiente radiale/lineare `#0B0E16 → #07090F` + DWM Acrylic (Win11) per una vera sfocatura dello sfondo.
+- Macchie ambientali: 2 gradienti radiali (indaco + verde), opacità bassa (~0.10), dietro al contenuto.
+- Card/pannelli: raggio 14, riempimento vetro, bordo sottile da 1px, leggera luce interna superiore.
+- Movimento: 150–250ms, easing cubic-bezier(0.16,1,0.3,1); scala 0.97→1.0 alla pressione; bagliore d'accento al passaggio del mouse/attivazione.
 
-## Type
-- Font: **Inter** (fallback Segoe UI Variable, Segoe UI). Headings 600–700, body 400, labels 500.
+## Tipografia
+- Font: **Inter** (fallback Segoe UI Variable, Segoe UI). Titoli 600–700, corpo 400, etichette 500.
 
-## Accessibility
-- foreground on glass ≥ 4.5:1 (verified against bg-base). accent `#3DF5A0` used for fills/indicators, paired with text/icon — never color-only.
+## Accessibilità
+- Il testo (foreground) su vetro ha contrasto ≥ 4.5:1 (verificato rispetto a bg-base). L'accento `#3DF5A0` è usato per riempimenti/indicatori, sempre accompagnato da testo/icona — mai solo come colore.

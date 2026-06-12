@@ -1,4 +1,4 @@
-function Invoke-WPFInstallUpgrade {
+﻿function Invoke-WPFInstallUpgrade {
     if ($sync.ChocoRadioButton.IsChecked) {
         Install-WinUtilChoco # Ensure Chocolatey is installed before upgrading
 

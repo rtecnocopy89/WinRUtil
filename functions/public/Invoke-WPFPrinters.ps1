@@ -1,4 +1,4 @@
-function Write-WinUtilPrinterLog {
+﻿function Write-WinUtilPrinterLog {
     <#
         .SYNOPSIS
             Appends a timestamped line to the Printers tab status log (UI-thread safe).
