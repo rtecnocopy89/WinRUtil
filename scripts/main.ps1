@@ -290,6 +290,7 @@ $commonKeyEvents = {
             "C" { Invoke-WPFButton "WPFTab3BT"; $keyEventArgs.Handled = $true } # Navigate to Config tab
             "U" { Invoke-WPFButton "WPFTab4BT"; $keyEventArgs.Handled = $true } # Navigate to Updates tab
             "W" { Invoke-WPFButton "WPFTab5BT"; $keyEventArgs.Handled = $true } # Navigate to Win11ISO tab
+            "S" { Invoke-WPFButton "WPFTab7BT"; $keyEventArgs.Handled = $true } # Navigate to System dashboard
         }
     }
     # Handle Ctrl key combinations for specific actions
@@ -371,14 +372,14 @@ $sync["Form"].Add_ContentRendered({
         Write-Host "Offline mode detected - Install tab disabled" -ForegroundColor Yellow
 
         # Optionally switch to a different tab if install tab was going to be default
-        Invoke-WPFTab "WPFTab2BT"  # Switch to Tweaks tab instead
+        Invoke-WPFTab "WPFTab7BT"  # Switch to System dashboard instead
     }
     else {
         # Online - ensure install tab is enabled
         $sync.WPFTab1BT.IsEnabled = $true
         $sync.WPFTab1BT.Opacity = 1.0
         $sync.WPFTab1BT.ToolTip = $null
-        Invoke-WPFTab "WPFTab1BT"  # Default to install tab
+        Invoke-WPFTab "WPFTab7BT"  # Default to System dashboard
     }
 
     $sync["Form"].Focus()

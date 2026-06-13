@@ -69,6 +69,8 @@
         "WPFPrinterClearQueue" {Invoke-WPFPrinterSpooler -Action "ClearQueue"}
         "WPFPrinterInstallDriver" {Invoke-WPFPrinterDriver -Action "Install"}
         "WPFPrinterRemoveDriver" {Invoke-WPFPrinterDriver -Action "Remove"}
+        "WPFSystemInfoRefresh" {Invoke-WPFSystemInfoRefresh}
+        "WPFSystemInfoExport" {Invoke-WPFSystemInfoExport}
         "WPFCloseButton" {$sync.Form.Close(); Write-Host "Bye bye!"}
         "WPFselectedAppsButton" {$sync.selectedAppsPopup.IsOpen = -not $sync.selectedAppsPopup.IsOpen}
         "WPFToggleFOSSHighlight" {
