@@ -69,6 +69,8 @@
         "WPFPrinterClearQueue" {Invoke-WPFPrinterSpooler -Action "ClearQueue"}
         "WPFPrinterInstallDriver" {Invoke-WPFPrinterDriver -Action "Install"}
         "WPFPrinterRemoveDriver" {Invoke-WPFPrinterDriver -Action "Remove"}
+        "WPFWifiRefresh" {Invoke-WPFWifiRefresh}
+        "WPFWifiCopyAll" {Invoke-WPFWifiCopyAll}
         "WPFSystemInfoRefresh" {Invoke-WPFSystemInfoRefresh}
         "WPFSystemInfoExport" {Invoke-WPFSystemInfoExport}
         "WPFCloseButton" {$sync.Form.Close(); Write-Host "Bye bye!"}

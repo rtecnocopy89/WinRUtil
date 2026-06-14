@@ -40,6 +40,7 @@
             "Printers" = "Stampanti"
             "Win11ISO" = "Crea Win11"
             "System"   = "Sistema"
+            "WiFi"     = "Password Wi-Fi"
         }
         $display = $titleMap[[string]$sync.currentTab]
         if (-not $display) { $display = $sync.currentTab }

@@ -1009,6 +1009,12 @@
                             <TextBlock Text="Stampanti" FontSize="14" VerticalAlignment="Center" Foreground="{DynamicResource MainForegroundColor}"/>
                         </StackPanel>
                     </ToggleButton>
+                    <ToggleButton Name="WPFTab8BT">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE701;" FontSize="15" Width="24" VerticalAlignment="Center" Foreground="{DynamicResource MainForegroundColor}"/>
+                            <TextBlock Text="Wi-Fi" FontSize="14" VerticalAlignment="Center" Foreground="{DynamicResource MainForegroundColor}"/>
+                        </StackPanel>
+                    </ToggleButton>
                     <ToggleButton Name="WPFTab5BT">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE753;" FontSize="15" Width="24" VerticalAlignment="Center" Foreground="{DynamicResource MainForegroundColor}"/>
@@ -1742,6 +1748,17 @@
                                   Background="Transparent" BorderThickness="0" RowBackground="Transparent" AlternatingRowBackground="#14FFFFFF"
                                   Foreground="{DynamicResource MainForegroundColor}" GridLinesVisibility="None"
                                   HeadersVisibility="Column" CanUserAddRows="False" SelectionMode="Single">
+                            <DataGrid.Resources>
+                                <Style TargetType="DataGridColumnHeader">
+                                    <Setter Property="Foreground" Value="{DynamicResource MainForegroundColor}"/>
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                    <Setter Property="Padding" Value="6,4"/>
+                                    <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
+                                    <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                                    <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                                </Style>
+                            </DataGrid.Resources>
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="Stampante" Binding="{Binding Name}" Width="2*"/>
                                 <DataGridTextColumn Header="Driver" Binding="{Binding Driver}" Width="2*"/>
@@ -2156,6 +2173,91 @@
 
                         </StackPanel>
                     </ScrollViewer>
+                </Grid>
+            </TabItem>
+            <TabItem Header="WiFi" Visibility="Collapsed" Name="WPFTab8">
+                <Grid Margin="{DynamicResource TabContentMargin}" Background="Transparent">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Border Grid.Row="0" Background="{DynamicResource GroupBorderBackgroundColor}" CornerRadius="12"
+                            BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="14,12" Margin="6,6,6,6">
+                        <StackPanel Orientation="Vertical">
+                            <TextBlock Text="Password Wi-Fi salvate" FontSize="{DynamicResource HeaderFontSize}" FontWeight="Bold"
+                                       Foreground="{DynamicResource MainForegroundColor}" Margin="0,0,0,2"/>
+                            <TextBlock Text="Recupera le chiavi delle reti Wi-Fi memorizzate su questo PC." FontSize="12"
+                                       Foreground="{DynamicResource ToggleButtonOffColor}" Margin="0,0,0,12"/>
+                            <WrapPanel Orientation="Horizontal">
+                                <Button Name="WPFWifiRefresh" Content="Scansiona reti Wi-Fi" Width="Auto" MinWidth="130" Margin="0,0,8,8" Padding="12,0"/>
+                                <Button Name="WPFWifiCopyAll" Content="Copia tutte" Width="Auto" MinWidth="110" Margin="0,0,8,8" Padding="12,0"/>
+                            </WrapPanel>
+                        </StackPanel>
+                    </Border>
+                    <Border Grid.Row="1" Background="{DynamicResource GroupBorderBackgroundColor}" CornerRadius="12"
+                            BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="8" Margin="6,2,6,6">
+                        <DataGrid Name="WPFWifiList" AutoGenerateColumns="False" IsReadOnly="True"
+                                  Background="Transparent" BorderThickness="0" RowBackground="Transparent" AlternatingRowBackground="#14FFFFFF"
+                                  Foreground="{DynamicResource MainForegroundColor}" GridLinesVisibility="None"
+                                  HeadersVisibility="Column" CanUserAddRows="False" SelectionMode="Single">
+                            <DataGrid.Resources>
+                                <Style TargetType="DataGridColumnHeader">
+                                    <Setter Property="Foreground" Value="{DynamicResource MainForegroundColor}"/>
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                    <Setter Property="Padding" Value="6,4"/>
+                                    <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
+                                    <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                                    <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                                </Style>
+                            </DataGrid.Resources>
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Rete (SSID)" Binding="{Binding Ssid}" Width="2*"/>
+                                <DataGridTemplateColumn Header="Password" Width="2*">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <ToggleButton x:Name="WifiEye" Background="Transparent" BorderThickness="0"
+                                                              Padding="0" Margin="0,0,8,0" Cursor="Hand"
+                                                              ToolTip="Mostra/Nascondi password" VerticalAlignment="Center"
+                                                              Focusable="True">
+                                                    <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE7B3;" FontSize="14"
+                                                               Foreground="{DynamicResource MainForegroundColor}"/>
+                                                </ToggleButton>
+                                                <TextBlock x:Name="WifiMasked" Text="&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;"
+                                                           VerticalAlignment="Center" Foreground="{DynamicResource MainForegroundColor}"
+                                                           Visibility="Visible"/>
+                                                <TextBlock x:Name="WifiClear" Text="{Binding Password}"
+                                                           VerticalAlignment="Center" Foreground="{DynamicResource MainForegroundColor}"
+                                                           Visibility="Collapsed"/>
+                                            </StackPanel>
+                                            <DataTemplate.Triggers>
+                                                <DataTrigger Binding="{Binding IsChecked, ElementName=WifiEye}" Value="True">
+                                                    <Setter TargetName="WifiMasked" Property="Visibility" Value="Collapsed"/>
+                                                    <Setter TargetName="WifiClear" Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </DataTemplate.Triggers>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="Sicurezza" Binding="{Binding Security}" Width="*"/>
+                                <DataGridTextColumn Header="Auto" Binding="{Binding AutoConnect}" Width="Auto"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Border>
+                    <Border Grid.Row="2" Background="{DynamicResource GroupBorderBackgroundColor}" CornerRadius="12"
+                            BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="10" Margin="6,2,6,6">
+                        <StackPanel>
+                            <TextBlock Text="Registro attività" FontSize="{DynamicResource FontSize}" FontWeight="Bold"
+                                       Foreground="{DynamicResource MainForegroundColor}" Margin="0,0,0,4"/>
+                            <TextBox Name="WPFWifiStatusLog" IsReadOnly="True" TextWrapping="Wrap" Height="90"
+                                     VerticalScrollBarVisibility="Auto" Background="Transparent"
+                                     Foreground="{DynamicResource MainForegroundColor}" BorderBrush="{DynamicResource BorderColor}"
+                                     BorderThickness="1" Padding="6"
+                                     Text="Pronto. Clicca 'Scansiona reti Wi-Fi' per elencare le reti salvate."/>
+                        </StackPanel>
+                    </Border>
                 </Grid>
             </TabItem>
         </TabControl>
