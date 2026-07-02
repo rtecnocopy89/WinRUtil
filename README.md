@@ -11,6 +11,12 @@
 Per eseguire WinRUtil, apri una sessione di **PowerShell con privilegi di Amministratore** ed esegui il seguente comando:
 
 ```powershell
+irm bit.ly/WinRUtil | iex
+```
+
+In alternativa, puoi usare il link diretto a GitHub:
+
+```powershell
 irm https://raw.githubusercontent.com/rtecnocopy89/WinRUtil/master/winrutil.ps1 | iex
 ```
 

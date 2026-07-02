@@ -971,6 +971,12 @@
                 <StackPanel Name="NavLogoPanel" DockPanel.Dock="Top" Orientation="Horizontal" Margin="20,0,16,0"/>
                 <!-- Navigation -->
                 <StackPanel Name="NavDockPanel" DockPanel.Dock="Top" Orientation="Vertical" Margin="6,6,6,0">
+                    <ToggleButton Name="WPFTab7BT">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE7F8;" FontSize="15" Width="24" VerticalAlignment="Center" Foreground="{DynamicResource MainForegroundColor}"/>
+                            <TextBlock Text="Sistema" FontSize="14" VerticalAlignment="Center" Foreground="{DynamicResource MainForegroundColor}"/>
+                        </StackPanel>
+                    </ToggleButton>
                     <ToggleButton Name="WPFTab1BT">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE896;" FontSize="15" Width="24" VerticalAlignment="Center" Foreground="{DynamicResource MainForegroundColor}"/>
@@ -999,6 +1005,12 @@
                         <StackPanel Orientation="Horizontal">
                             <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE749;" FontSize="15" Width="24" VerticalAlignment="Center" Foreground="{DynamicResource MainForegroundColor}"/>
                             <TextBlock Text="Stampanti" FontSize="14" VerticalAlignment="Center" Foreground="{DynamicResource MainForegroundColor}"/>
+                        </StackPanel>
+                    </ToggleButton>
+                    <ToggleButton Name="WPFTab8BT">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE701;" FontSize="15" Width="24" VerticalAlignment="Center" Foreground="{DynamicResource MainForegroundColor}"/>
+                            <TextBlock Text="Wi-Fi" FontSize="14" VerticalAlignment="Center" Foreground="{DynamicResource MainForegroundColor}"/>
                         </StackPanel>
                     </ToggleButton>
                     <ToggleButton Name="WPFTab5BT">
@@ -1734,6 +1746,17 @@
                                   Background="Transparent" BorderThickness="0" RowBackground="Transparent" AlternatingRowBackground="#14FFFFFF"
                                   Foreground="{DynamicResource MainForegroundColor}" GridLinesVisibility="None"
                                   HeadersVisibility="Column" CanUserAddRows="False" SelectionMode="Single">
+                            <DataGrid.Resources>
+                                <Style TargetType="DataGridColumnHeader">
+                                    <Setter Property="Foreground" Value="{DynamicResource MainForegroundColor}"/>
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                    <Setter Property="Padding" Value="6,4"/>
+                                    <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
+                                    <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                                    <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                                </Style>
+                            </DataGrid.Resources>
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="Stampante" Binding="{Binding Name}" Width="2*"/>
                                 <DataGridTextColumn Header="Driver" Binding="{Binding Driver}" Width="2*"/>
@@ -1755,6 +1778,482 @@
                                      Foreground="{DynamicResource MainForegroundColor}" BorderBrush="{DynamicResource BorderColor}"
                                      BorderThickness="1" Padding="6"
                                      Text="Pronto. Clicca 'Aggiorna elenco' per rilevare le stampanti installate."/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </TabItem>
+            <TabItem Header="System" Visibility="Collapsed" Name="WPFTab7">
+                <Grid Margin="{DynamicResource TabContentMargin}" Background="Transparent">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Toolbar -->
+                    <Border Grid.Row="0" Background="{DynamicResource GroupBorderBackgroundColor}" CornerRadius="12"
+                            BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="16,13" Margin="6,6,6,6">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Orientation="Vertical" VerticalAlignment="Center">
+                                <TextBlock Text="Panoramica del sistema" FontSize="{DynamicResource HeaderFontSize}" FontWeight="Bold"
+                                           Foreground="{DynamicResource MainForegroundColor}"/>
+                                <TextBlock Text="Diagnostica hardware, stato di Windows e attivazione, in tempo reale."
+                                           FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}" Margin="0,2,0,0"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Button Name="WPFSystemInfoRefresh" Content="Aggiorna" MinWidth="104" Margin="0,0,8,0" Padding="12,0"/>
+                                <Button Name="WPFSystemInfoExport" Content="Esporta report" MinWidth="128" Padding="12,0"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Margin="6,0,6,6">
+
+                            <!-- HERO: Windows status -->
+                            <Border CornerRadius="16" BorderThickness="1" Margin="0,2,0,6" Padding="22,20">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                        <GradientStop Color="#243DF5A0" Offset="0"/>
+                                        <GradientStop Color="#0C121724" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                                <Border.BorderBrush>
+                                    <SolidColorBrush Color="#3D3DF5A0"/>
+                                </Border.BorderBrush>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Icon disc -->
+                                    <Border Grid.Column="0" Width="58" Height="58" CornerRadius="15" Background="#1F3DF5A0"
+                                            VerticalAlignment="Top" Margin="0,2,18,0">
+                                        <TextBlock Text="&#xE7F8;" FontFamily="Segoe MDL2 Assets" FontSize="27" Foreground="#3DF5A0"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+
+                                    <!-- Edition + build + mini stats -->
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Name="WPFSysOSCaption" Text="Windows" FontSize="22" FontWeight="Bold"
+                                                   Foreground="{DynamicResource MainForegroundColor}" TextWrapping="Wrap"/>
+                                        <TextBlock Name="WPFSysOSBuild" Text="Caricamento in corso..." FontSize="13"
+                                                   Foreground="{DynamicResource ToggleButtonOffColor}" Margin="0,3,0,0"/>
+                                        <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+                                            <StackPanel Orientation="Vertical" Margin="0,0,30,0">
+                                                <TextBlock Text="NOME PC" FontSize="10" FontWeight="SemiBold" Foreground="#7F8A9E"/>
+                                                <TextBlock Name="WPFSysHostname" Text="-" FontSize="13" FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource MainForegroundColor}" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                            <StackPanel Orientation="Vertical" Margin="0,0,30,0">
+                                                <TextBlock Text="ACCESO DA" FontSize="10" FontWeight="SemiBold" Foreground="#7F8A9E"/>
+                                                <TextBlock Name="WPFSysUptime" Text="-" FontSize="13" FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource MainForegroundColor}" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                            <StackPanel Orientation="Vertical">
+                                                <TextBlock Text="INSTALLATO IL" FontSize="10" FontWeight="SemiBold" Foreground="#7F8A9E"/>
+                                                <TextBlock Name="WPFSysInstallDate" Text="-" FontSize="13" FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource MainForegroundColor}" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <!-- Activation pill -->
+                                    <Border Grid.Column="2" Name="WPFSysActivationPill" CornerRadius="20" Background="#1F3DF5A0"
+                                            Padding="15,9" VerticalAlignment="Top" Margin="14,2,0,0">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Ellipse Name="WPFSysActivationDot" Width="9" Height="9" Fill="#3DF5A0"
+                                                     VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                            <TextBlock Name="WPFSysActivation" Text="Verifica..." FontSize="13" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource MainForegroundColor}" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+                            </Border>
+
+                            <!-- CARDS -->
+                            <WrapPanel Orientation="Horizontal">
+
+                                <!-- Hardware -->
+                                <Border Width="330" CornerRadius="14" Background="{DynamicResource GroupBorderBackgroundColor}"
+                                        BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="16,14" Margin="6">
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                            <TextBlock Text="&#xE977;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="#3DF5A0"
+                                                       VerticalAlignment="Center" Margin="0,0,9,0"/>
+                                            <TextBlock Text="HARDWARE" FontSize="11" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource ToggleButtonOffColor}" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                        <Grid Margin="0,0,0,7">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Produttore" FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                            <TextBlock Grid.Column="1" Name="WPFSysManufacturer" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" TextWrapping="Wrap" Margin="10,0,0,0"/>
+                                        </Grid>
+                                        <Grid Margin="0,0,0,7">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Modello" FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                            <TextBlock Grid.Column="1" Name="WPFSysModel" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" TextWrapping="Wrap" Margin="10,0,0,0"/>
+                                        </Grid>
+                                        <Grid Margin="0,0,0,7">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="N. di serie" FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                            <TextBlock Grid.Column="1" Name="WPFSysSerial" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" TextWrapping="Wrap" Margin="10,0,0,0"/>
+                                        </Grid>
+                                        <Grid Margin="0,0,0,7">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="BIOS / UEFI" FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                            <TextBlock Grid.Column="1" Name="WPFSysBios" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" TextWrapping="Wrap" Margin="10,0,0,0"/>
+                                        </Grid>
+                                        <Grid Margin="0,0,0,7">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Secure Boot" FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                            <TextBlock Grid.Column="1" Name="WPFSysSecureBoot" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" Margin="10,0,0,0"/>
+                                        </Grid>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="TPM" FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                            <TextBlock Grid.Column="1" Name="WPFSysTpm" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" Margin="10,0,0,0"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- CPU -->
+                                <Border Width="330" CornerRadius="14" Background="{DynamicResource GroupBorderBackgroundColor}"
+                                        BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="16,14" Margin="6">
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                            <TextBlock Text="&#xE950;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="#3DF5A0"
+                                                       VerticalAlignment="Center" Margin="0,0,9,0"/>
+                                            <TextBlock Text="PROCESSORE" FontSize="11" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource ToggleButtonOffColor}" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                        <TextBlock Name="WPFSysCpuName" Text="-" FontSize="13" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource MainForegroundColor}" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                                        <Grid Margin="0,0,0,7">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Core / Thread" FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                            <TextBlock Grid.Column="1" Name="WPFSysCpuCores" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" Margin="10,0,0,0"/>
+                                        </Grid>
+                                        <Grid Margin="0,0,0,12">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Frequenza base" FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                            <TextBlock Grid.Column="1" Name="WPFSysCpuClock" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" Margin="10,0,0,0"/>
+                                        </Grid>
+                                        <Grid Margin="0,0,0,5">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Carico attuale" FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                            <TextBlock Grid.Column="1" Name="WPFSysCpuLoad" Text="-" FontSize="12" FontWeight="SemiBold" Foreground="#3DF5A0" TextAlignment="Right"/>
+                                        </Grid>
+                                        <Border CornerRadius="4" Height="8" Background="#1AFFFFFF" ClipToBounds="True">
+                                            <Grid Name="WPFSysCpuLoadBar">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="0*"/><ColumnDefinition Width="100*"/></Grid.ColumnDefinitions>
+                                                <Border Grid.Column="0" CornerRadius="4" Background="#3DF5A0"/>
+                                            </Grid>
+                                        </Border>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- RAM -->
+                                <Border Width="330" CornerRadius="14" Background="{DynamicResource GroupBorderBackgroundColor}"
+                                        BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="16,14" Margin="6">
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                            <TextBlock Text="&#xE964;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="#3DF5A0"
+                                                       VerticalAlignment="Center" Margin="0,0,9,0"/>
+                                            <TextBlock Text="MEMORIA" FontSize="11" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource ToggleButtonOffColor}" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                        <TextBlock Name="WPFSysRamText" Text="-" FontSize="20" FontWeight="Bold"
+                                                   Foreground="{DynamicResource MainForegroundColor}" Margin="0,0,0,10"/>
+                                        <Border CornerRadius="4" Height="8" Background="#1AFFFFFF" ClipToBounds="True" Margin="0,0,0,12">
+                                            <Grid Name="WPFSysRamBar">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="0*"/><ColumnDefinition Width="100*"/></Grid.ColumnDefinitions>
+                                                <Border Grid.Column="0" CornerRadius="4" Background="#3DF5A0"/>
+                                            </Grid>
+                                        </Border>
+                                        <Grid Margin="0,0,0,7">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Disponibile" FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                            <TextBlock Grid.Column="1" Name="WPFSysRamFree" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" Margin="10,0,0,0"/>
+                                        </Grid>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Moduli" FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                            <TextBlock Grid.Column="1" Name="WPFSysRamModules" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" TextWrapping="Wrap" Margin="10,0,0,0"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Storage -->
+                                <Border Width="330" CornerRadius="14" Background="{DynamicResource GroupBorderBackgroundColor}"
+                                        BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="16,14" Margin="6">
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,14">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0" Orientation="Horizontal">
+                                                <TextBlock Text="&#xEDA2;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="#3DF5A0"
+                                                           VerticalAlignment="Center" Margin="0,0,9,0"/>
+                                                <TextBlock Text="ARCHIVIAZIONE" FontSize="11" FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource ToggleButtonOffColor}" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="1" Name="WPFSysDiskHealth" Text="-" FontSize="11" FontWeight="SemiBold"
+                                                       Foreground="#3DF5A0" VerticalAlignment="Center"/>
+                                        </Grid>
+                                        <StackPanel Name="WPFSysDisk0" Visibility="Collapsed" Margin="0,0,0,11">
+                                            <Grid Margin="0,0,0,4">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Name="WPFSysDisk0Label" Text="-" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource MainForegroundColor}"/>
+                                                <TextBlock Grid.Column="1" Name="WPFSysDisk0Text" Text="-" FontSize="11" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                            </Grid>
+                                            <Border CornerRadius="4" Height="8" Background="#1AFFFFFF" ClipToBounds="True">
+                                                <Grid Name="WPFSysDisk0Bar">
+                                                    <Grid.ColumnDefinitions><ColumnDefinition Width="0*"/><ColumnDefinition Width="100*"/></Grid.ColumnDefinitions>
+                                                    <Border Grid.Column="0" CornerRadius="4" Background="#3DF5A0"/>
+                                                </Grid>
+                                            </Border>
+                                        </StackPanel>
+                                        <StackPanel Name="WPFSysDisk1" Visibility="Collapsed" Margin="0,0,0,11">
+                                            <Grid Margin="0,0,0,4">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Name="WPFSysDisk1Label" Text="-" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource MainForegroundColor}"/>
+                                                <TextBlock Grid.Column="1" Name="WPFSysDisk1Text" Text="-" FontSize="11" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                            </Grid>
+                                            <Border CornerRadius="4" Height="8" Background="#1AFFFFFF" ClipToBounds="True">
+                                                <Grid Name="WPFSysDisk1Bar">
+                                                    <Grid.ColumnDefinitions><ColumnDefinition Width="0*"/><ColumnDefinition Width="100*"/></Grid.ColumnDefinitions>
+                                                    <Border Grid.Column="0" CornerRadius="4" Background="#3DF5A0"/>
+                                                </Grid>
+                                            </Border>
+                                        </StackPanel>
+                                        <StackPanel Name="WPFSysDisk2" Visibility="Collapsed" Margin="0,0,0,11">
+                                            <Grid Margin="0,0,0,4">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Name="WPFSysDisk2Label" Text="-" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource MainForegroundColor}"/>
+                                                <TextBlock Grid.Column="1" Name="WPFSysDisk2Text" Text="-" FontSize="11" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                            </Grid>
+                                            <Border CornerRadius="4" Height="8" Background="#1AFFFFFF" ClipToBounds="True">
+                                                <Grid Name="WPFSysDisk2Bar">
+                                                    <Grid.ColumnDefinitions><ColumnDefinition Width="0*"/><ColumnDefinition Width="100*"/></Grid.ColumnDefinitions>
+                                                    <Border Grid.Column="0" CornerRadius="4" Background="#3DF5A0"/>
+                                                </Grid>
+                                            </Border>
+                                        </StackPanel>
+                                        <StackPanel Name="WPFSysDisk3" Visibility="Collapsed">
+                                            <Grid Margin="0,0,0,4">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Name="WPFSysDisk3Label" Text="-" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource MainForegroundColor}"/>
+                                                <TextBlock Grid.Column="1" Name="WPFSysDisk3Text" Text="-" FontSize="11" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                            </Grid>
+                                            <Border CornerRadius="4" Height="8" Background="#1AFFFFFF" ClipToBounds="True">
+                                                <Grid Name="WPFSysDisk3Bar">
+                                                    <Grid.ColumnDefinitions><ColumnDefinition Width="0*"/><ColumnDefinition Width="100*"/></Grid.ColumnDefinitions>
+                                                    <Border Grid.Column="0" CornerRadius="4" Background="#3DF5A0"/>
+                                                </Grid>
+                                            </Border>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- GPU -->
+                                <Border Width="330" CornerRadius="14" Background="{DynamicResource GroupBorderBackgroundColor}"
+                                        BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="16,14" Margin="6">
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                            <TextBlock Text="&#xE7F4;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="#3DF5A0"
+                                                       VerticalAlignment="Center" Margin="0,0,9,0"/>
+                                            <TextBlock Text="GRAFICA" FontSize="11" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource ToggleButtonOffColor}" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                        <TextBlock Name="WPFSysGpuName" Text="-" FontSize="13" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource MainForegroundColor}" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                                        <Grid Margin="0,0,0,7">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Memoria video" FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                            <TextBlock Grid.Column="1" Name="WPFSysGpuVram" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" Margin="10,0,0,0"/>
+                                        </Grid>
+                                        <Grid Margin="0,0,0,7">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Risoluzione" FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                            <TextBlock Grid.Column="1" Name="WPFSysGpuResolution" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" Margin="10,0,0,0"/>
+                                        </Grid>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Driver" FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                            <TextBlock Grid.Column="1" Name="WPFSysGpuDriver" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" Margin="10,0,0,0"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Network -->
+                                <Border Width="330" CornerRadius="14" Background="{DynamicResource GroupBorderBackgroundColor}"
+                                        BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="16,14" Margin="6">
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                            <TextBlock Text="&#xE968;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="#3DF5A0"
+                                                       VerticalAlignment="Center" Margin="0,0,9,0"/>
+                                            <TextBlock Text="RETE" FontSize="11" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource ToggleButtonOffColor}" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                        <Grid Margin="0,0,0,7">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Scheda" FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                            <TextBlock Grid.Column="1" Name="WPFSysNetAdapter" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" TextWrapping="Wrap" Margin="10,0,0,0"/>
+                                        </Grid>
+                                        <Grid Margin="0,0,0,7">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Indirizzo IPv4" FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                            <TextBlock Grid.Column="1" Name="WPFSysNetIp" Text="-" FontSize="12" FontWeight="SemiBold" Foreground="#3DF5A0" TextAlignment="Right" Margin="10,0,0,0"/>
+                                        </Grid>
+                                        <Grid Margin="0,0,0,7">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Indirizzo MAC" FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                            <TextBlock Grid.Column="1" Name="WPFSysNetMac" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" Margin="10,0,0,0"/>
+                                        </Grid>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Stato" FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                            <TextBlock Grid.Column="1" Name="WPFSysNetStatus" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" Margin="10,0,0,0"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Battery -->
+                                <Border Name="WPFSysBatteryCard" Width="330" CornerRadius="14" Background="{DynamicResource GroupBorderBackgroundColor}"
+                                        BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="16,14" Margin="6" Visibility="Collapsed">
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                            <TextBlock Text="&#xE83F;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="#3DF5A0"
+                                                       VerticalAlignment="Center" Margin="0,0,9,0"/>
+                                            <TextBlock Text="BATTERIA" FontSize="11" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource ToggleButtonOffColor}" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                        <TextBlock Name="WPFSysBatteryCharge" Text="-" FontSize="20" FontWeight="Bold"
+                                                   Foreground="{DynamicResource MainForegroundColor}" Margin="0,0,0,10"/>
+                                        <Border CornerRadius="4" Height="8" Background="#1AFFFFFF" ClipToBounds="True" Margin="0,0,0,12">
+                                            <Grid Name="WPFSysBatteryBar">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="0*"/><ColumnDefinition Width="100*"/></Grid.ColumnDefinitions>
+                                                <Border Grid.Column="0" CornerRadius="4" Background="#3DF5A0"/>
+                                            </Grid>
+                                        </Border>
+                                        <Grid Margin="0,0,0,7">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Stato" FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                            <TextBlock Grid.Column="1" Name="WPFSysBatteryStatus" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" Margin="10,0,0,0"/>
+                                        </Grid>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Salute (usura)" FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                            <TextBlock Grid.Column="1" Name="WPFSysBatteryHealth" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" Margin="10,0,0,0"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                            </WrapPanel>
+
+                            <!-- Status log -->
+                            <Border CornerRadius="14" Background="{DynamicResource GroupBorderBackgroundColor}"
+                                    BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="14,12" Margin="6,4,6,6">
+                                <StackPanel>
+                                    <TextBlock Text="Registro attività" FontSize="{DynamicResource FontSize}" FontWeight="Bold"
+                                               Foreground="{DynamicResource MainForegroundColor}" Margin="0,0,0,6"/>
+                                    <TextBox Name="WPFSystemLog" IsReadOnly="True" TextWrapping="Wrap" Height="80"
+                                             VerticalScrollBarVisibility="Auto" Background="Transparent"
+                                             Foreground="{DynamicResource MainForegroundColor}" BorderBrush="{DynamicResource BorderColor}"
+                                             BorderThickness="1" Padding="6"
+                                             Text="Pronto. Clicca 'Aggiorna' per rilevare le informazioni di sistema."/>
+                                </StackPanel>
+                            </Border>
+
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+            <TabItem Header="WiFi" Visibility="Collapsed" Name="WPFTab8">
+                <Grid Margin="{DynamicResource TabContentMargin}" Background="Transparent">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Border Grid.Row="0" Background="{DynamicResource GroupBorderBackgroundColor}" CornerRadius="12"
+                            BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="14,12" Margin="6,6,6,6">
+                        <StackPanel Orientation="Vertical">
+                            <TextBlock Text="Password Wi-Fi salvate" FontSize="{DynamicResource HeaderFontSize}" FontWeight="Bold"
+                                       Foreground="{DynamicResource MainForegroundColor}" Margin="0,0,0,2"/>
+                            <TextBlock Text="Recupera le chiavi delle reti Wi-Fi memorizzate su questo PC." FontSize="12"
+                                       Foreground="{DynamicResource ToggleButtonOffColor}" Margin="0,0,0,12"/>
+                            <WrapPanel Orientation="Horizontal">
+                                <Button Name="WPFWifiRefresh" Content="Scansiona reti Wi-Fi" Width="Auto" MinWidth="130" Margin="0,0,8,8" Padding="12,0"/>
+                                <Button Name="WPFWifiCopyAll" Content="Copia tutte" Width="Auto" MinWidth="110" Margin="0,0,8,8" Padding="12,0"/>
+                            </WrapPanel>
+                        </StackPanel>
+                    </Border>
+                    <Border Grid.Row="1" Background="{DynamicResource GroupBorderBackgroundColor}" CornerRadius="12"
+                            BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="8" Margin="6,2,6,6">
+                        <DataGrid Name="WPFWifiList" AutoGenerateColumns="False" IsReadOnly="True"
+                                  Background="Transparent" BorderThickness="0" RowBackground="Transparent" AlternatingRowBackground="#14FFFFFF"
+                                  Foreground="{DynamicResource MainForegroundColor}" GridLinesVisibility="None"
+                                  HeadersVisibility="Column" CanUserAddRows="False" SelectionMode="Single">
+                            <DataGrid.Resources>
+                                <Style TargetType="DataGridColumnHeader">
+                                    <Setter Property="Foreground" Value="{DynamicResource MainForegroundColor}"/>
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                    <Setter Property="Padding" Value="6,4"/>
+                                    <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
+                                    <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                                    <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                                </Style>
+                            </DataGrid.Resources>
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Rete (SSID)" Binding="{Binding Ssid}" Width="2*"/>
+                                <DataGridTemplateColumn Header="Password" Width="2*">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <ToggleButton x:Name="WifiEye" Background="Transparent" BorderThickness="0"
+                                                              Padding="0" Margin="0,0,8,0" Cursor="Hand"
+                                                              ToolTip="Mostra/Nascondi password" VerticalAlignment="Center"
+                                                              Focusable="True">
+                                                    <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE7B3;" FontSize="14"
+                                                               Foreground="{DynamicResource MainForegroundColor}"/>
+                                                </ToggleButton>
+                                                <TextBlock x:Name="WifiMasked" Text="&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;"
+                                                           VerticalAlignment="Center" Foreground="{DynamicResource MainForegroundColor}"
+                                                           Visibility="Visible"/>
+                                                <TextBlock x:Name="WifiClear" Text="{Binding Password}"
+                                                           VerticalAlignment="Center" Foreground="{DynamicResource MainForegroundColor}"
+                                                           Visibility="Collapsed"/>
+                                            </StackPanel>
+                                            <DataTemplate.Triggers>
+                                                <DataTrigger Binding="{Binding IsChecked, ElementName=WifiEye}" Value="True">
+                                                    <Setter TargetName="WifiMasked" Property="Visibility" Value="Collapsed"/>
+                                                    <Setter TargetName="WifiClear" Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </DataTemplate.Triggers>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="Sicurezza" Binding="{Binding Security}" Width="*"/>
+                                <DataGridTextColumn Header="Auto" Binding="{Binding AutoConnect}" Width="Auto"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Border>
+                    <Border Grid.Row="2" Background="{DynamicResource GroupBorderBackgroundColor}" CornerRadius="12"
+                            BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="10" Margin="6,2,6,6">
+                        <StackPanel>
+                            <TextBlock Text="Registro attività" FontSize="{DynamicResource FontSize}" FontWeight="Bold"
+                                       Foreground="{DynamicResource MainForegroundColor}" Margin="0,0,0,4"/>
+                            <TextBox Name="WPFWifiStatusLog" IsReadOnly="True" TextWrapping="Wrap" Height="90"
+                                     VerticalScrollBarVisibility="Auto" Background="Transparent"
+                                     Foreground="{DynamicResource MainForegroundColor}" BorderBrush="{DynamicResource BorderColor}"
+                                     BorderThickness="1" Padding="6"
+                                     Text="Pronto. Clicca 'Scansiona reti Wi-Fi' per elencare le reti salvate."/>
                         </StackPanel>
                     </Border>
                 </Grid>

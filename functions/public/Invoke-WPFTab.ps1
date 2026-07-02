@@ -39,6 +39,8 @@
             "Updates"  = "Aggiornamenti"
             "Printers" = "Stampanti"
             "Win11ISO" = "Crea Win11"
+            "System"   = "Sistema"
+            "WiFi"     = "Password Wi-Fi"
         }
         $display = $titleMap[[string]$sync.currentTab]
         if (-not $display) { $display = $sync.currentTab }
@@ -52,6 +54,9 @@
     } elseif ($sync.currentTab -eq "Tweaks") {
         # Reset Tweaks tab filter
         Find-TweaksByNameOrDescription -SearchString ""
+    } elseif ($sync.currentTab -eq "System") {
+        # Auto-populate the System dashboard when it is opened
+        Invoke-WPFSystemInfoRefresh
     }
 
     # Show search bar in Install and Tweaks tabs
