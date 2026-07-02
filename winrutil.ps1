@@ -5,11 +5,7 @@
     GitHub         : https://github.com/rtecnocopy89/WinRUtil
     Copyright       : (c) 2026 rtecnocopy89 — (c) 2022 CT Tech Group LLC
     Based on       : ChrisTitusTech/winutil (MIT)
-<<<<<<< HEAD
     Version        : 26.07.02
-=======
-    Version        : 26.06.14
->>>>>>> 343cd9167db5c00a83e28c96b6aa58a62bb24f50
 #>
 
 param (
@@ -83,11 +79,7 @@ Add-Type -AssemblyName System.Windows.Forms
 # Variable to sync between runspaces
 $sync = [Hashtable]::Synchronized(@{})
 $sync.PSScriptRoot = $PSScriptRoot
-<<<<<<< HEAD
 $sync.version = "26.07.02"
-=======
-$sync.version = "26.06.14"
->>>>>>> 343cd9167db5c00a83e28c96b6aa58a62bb24f50
 $sync.configs = @{}
 $sync.Buttons = [System.Collections.Generic.List[PSObject]]::new()
 $sync.preferences = @{}
