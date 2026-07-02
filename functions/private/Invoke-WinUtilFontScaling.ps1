@@ -1,4 +1,4 @@
-﻿function Invoke-WinUtilFontScaling {
+function Invoke-WinUtilFontScaling {
     <#
 
     .SYNOPSIS
@@ -22,6 +22,10 @@
         Write-Warning "Scale factor must be between 0.75 and 2.0. Using 1.0 instead."
         $ScaleFactor = 1.0
     }
+
+    # Remember the current scale factor so a theme change can re-apply it
+    # (Invoke-WinutilThemeChange resets the shared size resources to their unscaled values)
+    $sync.fontScaleFactor = $ScaleFactor
 
     # Define an array for resources to be scaled
     $fontResources = @(

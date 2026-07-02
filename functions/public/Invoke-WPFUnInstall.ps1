@@ -1,4 +1,4 @@
-﻿function Invoke-WPFUnInstall {
+function Invoke-WPFUnInstall {
     param(
         [Parameter(Mandatory=$false)]
         [PSObject[]]$PackagesToUninstall = $($sync.selectedApps | Foreach-Object { $sync.configs.applicationsHashtable.$_ })
@@ -41,7 +41,7 @@
 
         try {
             $sync.ProcessRunning = $true
-            Show-WPFInstallAppBusy -text "Uninstalling apps..."
+            Show-WPFInstallAppBusy -text "Disinstallazione app in corso..."
 
             # Uninstall all selected programs in new window
             if($packagesWinget.Count -gt 0) {

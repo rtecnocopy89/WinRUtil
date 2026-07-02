@@ -1,4 +1,4 @@
-﻿function Invoke-WPFUIElements {
+function Invoke-WPFUIElements {
     <#
     .SYNOPSIS
         Adds UI elements to a specified Grid in the WinUtil GUI based on a JSON configuration.
@@ -222,7 +222,7 @@
 
                         $toggleButton.Tag = @{
                             contentOn = if ($entryInfo.Content.Count -ge 1) { $entryInfo.Content[0] } else { "" }
-                            contentOff = if ($entryInfo.Content.Count -ge 2) { $entryInfo.Content[1] } else { $contentOn }
+                            contentOff = if ($entryInfo.Content.Count -ge 2) { $entryInfo.Content[1] } else { $entryInfo.Content[0] }
                         }
 
                         $itemsControl.Items.Add($toggleButton) | Out-Null
@@ -317,8 +317,9 @@
                             $groupStackPanel.Orientation = "Vertical"
                             [System.Windows.Automation.AutomationProperties]::SetName($groupStackPanel, $entryInfo.GroupName)
 
-                            # Add the group container to the ItemsControl
+                            # Add the group container to the ItemsControl and remember it for the next RadioButtons of the same group
                             $itemsControl.Items.Add($groupStackPanel) | Out-Null
+                            $radioButtonGroups[$entryInfo.GroupName] = $groupStackPanel
                         }
                         else {
                             # Retrieve the existing group container

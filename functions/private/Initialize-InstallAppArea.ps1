@@ -1,4 +1,4 @@
-﻿    function Initialize-InstallAppArea {
+    function Initialize-InstallAppArea {
         <#
             .SYNOPSIS
                 Creates a [Windows.Controls.ScrollViewer] containing a [Windows.Controls.ItemsControl] which is setup to use Virtualization to only load the visible elements for performance reasons.
@@ -62,15 +62,15 @@
         $sync.InstallAppAreaOverlay = $overlay
 
         $overlayText = New-Object Windows.Controls.TextBlock
-        $overlayText.Text = "Installing apps..."
+        $overlayText.Text = "Installazione app in corso..."
         $overlayText.HorizontalAlignment = 'Center'
         $overlayText.VerticalAlignment = 'Center'
         $overlayText.SetResourceReference([Windows.Controls.TextBlock]::ForegroundProperty, "MainForegroundColor")
         $overlayText.Background = "Transparent"
         $overlayText.SetResourceReference([Windows.Controls.TextBlock]::FontSizeProperty, "HeaderFontSize")
-        $overlayText.SetResourceReference([Windows.Controls.TextBlock]::FontFamilyProperty, "MainFontFamily")
-        $overlayText.SetResourceReference([Windows.Controls.TextBlock]::FontWeightProperty, "MainFontWeight")
-        $overlayText.SetResourceReference([Windows.Controls.TextBlock]::MarginProperty, "MainMargin")
+        $overlayText.SetResourceReference([Windows.Controls.TextBlock]::FontFamilyProperty, "FontFamily")
+        $overlayText.FontWeight = [Windows.FontWeights]::Bold
+        $overlayText.Margin = "0,0,0,10"
         $sync.InstallAppAreaOverlayText = $overlayText
 
         $progressbar = New-Object Windows.Controls.ProgressBar

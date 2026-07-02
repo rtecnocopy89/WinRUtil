@@ -1,4 +1,4 @@
-﻿# Create enums
+# Create enums
 Add-Type @"
 public enum PackageManagers
 {
@@ -359,7 +359,7 @@ $sync["Form"].Add_ContentRendered({
         # Disable the install tab
         $sync.WPFTab1BT.IsEnabled = $false
         $sync.WPFTab1BT.Opacity = 0.5
-        $sync.WPFTab1BT.ToolTip = "Internet connection required for installing applications"
+        $sync.WPFTab1BT.ToolTip = "Connessione a Internet necessaria per installare le applicazioni"
 
         # Disable install-related buttons
         $sync.WPFInstall.IsEnabled = $false

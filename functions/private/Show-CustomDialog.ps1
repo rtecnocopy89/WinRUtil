@@ -1,4 +1,4 @@
-﻿function Show-CustomDialog {
+function Show-CustomDialog {
     <#
     .SYNOPSIS
     Displays a custom dialog box with an image, heading, message, and an OK button.
@@ -177,7 +177,7 @@
 
     # Add "Winutil" text
     $winutilTextBlock = New-Object Windows.Controls.TextBlock
-    $winutilTextBlock.Text = "Winutil"
+    $winutilTextBlock.Text = "WinRUtil"
     $winutilTextBlock.FontSize = $HeaderFontSize
     $winutilTextBlock.Foreground = $LogoColor
     $winutilTextBlock.Margin = New-Object Windows.Thickness(10, 10, 10, 5)  # Add margins around the text block

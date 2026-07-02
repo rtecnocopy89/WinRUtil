@@ -1,4 +1,4 @@
-﻿    function Add-SelectedAppsMenuItem {
+    function Add-SelectedAppsMenuItem {
         <#
         .SYNOPSIS
             This is a helper function that generates and adds the Menu Items to the Selected Apps Popup.
@@ -33,7 +33,7 @@
         $selectedAppRemoveButton.Content = [string]([char]0xE711)
         $selectedAppRemoveButton.HorizontalAlignment = "Center"
         $selectedAppRemoveButton.Tag = $key
-        $selectedAppRemoveButton.ToolTip = "Remove the App from Selection"
+        $selectedAppRemoveButton.ToolTip = "Rimuovi l'app dalla selezione"
         $selectedAppRemoveButton.SetResourceReference([Windows.Controls.Control]::ForegroundProperty, "MainForegroundColor")
         $selectedAppRemoveButton.SetResourceReference([Windows.Controls.Control]::StyleProperty, "HoverButtonStyle")
 

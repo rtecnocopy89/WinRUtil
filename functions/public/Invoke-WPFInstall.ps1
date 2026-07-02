@@ -1,4 +1,4 @@
-﻿function Invoke-WPFInstall {
+function Invoke-WPFInstall {
     <#
     .SYNOPSIS
         Installs the selected programs using winget, if one or more of the selected programs are already installed on the system, winget will try and perform an upgrade if there's a newer version to install.
@@ -32,7 +32,7 @@
         try {
             $sync.ProcessRunning = $true
             if($packagesWinget.Count -gt 0 -and $packagesWinget -ne "0") {
-                Show-WPFInstallAppBusy -text "Installing apps..."
+                Show-WPFInstallAppBusy -text "Installazione app in corso..."
                 Install-WinUtilWinget
                 Install-WinUtilProgramWinget -Action Install -Programs $packagesWinget
             }

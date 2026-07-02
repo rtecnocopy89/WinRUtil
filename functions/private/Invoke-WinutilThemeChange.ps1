@@ -1,4 +1,4 @@
-﻿function Invoke-WinutilThemeChange {
+function Invoke-WinutilThemeChange {
     <#
     .SYNOPSIS
         Toggles between light and dark themes for a Windows utility application.
@@ -60,12 +60,20 @@
                 $sync.Form.Resources[$Name] = switch ($Type) {
                     "ColorBrush" { [Windows.Media.SolidColorBrush]::new($Value) }
                     "Color" {
-                        # Convert hex string to RGB values
+                        # Convert hex string to a Color, supporting both #RRGGBB and #AARRGGBB
                         $hexColor = $Value.TrimStart("#")
-                        $r = [Convert]::ToInt32($hexColor.Substring(0,2), 16)
-                        $g = [Convert]::ToInt32($hexColor.Substring(2,2), 16)
-                        $b = [Convert]::ToInt32($hexColor.Substring(4,2), 16)
-                        [Windows.Media.Color]::FromRgb($r, $g, $b)
+                        if ($hexColor.Length -eq 8) {
+                            $a = [Convert]::ToInt32($hexColor.Substring(0,2), 16)
+                            $r = [Convert]::ToInt32($hexColor.Substring(2,2), 16)
+                            $g = [Convert]::ToInt32($hexColor.Substring(4,2), 16)
+                            $b = [Convert]::ToInt32($hexColor.Substring(6,2), 16)
+                            [Windows.Media.Color]::FromArgb($a, $r, $g, $b)
+                        } else {
+                            $r = [Convert]::ToInt32($hexColor.Substring(0,2), 16)
+                            $g = [Convert]::ToInt32($hexColor.Substring(2,2), 16)
+                            $b = [Convert]::ToInt32($hexColor.Substring(4,2), 16)
+                            [Windows.Media.Color]::FromRgb($r, $g, $b)
+                        }
                     }
                     "CornerRadius" { [System.Windows.CornerRadius]::new($Value) }
                     "GridLength" { [System.Windows.GridLength]::new($Value) }
@@ -165,4 +173,10 @@
     # Update the theme selector button with the appropriate icon
     $ThemeButton = $sync.Form.FindName("ThemeButton")
     $ThemeButton.Content = [string]$themeButtonIcon
+
+    # Re-apply the user's font scaling, since applying the "shared" theme above
+    # resets every size resource to its unscaled default
+    if ($sync.fontScaleFactor -and $sync.fontScaleFactor -ne 1.0) {
+        Invoke-WinUtilFontScaling -ScaleFactor $sync.fontScaleFactor
+    }
 }

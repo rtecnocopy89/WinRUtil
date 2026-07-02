@@ -5,7 +5,7 @@
     GitHub         : https://github.com/rtecnocopy89/WinRUtil
     Copyright       : (c) 2026 rtecnocopy89 — (c) 2022 CT Tech Group LLC
     Based on       : ChrisTitusTech/winutil (MIT)
-    Version        : 26.06.12
+    Version        : 26.07.02
 #>
 
 param (
@@ -79,7 +79,7 @@ Add-Type -AssemblyName System.Windows.Forms
 # Variable to sync between runspaces
 $sync = [Hashtable]::Synchronized(@{})
 $sync.PSScriptRoot = $PSScriptRoot
-$sync.version = "26.06.12"
+$sync.version = "26.07.02"
 $sync.configs = @{}
 $sync.Buttons = [System.Collections.Generic.List[PSObject]]::new()
 $sync.preferences = @{}
@@ -140,7 +140,7 @@ clear-host
         $selectedAppRemoveButton.Content = [string]([char]0xE711)
         $selectedAppRemoveButton.HorizontalAlignment = "Center"
         $selectedAppRemoveButton.Tag = $key
-        $selectedAppRemoveButton.ToolTip = "Remove the App from Selection"
+        $selectedAppRemoveButton.ToolTip = "Rimuovi l'app dalla selezione"
         $selectedAppRemoveButton.SetResourceReference([Windows.Controls.Control]::ForegroundProperty, "MainForegroundColor")
         $selectedAppRemoveButton.SetResourceReference([Windows.Controls.Control]::StyleProperty, "HoverButtonStyle")
 
@@ -642,15 +642,15 @@ function Hide-WPFInstallAppBusy {
         $sync.InstallAppAreaOverlay = $overlay
 
         $overlayText = New-Object Windows.Controls.TextBlock
-        $overlayText.Text = "Installing apps..."
+        $overlayText.Text = "Installazione app in corso..."
         $overlayText.HorizontalAlignment = 'Center'
         $overlayText.VerticalAlignment = 'Center'
         $overlayText.SetResourceReference([Windows.Controls.TextBlock]::ForegroundProperty, "MainForegroundColor")
         $overlayText.Background = "Transparent"
         $overlayText.SetResourceReference([Windows.Controls.TextBlock]::FontSizeProperty, "HeaderFontSize")
-        $overlayText.SetResourceReference([Windows.Controls.TextBlock]::FontFamilyProperty, "MainFontFamily")
-        $overlayText.SetResourceReference([Windows.Controls.TextBlock]::FontWeightProperty, "MainFontWeight")
-        $overlayText.SetResourceReference([Windows.Controls.TextBlock]::MarginProperty, "MainMargin")
+        $overlayText.SetResourceReference([Windows.Controls.TextBlock]::FontFamilyProperty, "FontFamily")
+        $overlayText.FontWeight = [Windows.FontWeights]::Bold
+        $overlayText.Margin = "0,0,0,10"
         $sync.InstallAppAreaOverlayText = $overlayText
 
         $progressbar = New-Object Windows.Controls.ProgressBar
@@ -1695,6 +1695,10 @@ function Invoke-WinUtilFontScaling {
         Write-Warning "Scale factor must be between 0.75 and 2.0. Using 1.0 instead."
         $ScaleFactor = 1.0
     }
+
+    # Remember the current scale factor so a theme change can re-apply it
+    # (Invoke-WinutilThemeChange resets the shared size resources to their unscaled values)
+    $sync.fontScaleFactor = $ScaleFactor
 
     # Define an array for resources to be scaled
     $fontResources = @(
@@ -3199,12 +3203,20 @@ function Invoke-WinutilThemeChange {
                 $sync.Form.Resources[$Name] = switch ($Type) {
                     "ColorBrush" { [Windows.Media.SolidColorBrush]::new($Value) }
                     "Color" {
-                        # Convert hex string to RGB values
+                        # Convert hex string to a Color, supporting both #RRGGBB and #AARRGGBB
                         $hexColor = $Value.TrimStart("#")
-                        $r = [Convert]::ToInt32($hexColor.Substring(0,2), 16)
-                        $g = [Convert]::ToInt32($hexColor.Substring(2,2), 16)
-                        $b = [Convert]::ToInt32($hexColor.Substring(4,2), 16)
-                        [Windows.Media.Color]::FromRgb($r, $g, $b)
+                        if ($hexColor.Length -eq 8) {
+                            $a = [Convert]::ToInt32($hexColor.Substring(0,2), 16)
+                            $r = [Convert]::ToInt32($hexColor.Substring(2,2), 16)
+                            $g = [Convert]::ToInt32($hexColor.Substring(4,2), 16)
+                            $b = [Convert]::ToInt32($hexColor.Substring(6,2), 16)
+                            [Windows.Media.Color]::FromArgb($a, $r, $g, $b)
+                        } else {
+                            $r = [Convert]::ToInt32($hexColor.Substring(0,2), 16)
+                            $g = [Convert]::ToInt32($hexColor.Substring(2,2), 16)
+                            $b = [Convert]::ToInt32($hexColor.Substring(4,2), 16)
+                            [Windows.Media.Color]::FromRgb($r, $g, $b)
+                        }
                     }
                     "CornerRadius" { [System.Windows.CornerRadius]::new($Value) }
                     "GridLength" { [System.Windows.GridLength]::new($Value) }
@@ -3304,6 +3316,12 @@ function Invoke-WinutilThemeChange {
     # Update the theme selector button with the appropriate icon
     $ThemeButton = $sync.Form.FindName("ThemeButton")
     $ThemeButton.Content = [string]$themeButtonIcon
+
+    # Re-apply the user's font scaling, since applying the "shared" theme above
+    # resets every size resource to its unscaled default
+    if ($sync.fontScaleFactor -and $sync.fontScaleFactor -ne 1.0) {
+        Invoke-WinUtilFontScaling -ScaleFactor $sync.fontScaleFactor
+    }
 }
 function Invoke-WinUtilTweaks {
     <#
@@ -4004,7 +4022,7 @@ function Show-CustomDialog {
 
     # Add "Winutil" text
     $winutilTextBlock = New-Object Windows.Controls.TextBlock
-    $winutilTextBlock.Text = "Winutil"
+    $winutilTextBlock.Text = "WinRUtil"
     $winutilTextBlock.FontSize = $HeaderFontSize
     $winutilTextBlock.Foreground = $LogoColor
     $winutilTextBlock.Margin = New-Object Windows.Thickness(10, 10, 10, 5)  # Add margins around the text block
@@ -4124,12 +4142,12 @@ function Show-WPFInstallAppBusy {
         The text to display in the busy overlay. Defaults to "Installing apps...".
     #>
     param (
-        $text = "Installing apps..."
+        $text = "Installazione app in corso..."
     )
     Invoke-WPFUIThread -ScriptBlock {
         $sync.InstallAppAreaOverlay.Visibility = [Windows.Visibility]::Visible
         $sync.InstallAppAreaOverlay.Width = $($sync.InstallAppAreaScrollViewer.ActualWidth * 0.4)
-        $sync.InstallAppAreaOverlay.Height = $($sync.InstallAppAreaScrollViewer.ActualWidth * 0.4)
+        $sync.InstallAppAreaOverlay.Height = $($sync.InstallAppAreaScrollViewer.ActualHeight * 0.4)
         $sync.InstallAppAreaOverlayText.Text = $text
         $sync.InstallAppAreaBorder.IsEnabled = $false
         $sync.InstallAppAreaScrollViewer.Effect.Radius = 5
@@ -4325,7 +4343,7 @@ function Initialize-WPFUI {
                     "Install" {
                         $newButton.Add_MouseEnter({
                             $appObject = $sync.configs.applicationsHashtable.$($sync.appPopupSelectedApp)
-                            $this.ToolTip = "Install or Upgrade $($appObject.content)"
+                            $this.ToolTip = "Installa o aggiorna $($appObject.content)"
                         })
                         $newButton.Add_Click({
                             $appObject = $sync.configs.applicationsHashtable.$($sync.appPopupSelectedApp)
@@ -4335,7 +4353,7 @@ function Initialize-WPFUI {
                     "Uninstall" {
                         $newButton.Add_MouseEnter({
                             $appObject = $sync.configs.applicationsHashtable.$($sync.appPopupSelectedApp)
-                            $this.ToolTip = "Uninstall $($appObject.content)"
+                            $this.ToolTip = "Disinstalla $($appObject.content)"
                         })
                         $newButton.Add_Click({
                             $appObject = $sync.configs.applicationsHashtable.$($sync.appPopupSelectedApp)
@@ -4345,7 +4363,7 @@ function Initialize-WPFUI {
                     "Info" {
                         $newButton.Add_MouseEnter({
                             $appObject = $sync.configs.applicationsHashtable.$($sync.appPopupSelectedApp)
-                            $this.ToolTip = "Open the application's website in your default browser`n$($appObject.link)"
+                            $this.ToolTip = "Apri il sito web dell'applicazione nel browser predefinito`n$($appObject.link)"
                         })
                         $newButton.Add_Click({
                             $appObject = $sync.configs.applicationsHashtable.$($sync.appPopupSelectedApp)
@@ -5047,7 +5065,7 @@ function Invoke-WPFInstall {
         try {
             $sync.ProcessRunning = $true
             if($packagesWinget.Count -gt 0 -and $packagesWinget -ne "0") {
-                Show-WPFInstallAppBusy -text "Installing apps..."
+                Show-WPFInstallAppBusy -text "Installazione app in corso..."
                 Install-WinUtilWinget
                 Install-WinUtilProgramWinget -Action Install -Programs $packagesWinget
             }
@@ -6020,7 +6038,7 @@ function Invoke-WPFUIElements {
 
                         $toggleButton.Tag = @{
                             contentOn = if ($entryInfo.Content.Count -ge 1) { $entryInfo.Content[0] } else { "" }
-                            contentOff = if ($entryInfo.Content.Count -ge 2) { $entryInfo.Content[1] } else { $contentOn }
+                            contentOff = if ($entryInfo.Content.Count -ge 2) { $entryInfo.Content[1] } else { $entryInfo.Content[0] }
                         }
 
                         $itemsControl.Items.Add($toggleButton) | Out-Null
@@ -6115,8 +6133,9 @@ function Invoke-WPFUIElements {
                             $groupStackPanel.Orientation = "Vertical"
                             [System.Windows.Automation.AutomationProperties]::SetName($groupStackPanel, $entryInfo.GroupName)
 
-                            # Add the group container to the ItemsControl
+                            # Add the group container to the ItemsControl and remember it for the next RadioButtons of the same group
                             $itemsControl.Items.Add($groupStackPanel) | Out-Null
+                            $radioButtonGroups[$entryInfo.GroupName] = $groupStackPanel
                         }
                         else {
                             # Retrieve the existing group container
@@ -6340,7 +6359,7 @@ function Invoke-WPFUnInstall {
 
         try {
             $sync.ProcessRunning = $true
-            Show-WPFInstallAppBusy -text "Uninstalling apps..."
+            Show-WPFInstallAppBusy -text "Disinstallazione app in corso..."
 
             # Uninstall all selected programs in new window
             if($packagesWinget.Count -gt 0) {
@@ -11048,8 +11067,6 @@ $inputXML = @'
                                                 BorderBrush="{TemplateBinding BorderBrush}"
                                                 Background="{DynamicResource ButtonBackgroundColor}"
                                                 BorderThickness="1"
-                                                Width="{DynamicResource CheckBoxBulletDecoratorSize *0.85}"
-                                                Height="{DynamicResource CheckBoxBulletDecoratorSize *0.85}"
                                                 Margin="1"
                                                 SnapsToDevicePixels="True"/>
                                         <Viewbox x:Name="CheckMarkContainer"
@@ -11532,7 +11549,7 @@ $inputXML = @'
                             BorderThickness="1"
                             Name="SearchBar"
                             Foreground="{DynamicResource MainForegroundColor}" Background="{DynamicResource MainBackgroundColor}"
-                            Padding="3,3,30,0"
+                            Padding="3,3,46,0"
                             ToolTip="Premi Ctrl-F e digita il nome di un'app per filtrare l'elenco. Premi Esc per azzerare il filtro">
                         </TextBox>
                         <TextBlock
@@ -11542,14 +11559,14 @@ $inputXML = @'
                             FontSize="{DynamicResource IconFontSize}"
                             Margin="0,0,8,0" Width="Auto" Height="Auto">&#xE721;
                         </TextBlock>
+                        <Button
+                            VerticalAlignment="Center" HorizontalAlignment="Right"
+                            Name="SearchBarClearButton"
+                            Style="{StaticResource SearchBarClearButtonStyle}"
+                            Margin="0,0,26,0" Visibility="Collapsed">
+                        </Button>
                     </Grid>
                 </Border>
-                <Button Grid.Column="0"
-                    VerticalAlignment="Center" HorizontalAlignment="Left"
-                    Name="SearchBarClearButton"
-                    Style="{StaticResource SearchBarClearButtonStyle}"
-                    Margin="213,0,0,0" Visibility="Collapsed">
-                </Button>
 
                 <!-- Buttons Container -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="5,5,5,5">
@@ -12614,7 +12631,7 @@ $sync["Form"].Add_ContentRendered({
         # Disable the install tab
         $sync.WPFTab1BT.IsEnabled = $false
         $sync.WPFTab1BT.Opacity = 0.5
-        $sync.WPFTab1BT.ToolTip = "Internet connection required for installing applications"
+        $sync.WPFTab1BT.ToolTip = "Connessione a Internet necessaria per installare le applicazioni"
 
         # Disable install-related buttons
         $sync.WPFInstall.IsEnabled = $false
