@@ -109,7 +109,7 @@ Get-ChildItem "config" | Where-Object {$psitem.extension -eq ".json"} | ForEach-
 
     # Line 90 requires no whitespace inside the here-strings, to keep formatting of the JSON in the final script.
     $json = @"
-$($jsonAsObject | ConvertTo-Json -Depth 3)
+$($jsonAsObject | ConvertTo-Json -Depth 10)
 "@
     $json = ConvertTo-JsonUnicodeEscape $json
 

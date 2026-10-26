@@ -21,9 +21,24 @@
         [string]$Manager
     )
 
+    # The output goes through a file, so that a package manager that stops responding can be stopped
+    # instead of leaving the search running for ever
+    $outputFile = Join-Path $env:TEMP ("WinRUtil-updates-{0}.txt" -f [guid]::NewGuid())
+    try {
+        if ($Manager -eq "Choco") {
+            $exitCode = Invoke-WinUtilProcess -FilePath "choco" -ArgumentList "outdated --limit-output --ignore-unfound" -NoNewWindow -OutputFile $outputFile -TimeoutSeconds 300
+        } else {
+            $exitCode = Invoke-WinUtilProcess -FilePath "winget" -ArgumentList "upgrade --include-unknown --accept-source-agreements --disable-interactivity" -NoNewWindow -OutputFile $outputFile -TimeoutSeconds 300
+        }
+        # WinGet writes UTF-8 when its output is redirected
+        $lines = @([System.IO.File]::ReadAllLines($outputFile, [System.Text.Encoding]::UTF8))
+    } finally {
+        Remove-Item -LiteralPath $outputFile -Force -ErrorAction SilentlyContinue
+    }
+
     if ($Manager -eq "Choco") {
         # One "name|installed|available|pinned" line per outdated package; pinned packages are not upgraded
-        $lines = choco outdated --limit-output --ignore-unfound | Where-Object { $_ -match '^[^|]+\|[^|]*\|[^|]+\|false$' }
+        $lines = $lines | Where-Object { $_ -match '^[^|]+\|[^|]*\|[^|]+\|false$' }
         foreach ($line in $lines) {
             $name, $version, $available = ($line -split '\|')[0..2]
             [pscustomobject]@{
@@ -40,15 +55,6 @@
             }
         }
         return
-    }
-
-    $originalEncoding = [Console]::OutputEncoding
-    try {
-        [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new()
-        $lines = @(winget upgrade --include-unknown --accept-source-agreements --disable-interactivity | Out-String -Stream)
-        $exitCode = $LASTEXITCODE
-    } finally {
-        [Console]::OutputEncoding = $originalEncoding
     }
 
     $rows = @(ConvertFrom-WinUtilWingetTable -Lines $lines)

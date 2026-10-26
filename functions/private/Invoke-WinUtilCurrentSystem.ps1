@@ -15,28 +15,61 @@
     )
     if ($CheckBox -eq "choco") {
         $apps = (choco list | Select-String -Pattern "^\S+").Matches.Value
-        $filter = Get-WinUtilVariables -Type Checkbox | Where-Object {$psitem -like "WPFInstall*"}
-        $sync.GetEnumerator() | Where-Object {$psitem.Key -in $filter} | ForEach-Object {
-            $dependencies = @($sync.configs.applications.$($psitem.Key).choco -split ";")
-            if ($dependencies -in $apps) {
-                Write-Output $psitem.name
+        $sync.configs.applicationsHashtable.GetEnumerator() | ForEach-Object {
+            $packageId = ([string]$_.Value.choco -split ";")[-1].Trim()
+            if ($packageId -and $packageId -ne "na" -and $packageId -in $apps) {
+                Write-Output $_.Key
+            }
+        }
+
+        # Apps without a Chocolatey package are installed with WinGet (see Get-WinUtilSelectedPackages),
+        # so they are looked for in the list of WinGet
+        $wingetFallbackKeys = @($sync.configs.applicationsHashtable.GetEnumerator() | Where-Object {
+            ([string]::IsNullOrWhiteSpace([string]$_.Value.choco) -or $_.Value.choco -eq "na") -and
+            -not ([string]::IsNullOrWhiteSpace([string]$_.Value.winget) -or $_.Value.winget -eq "na")
+        } | ForEach-Object { $_.Key })
+        if ($wingetFallbackKeys.Count -gt 0 -and (Test-WinUtilPackageManager -winget) -eq "installed") {
+            try {
+                Invoke-WinUtilCurrentSystem -CheckBox "winget" | Where-Object { $_ -in $wingetFallbackKeys }
+            } catch {
+                Write-Warning "Could not check the apps installed with WinGet: $($_.Exception.Message)"
             }
         }
     }
 
     if ($checkbox -eq "winget") {
-
         $originalEncoding = [Console]::OutputEncoding
-        [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new()
-        $Sync.InstalledPrograms = winget list -s winget | Select-Object -skip 3 | ConvertFrom-String -PropertyNames "Name", "Id", "Version", "Available" -Delimiter '\s{2,}'
-        [Console]::OutputEncoding = $originalEncoding
+        try {
+            [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new()
+            $installedProgramOutput = @(winget list --accept-source-agreements --disable-interactivity 2>&1)
+            if ($LASTEXITCODE -ne 0) {
+                throw "winget list failed with exit code $LASTEXITCODE."
+            }
+        } finally {
+            [Console]::OutputEncoding = $originalEncoding
+        }
+        $installedProgramText = $installedProgramOutput -join "`n"
 
-        $filter = Get-WinUtilVariables -Type Checkbox | Where-Object {$psitem -like "WPFInstall*"}
-        $sync.GetEnumerator() | Where-Object {$psitem.Key -in $filter} | ForEach-Object {
-            $dependencies = @($sync.configs.applications.$($psitem.Key).winget -split ";")
+        # WinGet pads each column to its widest value plus one space, so the row with the widest Name or Id
+        # has only one space next to its Id. Take the Id column position from the header above the dashes,
+        # which works whatever the language of the column titles.
+        $idColumnStart = 0
+        if ($installedProgramText -match '(?m)^(\S+[^\S\r\n]+)\S[^\r\n]*\r?\n-{3,}') {
+            $idColumnStart = $Matches[1].Length
+        }
 
-            if ($dependencies[-1] -in $sync.InstalledPrograms.Id) {
-                Write-Output $psitem.name
+        $sync.configs.applicationsHashtable.GetEnumerator() | ForEach-Object {
+            $packageId = (([string]$_.Value.winget -split ";")[-1] -replace "^msstore:", "").Trim()
+            if ([string]::IsNullOrWhiteSpace($packageId) -or $packageId -eq "na") {
+                return
+            }
+
+            $escapedPackageId = [regex]::Escape($packageId)
+            $packagePattern = "(?im)[^\S\r\n]{2,}$escapedPackageId(?=[^\S\r\n]{2,}|$)"
+            # Rows whose Name has combining marks or emoji are skipped: they have more characters than columns
+            $idColumnPattern = "(?im)(?<=^[^\r\n\p{M}\p{Cs}\p{Cf}]{$($idColumnStart - 1)}[^\S\r\n])$escapedPackageId(?=[^\S\r\n]|$)"
+            if ($installedProgramText -match $packagePattern -or ($idColumnStart -and $installedProgramText -match $idColumnPattern)) {
+                Write-Output $_.Key
             }
         }
     }
@@ -55,7 +88,8 @@
             $invokeScript = $entry.InvokeScript
             $entryType = $entry.Type
 
-            if ($registryKeys -or $serviceKeys) {
+            # A combo box has no applied state to detect: each entry is one of its choices
+            if (($registryKeys -or $serviceKeys) -and $entryType -ne "Combobox") {
                 $Values = @()
 
                 if ($entryType -eq "Toggle") {
@@ -102,7 +136,7 @@
 
                 Foreach ($tweaks in $serviceKeys) {
                     Foreach ($tweak in $tweaks) {
-                        $Service = Get-Service -Name $tweak.Name
+                        $Service = Get-Service -Name $tweak.Name -ErrorAction SilentlyContinue
 
                         if ($Service) {
                             $actualValue = $Service.StartType

@@ -24,17 +24,28 @@
         # Check if the service exists
         $service = Get-Service -Name $Name -ErrorAction Stop
 
+        if (($service.PSObject.Properties.Name -contains "StartType") -and ([string]$service.StartType -eq [string]$StartupType)) {
+            Write-Host "Service $Name is already set to $StartupType"
+            return
+        }
+
         # Service exists, proceed with changing properties -- while handling auto delayed start for PWSH 5
         if (($PSVersionTable.PSVersion.Major -lt 7) -and ($StartupType -eq "AutomaticDelayedStart")) {
-            sc.exe config $Name start=delayed-auto
+            # sc.exe needs the space after "start="
+            sc.exe config $Name start= delayed-auto
+            if ($LASTEXITCODE -ne 0) {
+                throw "sc.exe config failed with exit code $LASTEXITCODE"
+            }
         } else {
             $service | Set-Service -StartupType $StartupType -ErrorAction Stop
         }
-    } catch [System.ServiceProcess.ServiceNotFoundException] {
-        Write-Warning "Service $Name was not found."
     } catch {
-        Write-Warning "Unable to set $Name due to unhandled exception."
-        Write-Warning $_.Exception.Message
+        if ($_.FullyQualifiedErrorId -like "NoServiceFoundForGivenName,*") {
+            Write-Warning "Service $Name was not found."
+        } else {
+            Write-Warning "Unable to set $Name due to unhandled exception."
+            Write-Warning $_.Exception.Message
+        }
     }
 
 }

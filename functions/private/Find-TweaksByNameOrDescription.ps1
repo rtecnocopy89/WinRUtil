@@ -11,10 +11,15 @@
         [string]$SearchString = ""
     )
 
+    # The same search serves the tweaks and the Windows apps
+    $panelName = if ($sync.currentTab -eq "AppX") { "appxpanel" } else { "tweakspanel" }
+    # Wildcards in the search text are normal characters
+    $SearchString = [System.Management.Automation.WildcardPattern]::Escape($SearchString)
+
     # Reset the visibility if the search string is empty or the search is cleared
     if ([string]::IsNullOrWhiteSpace($SearchString)) {
         # Show all categories
-        $tweakspanel = $sync.Form.FindName("tweakspanel")
+        $tweakspanel = $sync.Form.FindName($panelName)
         $tweakspanel.Children | ForEach-Object {
             $_.Visibility = [Windows.Visibility]::Visible
 
@@ -44,7 +49,7 @@
     }
 
     # Search for matching tweaks when search string is not null
-    $tweakspanel = $sync.Form.FindName("tweakspanel")
+    $tweakspanel = $sync.Form.FindName($panelName)
 
     $tweakspanel.Children | ForEach-Object {
         $categoryBorder = $_

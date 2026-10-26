@@ -41,6 +41,7 @@
             "System"   = "Sistema"
             "WiFi"     = "Password Wi-Fi"
             "Report"   = "Rapporto di intervento"
+            "AppX"     = "App di Windows"
         }
         $display = $titleMap[[string]$sync.currentTab]
         if (-not $display) { $display = $sync.currentTab }
@@ -49,9 +50,9 @@
 
     # Always reset the filter for the current tab
     if ($sync.currentTab -eq "Install") {
-        # Reset Install tab filter
-        Find-AppsByNameOrDescription -SearchString ""
-    } elseif ($sync.currentTab -eq "Tweaks") {
+        # Reset the search of the Install tab, keeping the categories chosen with the chips
+        Find-AppsByNameOrDescription -SearchString "" -Categories @($sync.SelectedAppCategories)
+    } elseif ($sync.currentTab -eq "Tweaks" -or $sync.currentTab -eq "AppX") {
         # Reset Tweaks tab filter
         Find-TweaksByNameOrDescription -SearchString ""
     } elseif ($sync.currentTab -eq "System") {
@@ -69,8 +70,8 @@
         Stop-WinUtilSystemLiveUpdate
     }
 
-    # Show search bar in Install and Tweaks tabs
-    if ($tabNumber -eq 0 -or $tabNumber -eq 1) {
+    # Show search bar in Install, Tweaks and Windows apps tabs
+    if ($sync.currentTab -in @("Install", "Tweaks", "AppX")) {
         $sync.SearchBar.Visibility = "Visible"
         $searchIcon = ($sync.Form.FindName("SearchBar").Parent.Children | Where-Object { $_ -is [System.Windows.Controls.TextBlock] -and $_.Text -eq [char]0xE721 })[0]
         if ($searchIcon) {

@@ -35,7 +35,7 @@ function Invoke-WPFUpgradeRefresh {
     $sync.WPFUpgradeStatus.Text = "Ricerca degli aggiornamenti con {0} in corso..." -f $(if ($manager -eq "Choco") { "Chocolatey" } else { "WinGet" })
     Update-WinUtilUpgradeView
 
-    Invoke-WPFRunspace -ParameterList @(, @("Manager", $manager)) -ScriptBlock {
+    $searchScript = {
         param($Manager)
         $updates = @()
         Invoke-WPFUIThread -ScriptBlock { Set-WinUtilTaskbaritem -state "Indeterminate" }
@@ -43,8 +43,16 @@ function Invoke-WPFUpgradeRefresh {
             if ($Manager -eq "Choco" -and -not (Get-Command choco -ErrorAction SilentlyContinue)) {
                 $status = "Chocolatey non {0} installato: non ci sono applicazioni da aggiornare con Chocolatey." -f [char]0x00E8
             } else {
-                if ($Manager -eq "Winget") {
+                if ($Manager -eq "Winget" -and (Test-WinUtilPackageManager -winget) -ne "installed") {
+                    # Right after an update of App Installer WinGet can be missing for a while: installing
+                    # it takes some minutes, so say what is happening
+                    Invoke-WPFUIThread -ScriptBlock {
+                        $sync.WPFUpgradeStatus.Text = "WinGet non {0} disponibile: installazione di WinGet in corso..." -f [char]0x00E8
+                    }
                     Install-WinUtilWinget
+                    Invoke-WPFUIThread -ScriptBlock {
+                        $sync.WPFUpgradeStatus.Text = "Ricerca degli aggiornamenti con WinGet in corso..."
+                    }
                 }
                 $updates = @(Get-WinUtilProgramUpdates -Manager $Manager)
                 $status = switch ($updates.Count) {
@@ -72,6 +80,16 @@ function Invoke-WPFUpgradeRefresh {
             }
         }
     }
+
+    try {
+        Invoke-WPFRunspace -ParameterList @(, @("Manager", $manager)) -ScriptBlock $searchScript | Out-Null
+    } catch {
+        # Without the background search the list would wait for ever
+        $sync.UpgradeState = "Ready"
+        $sync.ProcessRunning = $false
+        $sync.WPFUpgradeStatus.Text = "Impossibile cercare gli aggiornamenti: $($_.Exception.Message)"
+        Update-WinUtilUpgradeView
+    }
 }
 
 function Invoke-WPFUpgradeStart {
@@ -94,7 +112,7 @@ function Invoke-WPFUpgradeStart {
     $sync.WPFUpgradeList.Items.Refresh()
     Update-WinUtilUpgradeView
 
-    Invoke-WPFRunspace -ParameterList @(, @("Programs", $selected)) -ScriptBlock {
+    $updateScript = {
         param($Programs)
         $updated = 0
         Write-Host "==========================================="
@@ -144,6 +162,20 @@ function Invoke-WPFUpgradeStart {
             }
         }
     }
+
+    try {
+        Invoke-WPFRunspace -ParameterList @(, @("Programs", $selected)) -ScriptBlock $updateScript | Out-Null
+    } catch {
+        foreach ($item in $selected) {
+            $item.Status = ""
+            $item.Level = ""
+        }
+        $sync.UpgradeState = "Ready"
+        $sync.ProcessRunning = $false
+        $sync.WPFUpgradeList.Items.Refresh()
+        $sync.WPFUpgradeStatus.Text = "Impossibile avviare l'aggiornamento: $($_.Exception.Message)"
+        Update-WinUtilUpgradeView
+    }
 }
 
 function Update-WinUtilProgram {
@@ -160,19 +192,29 @@ function Update-WinUtilProgram {
     param([Parameter(Mandatory)]$Program)
 
     Write-Host "Updating $($Program.Name) ($($Program.Id))..."
+    # Only the package manager is waited for: an installer may leave the updated application open
     if ($Program.Manager -eq "Choco") {
-        $exitCode = (Start-Process -FilePath "choco" -ArgumentList "upgrade $($Program.Id) -y" -Wait -PassThru).ExitCode
+        $exitCode = Invoke-WinUtilProcess -FilePath "choco" -ArgumentList "upgrade $($Program.Id) -y"
         $result = switch ($exitCode) {
             0 { @{ Success = $true; Text = "Aggiornata"; Level = "Success" } }
             { $_ -in 1641, 3010 } { @{ Success = $true; Text = "Aggiornata, riavvia il PC"; Level = "Warning" } }
             default { @{ Success = $false; Text = "Non riuscito (codice $exitCode)"; Level = "Danger" } }
+        }
+    } elseif ($Program.Id -eq "Microsoft.PowerShell" -and ($msiResult = Update-WinUtilPowerShellMSI).Outcome -ne "NotInstalled") {
+        # WinGet does not upgrade PowerShell installed with the official MSI package
+        Write-Host $msiResult.Detail
+        $exitCode = $msiResult.Outcome
+        $result = switch ($msiResult.Outcome) {
+            "Succeeded" { @{ Success = $true; Text = "Aggiornata"; Level = "Success" } }
+            "Skipped" { @{ Success = $false; Text = "Nessun aggiornamento applicabile"; Level = "Warning" } }
+            default { @{ Success = $false; Text = "Non riuscito (pacchetto MSI di PowerShell)"; Level = "Danger" } }
         }
     } else {
         $arguments = "upgrade --id $($Program.Id) --exact --include-unknown --silent --accept-source-agreements --accept-package-agreements"
         if ($Program.Source) {
             $arguments += " --source $($Program.Source)"
         }
-        $exitCode = (Start-Process -FilePath "winget" -ArgumentList $arguments -Wait -PassThru -NoNewWindow).ExitCode
+        $exitCode = Invoke-WinUtilProcess -FilePath "winget" -ArgumentList $arguments -NoNewWindow
         # The meaning of each code is shown by "winget error <code>"
         $result = switch ('0x{0:X8}' -f $exitCode) {
             '0x00000000' { @{ Success = $true; Text = "Aggiornata"; Level = "Success" } }

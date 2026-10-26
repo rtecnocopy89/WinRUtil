@@ -11,7 +11,9 @@
         [Parameter(Mandatory=$true)]
         $PackageList,
         [Parameter(Mandatory=$true)]
-        [PackageManagers]$Preference
+        [PackageManagers]$Preference,
+        [ValidateSet("Install", "Uninstall")]
+        [string]$Action = "Install"
     )
 
     if ($PackageList.count -eq 1) {
@@ -28,27 +30,50 @@
 
     Write-Debug "Checking packages using Preference '$($Preference)'"
 
+    function Test-PackageId {
+        param($PackageId)
+        -not ([string]::IsNullOrWhiteSpace([string]$PackageId) -or $PackageId -eq "na")
+    }
+
+    function Add-PackageId {
+        param(
+            [System.Collections.ArrayList]$Target,
+            $PackageId,
+            [string]$Manager
+        )
+
+        # A field can hold several IDs separated by ";" (dependencies first, then the app).
+        # Uninstalling removes only the app, the last ID.
+        $ids = [string]$PackageId -split ";"
+        if ($Action -eq "Uninstall") {
+            $ids = @($ids[-1])
+        }
+        foreach ($id in $ids) {
+            $id = $id.Trim()
+            if ((Test-PackageId $id) -and -not $Target.Contains($id)) {
+                $null = $Target.Add($id)
+                Write-Host "Queueing $id for $Manager..."
+            }
+        }
+    }
+
     foreach ($package in $PackageList) {
         switch ($Preference) {
             "Choco" {
-                if ($package.choco -eq "na") {
-                    Write-Debug "$($package.content) has no Choco value."
-                    $null = $packagesWinget.add($($package.winget))
-                    Write-Host "Queueing $($package.winget) for WinGet..."
+                if (Test-PackageId $package.choco) {
+                    Add-PackageId -Target $packagesChoco -PackageId $package.choco -Manager "Chocolatey"
                 } else {
-                    $null = $packagesChoco.add($package.choco)
-                    Write-Host "Queueing $($package.choco) for Chocolatey..."
+                    Write-Debug "$($package.content) has no Choco value."
+                    Add-PackageId -Target $packagesWinget -PackageId $package.winget -Manager "WinGet"
                 }
                 break
             }
             "Winget" {
-                if ($package.winget -eq "na") {
-                    Write-Debug "$($package.content) has no WinGet value."
-                    $null = $packagesChoco.add($package.choco)
-                    Write-Host "Queueing $($package.choco) for Chocolatey..."
+                if (Test-PackageId $package.winget) {
+                    Add-PackageId -Target $packagesWinget -PackageId $package.winget -Manager "WinGet"
                 } else {
-                    $null = $packagesWinget.add($($package.winget))
-                    Write-Host "Queueing $($package.winget) for WinGet..."
+                    Write-Debug "$($package.content) has no WinGet value."
+                    Add-PackageId -Target $packagesChoco -PackageId $package.choco -Manager "Chocolatey"
                 }
                 break
             }

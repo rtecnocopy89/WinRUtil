@@ -67,7 +67,19 @@
       }
     }
 
-    Set-WinUtilDNS -DNSProvider $dnsProvider
+    if ($dnsProvider -and $dnsProvider -ne "Default") {
+      Set-WinUtilProgressBar -Label "Impostazione del DNS: $dnsProvider" -Percent ($completedSteps / $totalSteps * 100)
+      # Going on after a failed DNS change would leave the PC half configured
+      if (@(Set-WinUtilDNS -DNSProvider $dnsProvider)[-1] -ne $true) {
+        Set-WinUtilProgressBar -Label "DNS non impostato: ottimizzazioni non applicate" -Percent 100
+        $sync.ProcessRunning = $false
+        Invoke-WPFUIThread -ScriptBlock {
+          Set-WinUtilTaskbaritem -state "Error" -overlay "warning"
+          [System.Windows.MessageBox]::Show("Impossibile impostare il DNS su $dnsProvider, quindi le altre ottimizzazioni non sono state applicate. I dettagli sono nella finestra della console.", "WinRUtil", "OK", "Warning") | Out-Null
+        }
+        return
+      }
+    }
 
     for ($i = 0; $i -lt $tweaks.Count; $i++) {
       $tweakName = $sync.configs.tweaks.($tweaks[$i]).Content

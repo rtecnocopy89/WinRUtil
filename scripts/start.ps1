@@ -10,6 +10,8 @@
 
 param (
     [string]$Config,
+    [ValidateSet("Standard", "Minimal", "Advanced")]
+    [string]$Preset,
     [switch]$Run,
     [switch]$Noui,
     [switch]$Offline
@@ -17,6 +19,10 @@ param (
 
 if ($Config) {
     $PARAM_CONFIG = $Config
+}
+
+if ($Preset) {
+    $PARAM_PRESET = $Preset
 }
 
 $PARAM_RUN = $false
@@ -50,7 +56,8 @@ if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]:
         } elseif ($_.Value -is [array]) {
             "-$($_.Key) $($_.Value -join ',')"
         } elseif ($_.Value) {
-            "-$($_.Key) '$($_.Value)'"
+            # An apostrophe in a path is doubled, so that it stays inside the quotes
+            "-$($_.Key) '$($_.Value -replace "'", "''")'"
         }
     }
 
@@ -88,6 +95,7 @@ $sync.selectedApps = [System.Collections.Generic.List[string]]::new()
 $sync.selectedTweaks = [System.Collections.Generic.List[string]]::new()
 $sync.selectedToggles = [System.Collections.Generic.List[string]]::new()
 $sync.selectedFeatures = [System.Collections.Generic.List[string]]::new()
+$sync.selectedAppx = [System.Collections.Generic.List[string]]::new()
 $sync.currentTab = "Install"
 $sync.selectedAppsStackPanel
 $sync.selectedAppsPopup

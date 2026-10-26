@@ -55,6 +55,7 @@
         "WPFExpandAllCategories" {Invoke-WPFToggleAllCategories -Action "Expand"}
         "WPFStandard" {Invoke-WPFPresets "Standard" -checkboxfilterpattern "WPFTweak*"}
         "WPFMinimal" {Invoke-WPFPresets "Minimal" -checkboxfilterpattern "WPFTweak*"}
+        "WPFAdvanced" {Invoke-WPFPresets "Advanced" -checkboxfilterpattern "WPFTweak*"}
         "WPFClearTweaksSelection" {Invoke-WPFPresets -imported $true -checkboxfilterpattern "WPFTweak*"}
         "WPFClearInstallSelection" {Invoke-WPFPresets -imported $true -checkboxfilterpattern "WPFInstall*"}
         "WPFtweaksbutton" {Invoke-WPFtweaksbutton}
@@ -78,11 +79,30 @@
         "WPFWifiImport" {Invoke-WPFWifiImport}
         "WPFWifiQrSave" {Invoke-WPFWifiQrSave}
         "WPFWifiQrClose" {Invoke-WPFWifiQrClose}
+        "WPFOpenAppxTab" {Invoke-WPFTab "WPFTab9BT"}
+        "WPFRemoveSelectedAppx" {Invoke-WPFAppxRemoval}
+        "WPFInstallSelectedAppx" {Invoke-WPFAppxInstall}
+        "WPFDefaultAppxSelection" {Invoke-WPFPresets "AppxDefault" -checkboxfilterpattern "WPFAppx*"}
+        "WPFSelectAllAppx" {
+            foreach ($key in $sync.configs.appxHashtable.Keys) { $sync.$key.IsChecked = $true }
+        }
+        "WPFClearAppxSelection" {
+            foreach ($key in $sync.configs.appxHashtable.Keys) { $sync.$key.IsChecked = $false }
+        }
+        "WPFGetInstalledAppx" {Invoke-WPFGetInstalledAppx}
         "WPFReportCreate" {Invoke-WPFReportCreate}
         "WPFReportClear" {Invoke-WPFReportClear}
         "WPFSystemInfoRefresh" {Invoke-WPFSystemInfoRefresh}
         "WPFSystemInfoExport" {Invoke-WPFSystemInfoExport}
         "WPFCloseButton" {$sync.Form.Close(); Write-Host "Bye bye!"}
+        "WPFMinimizeButton" {[Windows.SystemCommands]::MinimizeWindow($sync.Form)}
+        "WPFMaximizeButton" {
+            if ($sync.Form.WindowState -eq [Windows.WindowState]::Maximized) {
+                [Windows.SystemCommands]::RestoreWindow($sync.Form)
+            } else {
+                [Windows.SystemCommands]::MaximizeWindow($sync.Form)
+            }
+        }
         "WPFselectedAppsButton" {$sync.selectedAppsPopup.IsOpen = -not $sync.selectedAppsPopup.IsOpen}
         "WPFToggleFOSSHighlight" {
             if ($sync.WPFToggleFOSSHighlight.IsChecked) {

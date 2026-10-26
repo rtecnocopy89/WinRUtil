@@ -188,6 +188,35 @@
 
 
     </Style>
+    <!-- Category filters of the Install tab. Only the colours change on check, so the chips keep their width -->
+    <Style x:Key="AppCategoryChipStyle" TargetType="ToggleButton">
+        <Setter Property="Margin" Value="0,0,6,6"/>
+        <Setter Property="Padding" Value="11,3,11,3"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="FontSize" Value="{DynamicResource ButtonFontSize}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource ButtonFontFamily}"/>
+        <Setter Property="Foreground" Value="{DynamicResource MainForegroundColor}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="ChipBorder" Background="{DynamicResource AppInstallUnselectedColor}"
+                            BorderBrush="{DynamicResource AppInstallHighlightedColor}" BorderThickness="1"
+                            CornerRadius="12" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="ChipBorder" Property="Background" Value="{DynamicResource AppInstallHighlightedColor}"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="ChipBorder" Property="Background" Value="{DynamicResource AppInstallSelectedColor}"/>
+                            <Setter TargetName="ChipBorder" Property="BorderBrush" Value="{DynamicResource AccentColor}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
     <Style TargetType="Button" x:Key="HoverButtonStyle">
         <Setter Property="Foreground" Value="{DynamicResource MainForegroundColor}" />
         <Setter Property="FontWeight" Value="Normal" />
@@ -1007,6 +1036,12 @@
                             <TextBlock Text="Ottimizza" FontSize="14" VerticalAlignment="Center" Foreground="{DynamicResource MainForegroundColor}"/>
                         </StackPanel>
                     </ToggleButton>
+                    <ToggleButton Name="WPFTab9BT">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE71D;" FontSize="15" Width="24" VerticalAlignment="Center" Foreground="{DynamicResource MainForegroundColor}"/>
+                            <TextBlock Text="App di Windows" FontSize="14" VerticalAlignment="Center" Foreground="{DynamicResource MainForegroundColor}"/>
+                        </StackPanel>
+                    </ToggleButton>
                     <ToggleButton Name="WPFTab3BT">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xEC7A;" FontSize="15" Width="24" VerticalAlignment="Center" Foreground="{DynamicResource MainForegroundColor}"/>
@@ -1238,6 +1273,39 @@
                     </Border>
                 </Popup>
 
+                    <Button Name="WPFMinimizeButton"
+                    Content="&#xE921;" BorderThickness="0"
+                    BorderBrush="Transparent"
+                    Background="Transparent"
+                    Width="{DynamicResource IconButtonSize}" Height="{DynamicResource IconButtonSize}"
+                    HorizontalAlignment="Right" VerticalAlignment="Top"
+                    Margin="0,0,0,0"
+                    FontFamily="Segoe MDL2 Assets"
+                    Foreground="{DynamicResource MainForegroundColor}" FontSize="{DynamicResource WindowButtonFontSize}"
+                    ToolTip="Riduci a icona" AutomationProperties.Name="Riduci a icona"/>
+                    <Button Name="WPFMaximizeButton" BorderThickness="0"
+                    BorderBrush="Transparent"
+                    Background="Transparent"
+                    Width="{DynamicResource IconButtonSize}" Height="{DynamicResource IconButtonSize}"
+                    HorizontalAlignment="Right" VerticalAlignment="Top"
+                    Margin="0,0,0,0"
+                    FontFamily="Segoe MDL2 Assets"
+                    Foreground="{DynamicResource MainForegroundColor}" FontSize="{DynamicResource WindowButtonFontSize}">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                <Setter Property="Content" Value="&#xE922;"/>
+                                <Setter Property="ToolTip" Value="Ingrandisci"/>
+                                <Setter Property="AutomationProperties.Name" Value="Ingrandisci"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Value="Maximized">
+                                        <Setter Property="Content" Value="&#xE923;"/>
+                                        <Setter Property="ToolTip" Value="Ripristina"/>
+                                        <Setter Property="AutomationProperties.Name" Value="Ripristina"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
                     <Button
                     Content="&#xD7;" BorderThickness="0"
                 BorderBrush="Transparent"
@@ -1246,7 +1314,8 @@
                 HorizontalAlignment="Right" VerticalAlignment="Top"
                 Margin="0,0,0,0"
                 FontFamily="{DynamicResource FontFamily}"
-                Foreground="{DynamicResource MainForegroundColor}" FontSize="{DynamicResource CloseIconFontSize}" Name="WPFCloseButton" />
+                Foreground="{DynamicResource MainForegroundColor}" FontSize="{DynamicResource CloseIconFontSize}" Name="WPFCloseButton"
+                ToolTip="Chiudi" AutomationProperties.Name="Chiudi"/>
                 </StackPanel>
             </Grid>
         </Grid>
@@ -1264,7 +1333,15 @@
                         <Grid Name="appscategory" Grid.Column="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
                         </Grid>
 
-                        <Grid Name="appspanel" Grid.Column="1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                        <Grid Grid.Column="1">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <!-- Category filters, built from applications.json by Initialize-WinUtilAppCategoryChips -->
+                            <WrapPanel Name="WPFAppCategoryChips" Grid.Row="0" Orientation="Horizontal" Margin="5,5,5,0"/>
+                            <Grid Name="appspanel" Grid.Row="1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                            </Grid>
                         </Grid>
                     </Grid>
 
@@ -1414,12 +1491,16 @@
 
                             <StackPanel Background="Transparent" Orientation="Vertical" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Margin="5">
                                 <Label Content="Selezioni consigliate:" FontSize="{DynamicResource FontSize}" VerticalAlignment="Center" Margin="2"/>
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,2,0,0">
+                                <WrapPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,2,0,0">
                                     <Button Name="WPFstandard" Content=" Standard " Margin="2" Width="{DynamicResource ButtonWidth}" Height="{DynamicResource ButtonHeight}"/>
                                     <Button Name="WPFminimal" Content=" Minima " Margin="2" Width="{DynamicResource ButtonWidth}" Height="{DynamicResource ButtonHeight}"/>
+                                    <Button Name="WPFadvanced" Content=" Avanzata " Margin="2" Width="{DynamicResource ButtonWidth}" Height="{DynamicResource ButtonHeight}"
+                                            ToolTip="Le ottimizzazioni Standard (tranne Pulizia disco) e in più: rimozione di OneDrive, dei widget e delle funzioni di intelligenza artificiale, niente app del Microsoft Store nella ricerca, menu Start e menu del tasto destro precedenti."/>
                                     <Button Name="WPFClearTweaksSelection" Content=" Azzera " Margin="2" Width="{DynamicResource ButtonWidth}" Height="{DynamicResource ButtonHeight}"/>
                                     <Button Name="WPFGetInstalledTweaks" Content=" Rileva ottimizzazioni attive " Margin="2" Width="{DynamicResource ButtonWidth}" Height="{DynamicResource ButtonHeight}"/>
-                                </StackPanel>
+                                    <Button Name="WPFOpenAppxTab" Content=" Rimuovi app di Windows " Margin="2" Width="{DynamicResource ButtonWidth}" Height="{DynamicResource ButtonHeight}"
+                                            ToolTip="Apre la scheda App di Windows, per rimuovere o reinstallare le app preinstallate (Copilot, Xbox, Notizie...)"/>
+                                </WrapPanel>
                             </StackPanel>
 
                             <Grid Name="tweakspanel" Grid.Row="1">
@@ -1479,11 +1560,11 @@
                                              Foreground="{DynamicResource MainForegroundColor}">
                                         <Run FontWeight="Bold">Configurazione predefinita di Windows Update</Run>
                                         <LineBreak/>
-                                         - Nessuna modifica ai valori predefiniti di Windows
+                                         - Rimuove le impostazioni di aggiornamento applicate da WinRUtil
                                         <LineBreak/>
-                                         - Rimuove le impostazioni di aggiornamento personalizzate
+                                         - Riattiva i servizi e le attività pianificate di Windows Update
                                         <LineBreak/><LineBreak/>
-                                        <Run FontStyle="Italic" FontSize="11">Nota: ripristina le impostazioni di Windows Update ai valori predefiniti di fabbrica. Rimuove QUALSIASI criterio o personalizzazione applicata a Windows Update.</Run>
+                                        <Run FontStyle="Italic" FontSize="11">Nota: gli altri criteri di Windows Update, ad esempio il server WSUS aziendale, restano invariati.</Run>
                                     </TextBlock>
                                 </StackPanel>
                             </Border>
@@ -1506,6 +1587,8 @@
                                          - Aggiornamenti di sicurezza installati dopo 4 giorni
                                         <LineBreak/>
                                          - Impedisce a Windows Update di installare driver
+                                        <LineBreak/>
+                                         - Scarica gli aggiornamenti e chiede prima di installarli, senza riavvii improvvisi
                                         <LineBreak/><LineBreak/>
                                         <Run FontWeight="SemiBold">Aggiornamenti funzionalità:</Run> nuove funzionalità e possibili bug
                                         <LineBreak/>
@@ -2423,6 +2506,56 @@
                                 </StackPanel>
                             </StackPanel>
                         </Border>
+                    </Border>
+                </Grid>
+            </TabItem>
+            <TabItem Header="AppX" Visibility="Collapsed" Name="WPFTab9">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Grid.Row="0" Margin="{DynamicResource TabContentMargin}">
+                        <Grid Background="Transparent">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <StackPanel Background="Transparent" Orientation="Vertical" Grid.Row="0" Margin="5">
+                                <Label Content="Selezione:" FontSize="{DynamicResource FontSize}" VerticalAlignment="Center" Margin="2"/>
+                                <WrapPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,2,0,0">
+                                    <Button Name="WPFDefaultAppxSelection" Content=" Consigliate " Margin="2" Width="{DynamicResource ButtonWidth}" Height="{DynamicResource ButtonHeight}"
+                                            ToolTip="Seleziona le app che di solito non servono: Hub di Feedback, Richiedi assistenza, Microsoft 365, Clipchamp, Notizie, Meteo, Copilot..."/>
+                                    <Button Name="WPFGetInstalledAppx" Content=" Seleziona installate " Margin="2" Width="{DynamicResource ButtonWidth}" Height="{DynamicResource ButtonHeight}"
+                                            ToolTip="Seleziona le app dell'elenco installate su questo PC"/>
+                                    <Button Name="WPFSelectAllAppx" Content=" Seleziona tutte " Margin="2" Width="{DynamicResource ButtonWidth}" Height="{DynamicResource ButtonHeight}"/>
+                                    <Button Name="WPFClearAppxSelection" Content=" Azzera " Margin="2" Width="{DynamicResource ButtonWidth}" Height="{DynamicResource ButtonHeight}"/>
+                                </WrapPanel>
+                            </StackPanel>
+
+                            <Grid Name="appxpanel" Grid.Row="1">
+                            </Grid>
+
+                            <Border Grid.Row="2" Style="{StaticResource BorderStyle}">
+                                <StackPanel Background="{DynamicResource MainBackgroundColor}" Orientation="Horizontal" HorizontalAlignment="Left">
+                                    <TextBlock Padding="10" TextWrapping="Wrap">
+                                        Nota: passa il mouse sopra le voci per una descrizione. "Rimuovi selezionate" toglie le app a tutti gli utenti e anche ai profili creati in seguito.
+                                        <LineBreak/>"Reinstalla selezionate" registra di nuovo l'app dalla copia rimasta sul PC oppure la scarica dal Microsoft Store.
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </ScrollViewer>
+                    <Border Grid.Row="1" Background="{DynamicResource MainBackgroundColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="5" HorizontalAlignment="Stretch" Padding="10">
+                        <DockPanel LastChildFill="True">
+                            <Button Name="WPFRemoveSelectedAppx" DockPanel.Dock="Left" Content="Rimuovi selezionate" Margin="5" Width="{DynamicResource ButtonWidth}" Height="{DynamicResource ButtonHeight}"/>
+                            <Button Name="WPFInstallSelectedAppx" DockPanel.Dock="Left" Content="Reinstalla selezionate" Margin="5" Width="{DynamicResource ButtonWidth}" Height="{DynamicResource ButtonHeight}"/>
+                            <TextBlock Name="WPFAppxStatus" Margin="12,0,5,0" VerticalAlignment="Center" TextWrapping="Wrap"
+                                       FontSize="12" Foreground="{DynamicResource MutedForegroundColor}"/>
+                        </DockPanel>
                     </Border>
                 </Grid>
             </TabItem>

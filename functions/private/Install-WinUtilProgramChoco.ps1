@@ -64,7 +64,8 @@
         #>
 
         param ($arguments)
-        return (Start-Process -FilePath "choco" -ArgumentList $arguments -Wait -PassThru).ExitCode
+        # Only choco is waited for: an installer may leave the installed application open
+        return Invoke-WinUtilProcess -FilePath "choco" -ArgumentList $arguments
     }
 
     function Test-UpgradeNeeded {
@@ -175,7 +176,8 @@
 
         try {
             $installStatusCode = Invoke-ChocoCommand "install $Program -y --log-file $installOutputFile"
-            if ($installStatusCode -eq 0) {
+            # 1641 and 3010: installed, a restart is needed to finish
+            if ($installStatusCode -in @(0, 1641, 3010)) {
 
                 if (Test-UpgradeNeeded $installOutputFile) {
                     $upgradeStatusCode = Invoke-ChocoCommand "upgrade $Program -y"
@@ -236,8 +238,9 @@
             Write-Host "Starting uninstallation of $chocoPackages with Chocolatey..."
             try {
                 $uninstallStatusCode = Invoke-ChocoCommand "uninstall $chocoPackages -y"
-                Write-Host "$Program" $(if ($uninstallStatusCode -eq 0) { "uninstalled successfully." } else { "failed to uninstall." })
-                Add-ReportAction $Program "Disinstallazione di {0}" ($uninstallStatusCode -eq 0)
+                $uninstalled = $uninstallStatusCode -in @(0, 1641, 3010)
+                Write-Host "$Program" $(if ($uninstalled) { "uninstalled successfully." } else { "failed to uninstall." })
+                Add-ReportAction $Program "Disinstallazione di {0}" $uninstalled
             }
             catch {
                 Write-Host "Failed to uninstall $Program due to an error: $_"

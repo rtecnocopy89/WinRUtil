@@ -15,64 +15,33 @@
     Param($ToggleSwitch)
 
     $ToggleSwitchReg = $sync.configs.tweaks.$ToggleSwitch.registry
-
-    try {
-        if (($ToggleSwitchReg.path -imatch "hku") -and !(Get-PSDrive -Name HKU -ErrorAction SilentlyContinue)) {
-            $null = (New-PSDrive -PSProvider Registry -Name HKU -Root HKEY_USERS)
-            if (Get-PSDrive -Name HKU -ErrorAction SilentlyContinue) {
-                Write-Debug "HKU drive created successfully."
-            } else {
-                Write-Debug "Failed to create HKU drive."
-            }
-        }
-    } catch {
-        Write-Error "An error occurred regarding the HKU Drive: $_"
+    if (-not $ToggleSwitchReg) {
         return $false
     }
 
-    if ($ToggleSwitchReg) {
-        $count = 0
+    if (-not (Get-PSDrive -Name HKU -ErrorAction SilentlyContinue)) {
+        New-PSDrive -PSProvider Registry -Name HKU -Root HKEY_USERS -ErrorAction SilentlyContinue | Out-Null
+    }
 
-        foreach ($regentry in $ToggleSwitchReg) {
-            try {
-                if (!(Test-Path $regentry.Path)) {
-                    New-Item -Path $regentry.Path -Force | Out-Null
-                }
-                $regstate = (Get-ItemProperty -path $regentry.Path).$($regentry.Name)
-                if ($regstate -eq $regentry.Value) {
-                    $count += 1
-                    Write-Debug "$($regentry.Name) is true (state: $regstate, value: $($regentry.Value), original: $($regentry.OriginalValue))"
-                } else {
-                    Write-Debug "$($regentry.Name) is false (state: $regstate, value: $($regentry.Value), original: $($regentry.OriginalValue))"
-                }
-                if ($null -eq $regstate) {
-                    switch ($regentry.DefaultState) {
-                        "true" {
-                            $regstate = $regentry.Value
-                            $count += 1
-                        }
-                        "false" {
-                            $regstate = $regentry.OriginalValue
-                        }
-                        default {
-                            Write-Error "Entry for $($regentry.Name) does not exist and no DefaultState is defined."
-                            $regstate = $regentry.OriginalValue
-                        }
-                    }
-                }
-            } catch {
-                Write-Error "An unexpected error occurred: $_"
+    # Reading the state must not change the registry: a missing key or value takes the DefaultState of the entry
+    foreach ($regentry in $ToggleSwitchReg) {
+        $regstate = $null
+        if (Test-Path $regentry.Path) {
+            $regstate = (Get-ItemProperty -Path $regentry.Path -ErrorAction SilentlyContinue).$($regentry.Name)
+        }
+
+        if ($null -eq $regstate) {
+            switch ([string]$regentry.DefaultState) {
+                "true"  { $regstate = $regentry.Value }
+                "false" { $regstate = $regentry.OriginalValue }
             }
         }
 
-        if ($count -eq $ToggleSwitchReg.Count) {
-            Write-Debug "$($ToggleSwitchReg.Name) is true (count: $count)"
-            return $true
-        } else {
-            Write-Debug "$($ToggleSwitchReg.Name) is false (count: $count)"
+        if ($regstate -ne $regentry.Value) {
+            Write-Debug "$($regentry.Name) is false (state: $regstate, value: $($regentry.Value), original: $($regentry.OriginalValue))"
             return $false
         }
-    } else {
-        return $false
     }
+
+    return $true
 }

@@ -10,6 +10,8 @@
 
 param (
     [string]$Config,
+    [ValidateSet("Standard", "Minimal", "Advanced")]
+    [string]$Preset,
     [switch]$Run,
     [switch]$Noui,
     [switch]$Offline
@@ -17,6 +19,10 @@ param (
 
 if ($Config) {
     $PARAM_CONFIG = $Config
+}
+
+if ($Preset) {
+    $PARAM_PRESET = $Preset
 }
 
 $PARAM_RUN = $false
@@ -50,7 +56,8 @@ if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]:
         } elseif ($_.Value -is [array]) {
             "-$($_.Key) $($_.Value -join ',')"
         } elseif ($_.Value) {
-            "-$($_.Key) '$($_.Value)'"
+            # An apostrophe in a path is doubled, so that it stays inside the quotes
+            "-$($_.Key) '$($_.Value -replace "'", "''")'"
         }
     }
 
@@ -88,6 +95,7 @@ $sync.selectedApps = [System.Collections.Generic.List[string]]::new()
 $sync.selectedTweaks = [System.Collections.Generic.List[string]]::new()
 $sync.selectedToggles = [System.Collections.Generic.List[string]]::new()
 $sync.selectedFeatures = [System.Collections.Generic.List[string]]::new()
+$sync.selectedAppx = [System.Collections.Generic.List[string]]::new()
 $sync.currentTab = "Install"
 $sync.selectedAppsStackPanel
 $sync.selectedAppsPopup
@@ -713,17 +721,45 @@ function ConvertTo-WinUtilQRCode {
 function Find-AppsByNameOrDescription {
     <#
         .SYNOPSIS
-            Searches through the Apps on the Install Tab and hides all entries that do not match the string
+            Filters the apps of the Install tab by search text and by category
+
+        .DESCRIPTION
+            An app is shown when its name or description contains the search text and its
+            category is one of the categories chosen with the chips. An empty search text matches
+            every app, and no category chosen matches every category.
+
+            While a filter is active the categories with results are expanded, otherwise a collapsed
+            category would hide them; without filters the categories go back to how the user left them.
 
         .PARAMETER SearchString
-            The string to be searched for
+            The string to be searched for. Wildcards are treated as normal characters.
+
+        .PARAMETER Categories
+            The categories to show. Without categories every category is shown.
     #>
     param(
         [Parameter(Mandatory=$false)]
-        [string]$SearchString = ""
+        [string]$SearchString = "",
+
+        [Parameter(Mandatory=$false)]
+        [string[]]$Categories = @()
     )
-    # Reset the visibility if the search string is empty or the search is cleared
-    if ([string]::IsNullOrWhiteSpace($SearchString)) {
+
+    if ($null -eq $sync.ItemsControl) {
+        return
+    }
+
+    # Categories expanded by the filters, so that clearing the filters can collapse them again
+    if ($null -eq $sync.AppCategoryAutoExpanded) {
+        $sync.AppCategoryAutoExpanded = @{}
+    }
+
+    $activeCategories = @($Categories | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    $hasSearch = -not [string]::IsNullOrWhiteSpace($SearchString)
+    $hasCategories = $activeCategories.Count -gt 0
+
+    # Reset the visibility if there are no filters
+    if (-not $hasSearch -and -not $hasCategories) {
         $sync.ItemsControl.Items | ForEach-Object {
             # Each item is a StackPanel container
             $_.Visibility = [Windows.Visibility]::Visible
@@ -734,6 +770,13 @@ function Find-AppsByNameOrDescription {
 
                 # Keep category label visible
                 $categoryLabel.Visibility = [Windows.Visibility]::Visible
+
+                # A category expanded by a filter goes back to how the user left it
+                $categoryName = $categoryLabel.Content -replace '^[+-] ', ''
+                if ($sync.AppCategoryAutoExpanded.ContainsKey($categoryName)) {
+                    $categoryLabel.Content = $categoryLabel.Content -replace "^- ", "+ "
+                    $sync.AppCategoryAutoExpanded.Remove($categoryName)
+                }
 
                 # Respect the collapsed state of categories (indicated by + prefix)
                 if ($categoryLabel.Content -like "+*") {
@@ -751,7 +794,8 @@ function Find-AppsByNameOrDescription {
         return
     }
 
-    # Perform search
+    $escapedSearchString = [System.Management.Automation.WildcardPattern]::Escape($SearchString)
+
     $sync.ItemsControl.Items | ForEach-Object {
         # Each item is a StackPanel container with Children[0] = label, Children[1] = WrapPanel
         if ($_.Children.Count -ge 2) {
@@ -762,26 +806,28 @@ function Find-AppsByNameOrDescription {
             # Keep category label visible
             $categoryLabel.Visibility = [Windows.Visibility]::Visible
 
-            # Search through apps in this category
-            $wrapPanel.Children | ForEach-Object {
-                $appEntry = $sync.configs.applicationsHashtable.$($_.Tag)
-                if ($appEntry.Content -like "*$SearchString*" -or $appEntry.Description -like "*$SearchString*") {
-                    # Show the App and mark that this category has a match
-                    $_.Visibility = [Windows.Visibility]::Visible
+            foreach ($appControl in $wrapPanel.Children) {
+                $appEntry = $sync.configs.applicationsHashtable[[string]$appControl.Tag]
+                $categoryMatch = -not $hasCategories -or $activeCategories -contains $appEntry.Category
+                $textMatch = -not $hasSearch -or
+                    $appEntry.Content -like "*$escapedSearchString*" -or
+                    $appEntry.Description -like "*$escapedSearchString*"
+
+                if ($appEntry -and $categoryMatch -and $textMatch) {
+                    $appControl.Visibility = [Windows.Visibility]::Visible
                     $categoryHasMatch = $true
-                }
-                else {
-                    $_.Visibility = [Windows.Visibility]::Collapsed
+                } else {
+                    $appControl.Visibility = [Windows.Visibility]::Collapsed
                 }
             }
 
-            # If category has matches, show the WrapPanel and update the category label to expanded state
             if ($categoryHasMatch) {
                 $wrapPanel.Visibility = [Windows.Visibility]::Visible
                 $_.Visibility = [Windows.Visibility]::Visible
-                # Update category label to show expanded state (-)
+                # Expand the category to show its matches, and remember that it was collapsed
                 if ($categoryLabel.Content -like "+*") {
                     $categoryLabel.Content = $categoryLabel.Content -replace "^\+ ", "- "
+                    $sync.AppCategoryAutoExpanded[($categoryLabel.Content -replace '^- ', '')] = $true
                 }
             } else {
                 # Hide the entire category container if no matches
@@ -803,10 +849,15 @@ function Find-TweaksByNameOrDescription {
         [string]$SearchString = ""
     )
 
+    # The same search serves the tweaks and the Windows apps
+    $panelName = if ($sync.currentTab -eq "AppX") { "appxpanel" } else { "tweakspanel" }
+    # Wildcards in the search text are normal characters
+    $SearchString = [System.Management.Automation.WildcardPattern]::Escape($SearchString)
+
     # Reset the visibility if the search string is empty or the search is cleared
     if ([string]::IsNullOrWhiteSpace($SearchString)) {
         # Show all categories
-        $tweakspanel = $sync.Form.FindName("tweakspanel")
+        $tweakspanel = $sync.Form.FindName($panelName)
         $tweakspanel.Children | ForEach-Object {
             $_.Visibility = [Windows.Visibility]::Visible
 
@@ -836,7 +887,7 @@ function Find-TweaksByNameOrDescription {
     }
 
     # Search for matching tweaks when search string is not null
-    $tweakspanel = $sync.Form.FindName("tweakspanel")
+    $tweakspanel = $sync.Form.FindName($panelName)
 
     $tweakspanel.Children | ForEach-Object {
         $categoryBorder = $_
@@ -924,6 +975,184 @@ function Get-LocalizedYesNo {
     return $charactersArray
 
   }
+function Get-WinUtilAppCategoryName {
+    <#
+    .SYNOPSIS
+        Returns the Italian name shown for a category of applications.json
+
+    .PARAMETER Category
+        The category as written in applications.json. A category without a translation is shown as it is.
+
+    .EXAMPLE
+        Get-WinUtilAppCategoryName -Category "Multimedia Tools"
+    #>
+
+    param([string]$Category)
+
+    $names = @{
+        "Browsers"         = "Browser"
+        "Communications"   = "Comunicazione"
+        "Development"      = "Sviluppo"
+        "Document"         = "Documenti"
+        "Games"            = "Giochi"
+        "Microsoft Tools"  = "Strumenti Microsoft"
+        "Multimedia Tools" = "Multimedia"
+        "Pro Tools"        = "Strumenti professionali"
+        "Selfhosted Tools" = "Self-hosted"
+        "Utilities"        = "Utilit$([char]0x00E0)"
+    }
+
+    if ($names.ContainsKey($Category)) {
+        return $names[$Category]
+    }
+    return $Category
+}
+function Get-WinUtilAppEntryHandlers {
+    <#
+        .SYNOPSIS
+            The event handlers shared by every app entry on the Install tab
+
+        .DESCRIPTION
+            A script block written inside a loop is a new script block every time round, and building
+            them for every app is the largest cost of drawing the app list. None of them depend on the
+            entry: they read the control that raised the event through $this, so one set serves every app.
+    #>
+
+    if ($null -ne $script:WinUtilAppEntryHandlers) {
+        return $script:WinUtilAppEntryHandlers
+    }
+
+    $script:WinUtilAppEntryHandlers = @{
+        BorderClick = {
+            $childCheckbox = $sync.$($this.Tag)
+            $childCheckbox.IsChecked = -not $childCheckbox.IsChecked
+        }
+        MouseEnter = {
+            if (($sync.$($this.Tag).IsChecked) -eq $false) {
+                $this.SetResourceReference([Windows.Controls.Control]::BackgroundProperty, "AppInstallHighlightedColor")
+            }
+        }
+        MouseLeave = {
+            if (($sync.$($this.Tag).IsChecked) -eq $false) {
+                $this.SetResourceReference([Windows.Controls.Control]::BackgroundProperty, "AppInstallUnselectedColor")
+            }
+        }
+        RightClick = {
+            # Store the selected app in a global variable so it can be used in the popup
+            $sync.appPopupSelectedApp = $this.Tag
+            # Set the popup position to the current mouse position
+            $sync.appPopup.PlacementTarget = $this
+            $sync.appPopup.IsOpen = $true
+        }
+        Checked = {
+            Invoke-WPFSelectedCheckboxesUpdate -type "Add" -checkboxName $this.Parent.Tag
+            $this.Parent.SetResourceReference([Windows.Controls.Control]::BackgroundProperty, "AppInstallSelectedColor")
+        }
+        Unchecked = {
+            Invoke-WPFSelectedCheckboxesUpdate -type "Remove" -checkboxName $this.Parent.Tag
+            $this.Parent.SetResourceReference([Windows.Controls.Control]::BackgroundProperty, "AppInstallUnselectedColor")
+        }
+        # Without a connection, or when the site has no icon, the initial of the app stays visible
+        ImageFailed = {
+            $this.Visibility = "Collapsed"
+            $this.Parent.Children[0].Visibility = "Visible"
+        }
+    }
+
+    return $script:WinUtilAppEntryHandlers
+}
+function Get-WinUtilDNSBenchmark {
+    <#
+
+    .SYNOPSIS
+        Measures the latency of the neutral DNS providers (TCP connection to port 53) to find the fastest one
+
+    .PARAMETER TimeoutMs
+        Maximum time for each connection test, in milliseconds
+
+    .OUTPUTS
+        Provider, PrimaryIP and LatencyMs of each provider, the fastest first. 9999 means no answer.
+
+    .EXAMPLE
+        $fastest = (Get-WinUtilDNSBenchmark)[0]
+
+    #>
+    [CmdletBinding()]
+    param(
+        [ValidateRange(1, 9998)]
+        [int]$TimeoutMs = 1500
+    )
+
+    $dnsConfigs = $sync.configs.dns
+    if ($null -eq $dnsConfigs) {
+        Write-Warning "DNS configurations not found in `$sync.configs.dns."
+        return @()
+    }
+
+    $results = [System.Collections.Generic.List[PSObject]]::new()
+
+    foreach ($prop in $dnsConfigs.PSObject.Properties) {
+        $providerName = $prop.Name
+        $primaryIp = $prop.Value.Primary
+        if (-not $primaryIp) { continue }
+
+        # Only the providers marked in dns.json, so that a filtering service is never chosen automatically
+        if ($prop.Value.BenchmarkEligible -ne $true) {
+            continue
+        }
+
+        $latency = 9999
+        $client = $null
+        try {
+            $client = New-Object System.Net.Sockets.TcpClient
+            $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+            $asyncResult = $client.BeginConnect($primaryIp, 53, $null, $null)
+            $success = $asyncResult.AsyncWaitHandle.WaitOne($TimeoutMs, $false)
+            $stopwatch.Stop()
+
+            if ($success) {
+                $client.EndConnect($asyncResult)
+                $latency = [int]$stopwatch.ElapsedMilliseconds
+            }
+        } catch {
+            $latency = 9999
+        } finally {
+            if ($null -ne $client) {
+                $client.Dispose()
+            }
+        }
+
+        $results.Add([PSCustomObject]@{
+            Provider  = $providerName
+            PrimaryIP = $primaryIp
+            LatencyMs = $latency
+        })
+    }
+
+    return @($results | Sort-Object LatencyMs)
+}
+function Get-WinUtilInstalledAPPX {
+    <#
+
+    .SYNOPSIS
+        Gets the names of the AppX packages installed for all users
+
+    #>
+
+    # In PowerShell 7 the AppX module can depend on a temporary compatibility session of
+    # Windows PowerShell, so the packages are read in Windows PowerShell 5.1
+    $ps5Command = {
+        Get-AppxPackage -AllUsers -ErrorAction Stop | Select-Object -ExpandProperty Name
+    }
+
+    $packageOutput = powershell.exe -NoProfile -NonInteractive -Command $ps5Command 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning "Failed to get the installed AppX packages: $(($packageOutput | Out-String).Trim())"
+        return @()
+    }
+
+    return @($packageOutput)
+}
 function Get-WinUtilProgramUpdates {
     <#
     .SYNOPSIS
@@ -947,9 +1176,24 @@ function Get-WinUtilProgramUpdates {
         [string]$Manager
     )
 
+    # The output goes through a file, so that a package manager that stops responding can be stopped
+    # instead of leaving the search running for ever
+    $outputFile = Join-Path $env:TEMP ("WinRUtil-updates-{0}.txt" -f [guid]::NewGuid())
+    try {
+        if ($Manager -eq "Choco") {
+            $exitCode = Invoke-WinUtilProcess -FilePath "choco" -ArgumentList "outdated --limit-output --ignore-unfound" -NoNewWindow -OutputFile $outputFile -TimeoutSeconds 300
+        } else {
+            $exitCode = Invoke-WinUtilProcess -FilePath "winget" -ArgumentList "upgrade --include-unknown --accept-source-agreements --disable-interactivity" -NoNewWindow -OutputFile $outputFile -TimeoutSeconds 300
+        }
+        # WinGet writes UTF-8 when its output is redirected
+        $lines = @([System.IO.File]::ReadAllLines($outputFile, [System.Text.Encoding]::UTF8))
+    } finally {
+        Remove-Item -LiteralPath $outputFile -Force -ErrorAction SilentlyContinue
+    }
+
     if ($Manager -eq "Choco") {
         # One "name|installed|available|pinned" line per outdated package; pinned packages are not upgraded
-        $lines = choco outdated --limit-output --ignore-unfound | Where-Object { $_ -match '^[^|]+\|[^|]*\|[^|]+\|false$' }
+        $lines = $lines | Where-Object { $_ -match '^[^|]+\|[^|]*\|[^|]+\|false$' }
         foreach ($line in $lines) {
             $name, $version, $available = ($line -split '\|')[0..2]
             [pscustomobject]@{
@@ -966,15 +1210,6 @@ function Get-WinUtilProgramUpdates {
             }
         }
         return
-    }
-
-    $originalEncoding = [Console]::OutputEncoding
-    try {
-        [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new()
-        $lines = @(winget upgrade --include-unknown --accept-source-agreements --disable-interactivity | Out-String -Stream)
-        $exitCode = $LASTEXITCODE
-    } finally {
-        [Console]::OutputEncoding = $originalEncoding
     }
 
     $rows = @(ConvertFrom-WinUtilWingetTable -Lines $lines)
@@ -999,6 +1234,69 @@ function Get-WinUtilProgramUpdates {
         }
     }
 }
+function Get-WinUtilRegistryComboState {
+    <#
+    .SYNOPSIS
+        Finds the choice of a combo box that matches the current registry values
+
+    .PARAMETER Registry
+        The registry entries of the combo box, with the value of each choice in Values
+
+    .OUTPUTS
+        The name of the matching choice. Throws an error when the values match no choice.
+    #>
+    param(
+        [Parameter(Mandatory)]
+        $Registry
+    )
+
+    foreach ($state in $Registry[0].Values.PSObject.Properties) {
+        $stateMatches = $true
+        foreach ($setting in @($Registry)) {
+            $currentValue = Get-WinUtilRegistryComboValue -Setting $setting
+            $actualValue = if ($currentValue.Exists -and $null -ne $currentValue.Value) { $currentValue.Value } else { $setting.DefaultValue }
+            $configuredValue = $setting.Values.PSObject.Properties[$state.Name].Value
+            # A removed value means the default of Windows
+            $expectedValue = if ($configuredValue -eq "<RemoveEntry>") { $setting.DefaultValue } else { $configuredValue }
+            if ([string]$actualValue -ne [string]$expectedValue) {
+                $stateMatches = $false
+                break
+            }
+        }
+        if ($stateMatches) {
+            return $state.Name
+        }
+    }
+
+    throw "I valori del registro non corrispondono a nessuna delle scelte disponibili."
+}
+function Get-WinUtilRegistryComboValue {
+    <#
+    .SYNOPSIS
+        Reads one registry value of a combo box whose choices are registry states
+
+    .PARAMETER Setting
+        The registry entry of the combo box in tweaks.json
+
+    .OUTPUTS
+        Exists, and the Value when the value exists
+    #>
+    param(
+        [Parameter(Mandatory)]
+        $Setting
+    )
+
+    try {
+        $item = Get-ItemProperty -Path $Setting.Path -Name $Setting.Name -ErrorAction Stop
+        $property = $item.PSObject.Properties[$Setting.Name]
+        return [pscustomobject]@{ Exists = $null -ne $property; Value = $property.Value }
+    } catch [System.Management.Automation.PSArgumentException] {
+        # The registry provider throws PSArgumentException when a named value is missing
+        return [pscustomobject]@{ Exists = $false; Value = $null }
+    } catch [System.Management.Automation.ItemNotFoundException] {
+        return [pscustomobject]@{ Exists = $false; Value = $null }
+    }
+}
 function Get-WinUtilSelectedPackages
 {
      <#
@@ -1012,7 +1310,9 @@ function Get-WinUtilSelectedPackages
         [Parameter(Mandatory=$true)]
         $PackageList,
         [Parameter(Mandatory=$true)]
-        [PackageManagers]$Preference
+        [PackageManagers]$Preference,
+        [ValidateSet("Install", "Uninstall")]
+        [string]$Action = "Install"
     )
 
     if ($PackageList.count -eq 1) {
@@ -1029,27 +1329,50 @@ function Get-WinUtilSelectedPackages
 
     Write-Debug "Checking packages using Preference '$($Preference)'"
 
+    function Test-PackageId {
+        param($PackageId)
+        -not ([string]::IsNullOrWhiteSpace([string]$PackageId) -or $PackageId -eq "na")
+    }
+
+    function Add-PackageId {
+        param(
+            [System.Collections.ArrayList]$Target,
+            $PackageId,
+            [string]$Manager
+        )
+
+        # A field can hold several IDs separated by ";" (dependencies first, then the app).
+        # Uninstalling removes only the app, the last ID.
+        $ids = [string]$PackageId -split ";"
+        if ($Action -eq "Uninstall") {
+            $ids = @($ids[-1])
+        }
+        foreach ($id in $ids) {
+            $id = $id.Trim()
+            if ((Test-PackageId $id) -and -not $Target.Contains($id)) {
+                $null = $Target.Add($id)
+                Write-Host "Queueing $id for $Manager..."
+            }
+        }
+    }
+
     foreach ($package in $PackageList) {
         switch ($Preference) {
             "Choco" {
-                if ($package.choco -eq "na") {
-                    Write-Debug "$($package.content) has no Choco value."
-                    $null = $packagesWinget.add($($package.winget))
-                    Write-Host "Queueing $($package.winget) for WinGet..."
+                if (Test-PackageId $package.choco) {
+                    Add-PackageId -Target $packagesChoco -PackageId $package.choco -Manager "Chocolatey"
                 } else {
-                    $null = $packagesChoco.add($package.choco)
-                    Write-Host "Queueing $($package.choco) for Chocolatey..."
+                    Write-Debug "$($package.content) has no Choco value."
+                    Add-PackageId -Target $packagesWinget -PackageId $package.winget -Manager "WinGet"
                 }
                 break
             }
             "Winget" {
-                if ($package.winget -eq "na") {
-                    Write-Debug "$($package.content) has no WinGet value."
-                    $null = $packagesChoco.add($package.choco)
-                    Write-Host "Queueing $($package.choco) for Chocolatey..."
+                if (Test-PackageId $package.winget) {
+                    Add-PackageId -Target $packagesWinget -PackageId $package.winget -Manager "WinGet"
                 } else {
-                    $null = $packagesWinget.add($($package.winget))
-                    Write-Host "Queueing $($package.winget) for WinGet..."
+                    Write-Debug "$($package.content) has no WinGet value."
+                    Add-PackageId -Target $packagesChoco -PackageId $package.choco -Manager "Chocolatey"
                 }
                 break
             }
@@ -1075,66 +1398,35 @@ Function Get-WinUtilToggleStatus {
     Param($ToggleSwitch)
 
     $ToggleSwitchReg = $sync.configs.tweaks.$ToggleSwitch.registry
-
-    try {
-        if (($ToggleSwitchReg.path -imatch "hku") -and !(Get-PSDrive -Name HKU -ErrorAction SilentlyContinue)) {
-            $null = (New-PSDrive -PSProvider Registry -Name HKU -Root HKEY_USERS)
-            if (Get-PSDrive -Name HKU -ErrorAction SilentlyContinue) {
-                Write-Debug "HKU drive created successfully."
-            } else {
-                Write-Debug "Failed to create HKU drive."
-            }
-        }
-    } catch {
-        Write-Error "An error occurred regarding the HKU Drive: $_"
+    if (-not $ToggleSwitchReg) {
         return $false
     }
 
-    if ($ToggleSwitchReg) {
-        $count = 0
+    if (-not (Get-PSDrive -Name HKU -ErrorAction SilentlyContinue)) {
+        New-PSDrive -PSProvider Registry -Name HKU -Root HKEY_USERS -ErrorAction SilentlyContinue | Out-Null
+    }
 
-        foreach ($regentry in $ToggleSwitchReg) {
-            try {
-                if (!(Test-Path $regentry.Path)) {
-                    New-Item -Path $regentry.Path -Force | Out-Null
-                }
-                $regstate = (Get-ItemProperty -path $regentry.Path).$($regentry.Name)
-                if ($regstate -eq $regentry.Value) {
-                    $count += 1
-                    Write-Debug "$($regentry.Name) is true (state: $regstate, value: $($regentry.Value), original: $($regentry.OriginalValue))"
-                } else {
-                    Write-Debug "$($regentry.Name) is false (state: $regstate, value: $($regentry.Value), original: $($regentry.OriginalValue))"
-                }
-                if ($null -eq $regstate) {
-                    switch ($regentry.DefaultState) {
-                        "true" {
-                            $regstate = $regentry.Value
-                            $count += 1
-                        }
-                        "false" {
-                            $regstate = $regentry.OriginalValue
-                        }
-                        default {
-                            Write-Error "Entry for $($regentry.Name) does not exist and no DefaultState is defined."
-                            $regstate = $regentry.OriginalValue
-                        }
-                    }
-                }
-            } catch {
-                Write-Error "An unexpected error occurred: $_"
+    # Reading the state must not change the registry: a missing key or value takes the DefaultState of the entry
+    foreach ($regentry in $ToggleSwitchReg) {
+        $regstate = $null
+        if (Test-Path $regentry.Path) {
+            $regstate = (Get-ItemProperty -Path $regentry.Path -ErrorAction SilentlyContinue).$($regentry.Name)
+        }
+
+        if ($null -eq $regstate) {
+            switch ([string]$regentry.DefaultState) {
+                "true"  { $regstate = $regentry.Value }
+                "false" { $regstate = $regentry.OriginalValue }
             }
         }
 
-        if ($count -eq $ToggleSwitchReg.Count) {
-            Write-Debug "$($ToggleSwitchReg.Name) is true (count: $count)"
-            return $true
-        } else {
-            Write-Debug "$($ToggleSwitchReg.Name) is false (count: $count)"
+        if ($regstate -ne $regentry.Value) {
+            Write-Debug "$($regentry.Name) is false (state: $regstate, value: $($regentry.Value), original: $($regentry.OriginalValue))"
             return $false
         }
-    } else {
-        return $false
     }
+
+    return $true
 }
 function Get-WinUtilVariables {
 
@@ -1336,32 +1628,18 @@ function Initialize-InstallAppEntry {
             $appKey
         )
 
+        $app = $sync.configs.applicationsHashtable[$appKey]
+        $handlers = Get-WinUtilAppEntryHandlers
+
         # Create the outer Border for the application type
         $border = New-Object Windows.Controls.Border
         $border.Style = $sync.Form.Resources.AppEntryBorderStyle
         $border.Tag = $appKey
-        $border.ToolTip = $Apps.$appKey.description
-        $border.Add_MouseLeftButtonUp({
-            $childCheckbox = ($this.Child | Where-Object {$_.Template.TargetType -eq [System.Windows.Controls.Checkbox]})[0]
-            $childCheckBox.isChecked = -not $childCheckbox.IsChecked
-        })
-        $border.Add_MouseEnter({
-            if (($sync.$($this.Tag).IsChecked) -eq $false) {
-                $this.SetResourceReference([Windows.Controls.Control]::BackgroundProperty, "AppInstallHighlightedColor")
-            }
-        })
-        $border.Add_MouseLeave({
-            if (($sync.$($this.Tag).IsChecked) -eq $false) {
-                $this.SetResourceReference([Windows.Controls.Control]::BackgroundProperty, "AppInstallUnselectedColor")
-            }
-        })
-        $border.Add_MouseRightButtonUp({
-            # Store the selected app in a global variable so it can be used in the popup
-            $sync.appPopupSelectedApp = $this.Tag
-            # Set the popup position to the current mouse position
-            $sync.appPopup.PlacementTarget = $this
-            $sync.appPopup.IsOpen = $true
-        })
+        $border.ToolTip = $app.description
+        $border.Add_MouseLeftButtonUp($handlers.BorderClick)
+        $border.Add_MouseEnter($handlers.MouseEnter)
+        $border.Add_MouseLeave($handlers.MouseLeave)
+        $border.Add_MouseRightButtonUp($handlers.RightClick)
 
         $checkBox = New-Object Windows.Controls.CheckBox
         # Sanitize the name for WPF
@@ -1369,35 +1647,68 @@ function Initialize-InstallAppEntry {
         # Store the original appKey in Tag
         $checkBox.Tag = $appKey
         $checkbox.Style = $sync.Form.Resources.AppEntryCheckboxStyle
-        $checkbox.Add_Checked({
-            Invoke-WPFSelectedCheckboxesUpdate -type "Add" -checkboxName $this.Parent.Tag
-            $borderElement = $this.Parent
-            $borderElement.SetResourceReference([Windows.Controls.Control]::BackgroundProperty, "AppInstallSelectedColor")
-        })
+        $checkbox.Add_Checked($handlers.Checked)
+        $checkbox.Add_Unchecked($handlers.Unchecked)
 
-        $checkbox.Add_Unchecked({
-            Invoke-WPFSelectedCheckboxesUpdate -type "Remove" -checkboxName $this.Parent.Tag
-            $borderElement = $this.Parent
-            $borderElement.SetResourceReference([Windows.Controls.Control]::BackgroundProperty, "AppInstallUnselectedColor")
-        })
+        $contentPanel = New-Object Windows.Controls.StackPanel
+        $contentPanel.Orientation = "Horizontal"
+        $contentPanel.VerticalAlignment = [Windows.VerticalAlignment]::Center
+
+        # The icon of the website of the app, with its initial while the icon is missing
+        $icon = New-Object Windows.Controls.Grid
+        $icon.SetResourceReference([Windows.FrameworkElement]::WidthProperty, "AppEntryIconSize")
+        $icon.SetResourceReference([Windows.FrameworkElement]::HeightProperty, "AppEntryIconSize")
+        $icon.Margin = New-Object Windows.Thickness(0, 0, 6, 0)
+        $icon.VerticalAlignment = [Windows.VerticalAlignment]::Center
+        $fallback = New-Object Windows.Controls.TextBlock
+        $fallback.Text = $app.content.TrimStart(".").Substring(0, 1).ToUpper()
+        $fallback.FontWeight = "Bold"
+        $fallback.HorizontalAlignment = "Center"
+        $fallback.VerticalAlignment = "Center"
+        $fallback.SetResourceReference([Windows.Controls.TextBlock]::FontSizeProperty, "AppEntryFontSize")
+        $fallback.SetResourceReference([Windows.Controls.TextBlock]::ForegroundProperty, "ToggleButtonOnColor")
+        [void]$icon.Children.Add($fallback)
+        if ($app.link -and -not $PARAM_OFFLINE) {
+            $logo = New-Object Windows.Controls.Image
+            $logo.Stretch = [Windows.Media.Stretch]::Uniform
+            [Windows.Media.RenderOptions]::SetBitmapScalingMode($logo, [Windows.Media.BitmapScalingMode]::HighQuality)
+            $logo.Add_ImageFailed($handlers.ImageFailed)
+            $fallback.Visibility = "Collapsed"
+            [void]$icon.Children.Add($logo)
+            try {
+                # WPF downloads the icon by itself, without a runspace. The image cache is skipped so that a
+                # window opened again in the same PowerShell session does not reuse images of the closed one.
+                $bitmap = [Windows.Media.Imaging.BitmapImage]::new()
+                $bitmap.BeginInit()
+                $bitmap.CreateOptions = [Windows.Media.Imaging.BitmapCreateOptions]::IgnoreImageCache
+                $bitmap.UriSource = [uri]"https://www.google.com/s2/favicons?sz=64&domain_url=$([uri]::EscapeDataString($app.link))"
+                $bitmap.EndInit()
+                $logo.Source = $bitmap
+            } catch {
+                $logo.Visibility = "Collapsed"
+                $fallback.Visibility = "Visible"
+            }
+        }
+        [void]$contentPanel.Children.Add($icon)
 
         # Create the TextBlock for the application name
         $appName = New-Object Windows.Controls.TextBlock
         $appName.Style = $sync.Form.Resources.AppEntryNameStyle
-        $appName.Text = $Apps.$appKey.content
+        $appName.Text = $app.content
 
         # Change color to Green if FOSS
-        if ($Apps.$appKey.foss -eq $true) {
+        if ($app.foss -eq $true) {
             $appName.SetResourceReference([Windows.Controls.Control]::ForegroundProperty, "FOSSColor")
             $appName.FontWeight = "Bold"
         }
 
-        # Add the name to the Checkbox
-        $checkBox.Content = $appName
+        # Add the icon and the name to the Checkbox
+        [void]$contentPanel.Children.Add($appName)
+        $checkBox.Content = $contentPanel
 
         # Add accessibility properties to make the elements screen reader friendly
-        $checkBox.SetValue([Windows.Automation.AutomationProperties]::NameProperty, $Apps.$appKey.content)
-        $border.SetValue([Windows.Automation.AutomationProperties]::NameProperty, $Apps.$appKey.content)
+        $checkBox.SetValue([Windows.Automation.AutomationProperties]::NameProperty, $app.content)
+        $border.SetValue([Windows.Automation.AutomationProperties]::NameProperty, $app.content)
 
         $border.Child = $checkBox
         # Add the border to the corresponding Category
@@ -1422,22 +1733,24 @@ function Initialize-InstallCategoryAppList {
             $Apps
         )
 
-        # Pre-group apps by category
+        # Pre-group apps by category. Lists, because appending to an array copies it.
         $appsByCategory = @{}
         foreach ($appKey in $Apps.Keys) {
-            $category = $Apps.$appKey.Category
+            $category = $Apps[$appKey].Category
             if (-not $appsByCategory.ContainsKey($category)) {
-                $appsByCategory[$category] = @()
+                $appsByCategory[$category] = [System.Collections.Generic.List[string]]::new()
             }
-            $appsByCategory[$category] += $appKey
+            $appsByCategory[$category].Add($appKey)
         }
-        foreach ($category in $($appsByCategory.Keys | Sort-Object)) {
+        # The categories are shown with their Italian names, in alphabetical order
+        foreach ($category in $($appsByCategory.Keys | Sort-Object { Get-WinUtilAppCategoryName $_ })) {
+            $categoryName = Get-WinUtilAppCategoryName $category
             # Create a container for category label + apps
             $categoryContainer = New-Object Windows.Controls.StackPanel
             $categoryContainer.Orientation = "Vertical"
             $categoryContainer.Margin = New-Object Windows.Thickness(0, 0, 0, 0)
             $categoryContainer.HorizontalAlignment = [Windows.HorizontalAlignment]::Stretch
-            [System.Windows.Automation.AutomationProperties]::SetName($categoryContainer, $Category)
+            [System.Windows.Automation.AutomationProperties]::SetName($categoryContainer, $categoryName)
 
             # Bind Width to the ItemsControl's ActualWidth to force full-row layout in WrapPanel
             $binding = New-Object Windows.Data.Binding
@@ -1447,7 +1760,7 @@ function Initialize-InstallCategoryAppList {
 
             # Add category label to container
             $toggleButton = New-Object Windows.Controls.Label
-            $toggleButton.Content = "- $Category"
+            $toggleButton.Content = "- $categoryName"
             $toggleButton.Tag = "CategoryToggleButton"
             $toggleButton.SetResourceReference([Windows.Controls.Control]::FontSizeProperty, "HeaderFontSize")
             $toggleButton.SetResourceReference([Windows.Controls.Control]::FontFamilyProperty, "HeaderFontFamily")
@@ -1465,6 +1778,11 @@ function Initialize-InstallCategoryAppList {
                 if ($categoryContainer -and $categoryContainer.Children.Count -ge 2) {
                     # The WrapPanel is the second child
                     $wrapPanel = $categoryContainer.Children[1]
+
+                    # A click wins over a category that the filters expanded by themselves
+                    if ($sync.AppCategoryAutoExpanded) {
+                        $sync.AppCategoryAutoExpanded.Remove(($sender.Content -replace '^[+-] ', ''))
+                    }
 
                     # Toggle visibility
                     if ($wrapPanel.Visibility -eq [Windows.Visibility]::Visible) {
@@ -1501,6 +1819,138 @@ function Initialize-InstallCategoryAppList {
             }
         }
     }
+function Initialize-WinUtilAppCategoryChips {
+    <#
+    .SYNOPSIS
+        Creates the category filters above the app list of the Install tab
+
+    .DESCRIPTION
+        One chip per category of applications.json, in the order of the list, after the chip that
+        shows every category. A click shows only that category (a second click shows them all
+        again), Ctrl+click adds or removes the category from the ones shown.
+
+    .PARAMETER Apps
+        The Hashtable of Apps, from which the categories are taken
+    #>
+
+    param($Apps)
+
+    $chipPanel = $sync.Form.FindName("WPFAppCategoryChips")
+    if (-not $chipPanel) {
+        return
+    }
+    $chipPanel.Children.Clear()
+    $sync.SelectedAppCategories = [System.Collections.Generic.List[string]]::new()
+    $sync.AppCategoryChips = [System.Collections.Generic.List[object]]::new()
+
+    $filterIcon = New-Object Windows.Controls.TextBlock
+    $filterIcon.Text = [string][char]0xE71C
+    $filterIcon.FontFamily = "Segoe MDL2 Assets"
+    $filterIcon.VerticalAlignment = "Center"
+    $filterIcon.Margin = New-Object Windows.Thickness(2, 0, 10, 6)
+    $filterIcon.SetResourceReference([Windows.Controls.TextBlock]::FontSizeProperty, "IconFontSize")
+    $filterIcon.SetResourceReference([Windows.Controls.TextBlock]::ForegroundProperty, "LabelboxForegroundColor")
+    $filterIcon.ToolTip = "Filtra per categoria. Ctrl+clic per mostrarne pi$([char]0x00F9) di una."
+    [void]$chipPanel.Children.Add($filterIcon)
+
+    $categories = @($Apps.Values | ForEach-Object { $_.Category } | Sort-Object -Unique | Sort-Object { Get-WinUtilAppCategoryName $_ })
+    foreach ($category in @("") + $categories) {
+        $chip = New-Object Windows.Controls.Primitives.ToggleButton
+        $chip.Style = $sync.Form.Resources.AppCategoryChipStyle
+        # The chip carries its category, empty for the one that shows every category
+        $chip.Tag = $category
+        $chip.Content = if ($category) { Get-WinUtilAppCategoryName $category } else { "Tutte" }
+        $chip.IsChecked = -not $category
+        [System.Windows.Automation.AutomationProperties]::SetName($chip, "Filtro categoria: $($chip.Content)")
+        $chip.Add_Click({
+            $additive = [bool]([System.Windows.Input.Keyboard]::Modifiers -band [System.Windows.Input.ModifierKeys]::Control)
+            Set-WinUtilAppCategoryFilter -Category $this.Tag -Additive:$additive
+        })
+        [void]$chipPanel.Children.Add($chip)
+        $sync.AppCategoryChips.Add($chip)
+    }
+}
+function Install-WinUtilAPPX {
+    <#
+
+    .SYNOPSIS
+        Registers an AppX package again from the copy left on the PC, or installs it from the Microsoft Store
+
+    .PARAMETER Name
+        The AppX package name to install
+
+    .PARAMETER StoreId
+        The Microsoft Store product ID, used when no copy of the package is left on the PC
+
+    .OUTPUTS
+        True when the package was installed
+
+    #>
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+
+        [string]$StoreId
+    )
+
+    Write-Host "Installing $Name"
+
+    # The AppX and DISM cmdlets are more reliable in Windows PowerShell 5.1. Both the installed and
+    # the provisioned packages can point to a manifest that can be registered again.
+    $ps5Command = {
+        $packageName = $args[0]
+        $manifestPaths = [System.Collections.Generic.List[string]]::new()
+
+        Get-AppxPackage -AllUsers -Name $packageName -ErrorAction SilentlyContinue |
+            Sort-Object -Property Version -Descending |
+            ForEach-Object {
+                if (-not [string]::IsNullOrWhiteSpace($_.InstallLocation)) {
+                    $manifestPaths.Add((Join-Path $_.InstallLocation "AppxManifest.xml"))
+                }
+            }
+
+        Get-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue |
+            Where-Object DisplayName -EQ $packageName |
+            ForEach-Object {
+                if (-not [string]::IsNullOrWhiteSpace($_.InstallLocation)) {
+                    $manifestPaths.Add((Join-Path $_.InstallLocation "AppxManifest.xml"))
+                }
+            }
+
+        $manifestPath = $manifestPaths |
+            Select-Object -Unique |
+            Where-Object { Test-Path -LiteralPath $_ } |
+            Select-Object -First 1
+
+        if ($null -ne $manifestPath) {
+            Add-AppxPackage -Register $manifestPath -DisableDevelopmentMode -ErrorAction Stop
+            Write-Output $manifestPath
+        }
+    }
+
+    $manifestOutput = powershell.exe -NoProfile -NonInteractive -Command $ps5Command -args $Name 2>&1
+    if ($LASTEXITCODE -eq 0 -and $null -ne $manifestOutput) {
+        $manifestPath = ($manifestOutput | Select-Object -Last 1).ToString().Trim()
+        if (-not [string]::IsNullOrWhiteSpace($manifestPath)) {
+            Write-Host "Registered $Name from $manifestPath"
+            return $true
+        }
+    }
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning "Local registration of $Name failed: $(($manifestOutput | Out-String).Trim())"
+    }
+
+    if ([string]::IsNullOrWhiteSpace($StoreId)) {
+        Write-Warning "$Name cannot be installed: no copy is left on the PC and it has no Microsoft Store ID."
+        return $false
+    }
+
+    Write-Host "No copy of $Name is left on the PC: installing it from the Microsoft Store ($StoreId)"
+    Install-WinUtilWinget
+    $exitCode = Invoke-WinUtilProcess -FilePath "winget" -ArgumentList "install --id $StoreId --source msstore --silent --accept-source-agreements --accept-package-agreements" -NoNewWindow
+    # Installed, already installed, or installed with a restart needed to finish
+    return $exitCode -in @(0, -1978335135, 3010, 1641, -1978334967, -1978334965)
+}
 function Install-WinUtilChoco {
 
     <#
@@ -1514,7 +1964,26 @@ function Install-WinUtilChoco {
     }
 
     Write-Host "Chocolatey is not installed. Installing now..."
-    Invoke-WebRequest -Uri https://community.chocolatey.org/install.ps1 -UseBasicParsing | Invoke-Expression
+    # Windows PowerShell 5.1 can offer a protocol the site refuses; the official bootstrap sets it too
+    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor [System.Net.SecurityProtocolType]::Tls12
+    $installScript = Invoke-WebRequest -Uri https://community.chocolatey.org/install.ps1 -UseBasicParsing -TimeoutSec 60
+    Invoke-Command -ScriptBlock ([scriptblock]::Create($installScript.Content))
+
+    # The installer extends PATH only for new processes: add the new folders to this one too,
+    # otherwise choco is not found until WinRUtil is restarted
+    $current = $env:PATH -split ';' | Where-Object { $_ }
+    $saved = @(
+        [System.Environment]::GetEnvironmentVariable("Path", "Machine")
+        [System.Environment]::GetEnvironmentVariable("Path", "User")
+    ) -join ';' -split ';' | Where-Object { $_ }
+    $missing = $saved | Where-Object { $current -notcontains $_ }
+    if ($missing) {
+        $env:PATH = (@($current) + @($missing)) -join ';'
+    }
+
+    if (-not (Get-Command -Name choco -ErrorAction SilentlyContinue)) {
+        throw "Chocolatey was installed but choco is still not on PATH."
+    }
 }
 function Install-WinUtilProgramChoco {
     <#
@@ -1582,7 +2051,8 @@ function Install-WinUtilProgramChoco {
         #>
 
         param ($arguments)
-        return (Start-Process -FilePath "choco" -ArgumentList $arguments -Wait -PassThru).ExitCode
+        # Only choco is waited for: an installer may leave the installed application open
+        return Invoke-WinUtilProcess -FilePath "choco" -ArgumentList $arguments
     }
 
     function Test-UpgradeNeeded {
@@ -1693,7 +2163,8 @@ function Install-WinUtilProgramChoco {
 
         try {
             $installStatusCode = Invoke-ChocoCommand "install $Program -y --log-file $installOutputFile"
-            if ($installStatusCode -eq 0) {
+            # 1641 and 3010: installed, a restart is needed to finish
+            if ($installStatusCode -in @(0, 1641, 3010)) {
 
                 if (Test-UpgradeNeeded $installOutputFile) {
                     $upgradeStatusCode = Invoke-ChocoCommand "upgrade $Program -y"
@@ -1754,8 +2225,9 @@ function Install-WinUtilProgramChoco {
             Write-Host "Starting uninstallation of $chocoPackages with Chocolatey..."
             try {
                 $uninstallStatusCode = Invoke-ChocoCommand "uninstall $chocoPackages -y"
-                Write-Host "$Program" $(if ($uninstallStatusCode -eq 0) { "uninstalled successfully." } else { "failed to uninstall." })
-                Add-ReportAction $Program "Disinstallazione di {0}" ($uninstallStatusCode -eq 0)
+                $uninstalled = $uninstallStatusCode -in @(0, 1641, 3010)
+                Write-Host "$Program" $(if ($uninstalled) { "uninstalled successfully." } else { "failed to uninstall." })
+                Add-ReportAction $Program "Disinstallazione di {0}" $uninstalled
             }
             catch {
                 Write-Host "Failed to uninstall $Program due to an error: $_"
@@ -1807,20 +2279,140 @@ function Install-WinUtilProgramChoco {
     }
 }
 
+Function Get-WinUtilPowerShellVersion {
+    param ([string]$Path)
+    & $Path -NoLogo -NoProfile -Command '$PSVersionTable.PSVersion.ToString()'
+}
+
+Function Get-WinUtilPowerShellArchitecture {
+    param ([string]$Path)
+    & $Path -NoLogo -NoProfile -Command '[System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString()'
+}
+
+Function Test-WinUtilPowerShellMSIUpgradeAllowed {
+    # WinGet has no structured pin-list output, and list filters are not honored by all versions.
+    # Conservatively leave upgrades to WinGet whenever any pins exist or the check fails.
+    try {
+        $pinOutput = @(& winget pin list --accept-source-agreements --disable-interactivity 2>&1)
+        if ($LASTEXITCODE -ne 0 -or $pinOutput.Count -eq 0) { return $false }
+        $text = $pinOutput -join "`n"
+        $text = $text -replace '\x1B\[[0-9;]*[A-Za-z]', ''
+        return $text -notmatch '(?m)^\s*-{3,}\s*$'
+    } catch {
+        return $false
+    }
+}
+
+Function Update-WinUtilPowerShellMSI {
+    <#
+    .SYNOPSIS
+        Upgrades PowerShell 7 installed with the official MSI package, which WinGet does not upgrade
+
+    .OUTPUTS
+        Outcome (NotInstalled, Skipped, Succeeded or Failed) and Detail
+    #>
+    $candidates = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*","HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*" -ErrorAction SilentlyContinue |
+        Where-Object {
+            $_.WindowsInstaller -eq 1 -and
+            $_.DisplayName -match '^PowerShell\s+7(?:\.\d+)?(?:\.\d+)?(?:\.\d+)?(?:-(?:x64|x86|arm64))?(?:\s|$)' -and
+            $_.DisplayName -notmatch "preview|daily"
+        }
+    $locations = @()
+    foreach ($candidate in $candidates) {
+        $location = $candidate.InstallLocation
+        if (-not $location) {
+            # The official MSI registers its location here, not in the uninstall record
+            $registration = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\PowerShellCore\InstalledVersions\*","HKLM:\SOFTWARE\WOW6432Node\Microsoft\PowerShellCore\InstalledVersions\*" -ErrorAction SilentlyContinue |
+                Where-Object { $_.ProductCode -and $_.ProductCode -eq $candidate.PSChildName } |
+                Select-Object -First 1
+            $location = $registration.InstallLocation
+        }
+        if ($location -and (Test-Path -LiteralPath (Join-Path $location "pwsh.exe"))) {
+            $location = ([string]$location).TrimEnd([char[]]'\/')
+            if ($locations -notcontains $location) { $locations += $location }
+        }
+    }
+
+    if ($locations.Count -eq 0) {
+        return [pscustomobject]@{ Outcome = "NotInstalled"; Detail = "PowerShell is not installed through MSI" }
+    }
+
+    if ($locations.Count -gt 1) {
+        return [pscustomobject]@{ Outcome = "Failed"; Detail = "Multiple PowerShell MSI installations found; upgrade each one manually" }
+    }
+
+    if (-not (Test-WinUtilPowerShellMSIUpgradeAllowed)) {
+        return [pscustomobject]@{ Outcome = "Skipped"; Detail = "WinGet pins exist or their state could not be verified; MSI upgrade skipped" }
+    }
+
+    $pwsh = Join-Path $locations[0] "pwsh.exe"
+    try {
+        # Windows PowerShell 5.1 can offer a protocol GitHub refuses
+        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor [System.Net.SecurityProtocolType]::Tls12
+        $installed = Get-WinUtilPowerShellVersion $pwsh
+        $release = Invoke-RestMethod "https://api.github.com/repos/PowerShell/PowerShell/releases/latest" -TimeoutSec 30
+        $latest = ([string]$release.tag_name).TrimStart("v")
+
+        if ([version]$installed -ge [version]$latest) {
+            return [pscustomobject]@{ Outcome = "Skipped"; Detail = "PowerShell $installed is already up to date" }
+        }
+
+        $arch = ([string](Get-WinUtilPowerShellArchitecture $pwsh)).Trim().ToLowerInvariant()
+        if ($arch -notin @("x64", "x86", "arm64")) {
+            throw "Unsupported installed PowerShell architecture: $arch"
+        }
+        $asset = $release.assets | Where-Object { $_.name -match "^PowerShell-.*-win-$arch\.msi$" } | Select-Object -First 1
+        if (-not $asset) {
+            throw "No PowerShell MSI found for $arch"
+        }
+
+        $msiPath = Join-Path $env:TEMP "PowerShell-$arch-$([guid]::NewGuid()).msi"
+        try {
+            Write-Host "Downloading PowerShell $latest ($arch)..."
+            Invoke-WebRequest $asset.browser_download_url -OutFile $msiPath -UseBasicParsing -TimeoutSec 300
+
+            if ($asset.digest) {
+                $hash = (Get-FileHash -LiteralPath $msiPath -Algorithm SHA256).Hash.ToLowerInvariant()
+                if ($hash -ne $asset.digest.Replace("sha256:", "").ToLowerInvariant()) {
+                    throw "PowerShell MSI SHA256 verification failed"
+                }
+            }
+
+            $signature = Get-AuthenticodeSignature -LiteralPath $msiPath
+            if ($signature.Status -ne "Valid" -or -not $signature.SignerCertificate -or
+                $signature.SignerCertificate.Subject -notmatch '(^|,\s*)CN=Microsoft Corporation(,|$)') {
+                throw "PowerShell MSI signature verification failed"
+            }
+
+            $exitCode = Invoke-WinUtilProcess -FilePath "msiexec.exe" -ArgumentList "/i `"$msiPath`" /qn /norestart"
+            if ($exitCode -notin @(0, 3010, 1641)) {
+                throw "PowerShell MSI installation failed with exit code $exitCode"
+            }
+            return [pscustomobject]@{
+                Outcome = "Succeeded"
+                Detail  = $(if ($exitCode -eq 0) { "PowerShell upgraded to $latest" } else { "PowerShell upgraded to $latest, a restart is needed to finish" })
+            }
+        } finally {
+            Remove-Item -LiteralPath $msiPath -Force -ErrorAction SilentlyContinue
+        }
+    } catch {
+        return [pscustomobject]@{ Outcome = "Failed"; Detail = "PowerShell MSI upgrade failed: $($_.Exception.Message)" }
+    }
+}
+
 Function Install-WinUtilProgramWinget {
     <#
     .SYNOPSIS
     Runs the designated action on the provided programs using Winget
 
     .PARAMETER Programs
-    A list of programs to process
+    A list of programs to process. An ID that starts with "msstore:" comes from the Microsoft Store source.
 
     .PARAMETER action
     The action to perform on the programs, can be either 'Install' or 'Uninstall'
 
     .NOTES
-    The triple quotes are required any time you need a " in a normal script block.
-    The winget Return codes are documented here: https://github.com/microsoft/winget-cli/blob/master/doc/windows/package-actionr/winget/returnCodes.md
+    The winget Return codes are documented here: https://learn.microsoft.com/windows/package-manager/winget/returnCodes
     #>
 
     param(
@@ -1830,6 +2422,15 @@ Function Install-WinUtilProgramWinget {
         [ValidateSet("Install", "Uninstall")]
         [String]$Action
     )
+
+    # WinGet reports "there was nothing to do" and "installed, restart to finish" through the exit code
+    $alreadyDone = @{
+        -1978335135 = "already installed"
+        -1978335189 = "no applicable update"
+    }
+    $rebootNeeded = @(3010, 1641, -1978334967, -1978334965)
+    # The package was installed for the current user only: elevated WinGet cannot change it
+    $adminContextProhibited = -1978335107
 
     Function Invoke-Winget {
     <#
@@ -1846,22 +2447,21 @@ Function Install-WinUtilProgramWinget {
             [string]$wingetId
         )
 
+        $source = "winget"
+        if ($wingetId.StartsWith("msstore:", [System.StringComparison]::OrdinalIgnoreCase)) {
+            $source = "msstore"
+            $wingetId = $wingetId.Substring("msstore:".Length)
+        }
+
         $commonArguments = "--id $wingetId --silent"
         $arguments = if ($Action -eq "Install") {
-            "install $commonArguments --accept-source-agreements --accept-package-agreements --source winget"
+            "install $commonArguments --accept-source-agreements --accept-package-agreements --source $source"
         } else {
-            "uninstall $commonArguments --source winget"
+            "uninstall $commonArguments --source $source"
         }
 
-        $processParams = @{
-            FilePath = "winget"
-            ArgumentList = $arguments
-            Wait = $true
-            PassThru = $true
-            NoNewWindow = $true
-        }
-
-        return (Start-Process @processParams).ExitCode
+        # Only winget is waited for: an installer may leave the installed application open
+        return Invoke-WinUtilProcess -FilePath "winget" -ArgumentList $arguments -NoNewWindow
     }
 
     Function Invoke-Install {
@@ -1875,16 +2475,34 @@ Function Install-WinUtilProgramWinget {
         param (
             [string]$Program
         )
+
+        if ($Program -eq "Microsoft.PowerShell") {
+            # WinGet does not upgrade PowerShell installed with the official MSI package
+            $msiResult = Update-WinUtilPowerShellMSI
+            if ($msiResult.Outcome -ne "NotInstalled") {
+                Write-Host $msiResult.Detail
+                if ($msiResult.Outcome -ne "Failed") {
+                    return $true
+                }
+            }
+        }
+
         $status = Invoke-Winget -wingetId $Program
         if ($status -eq 0) {
             Write-Host "$($Program) installed successfully."
             return $true
-        } elseif ($status -eq -1978335189) {
-            Write-Host "No applicable update found for $($Program)."
+        } elseif ($alreadyDone.ContainsKey($status)) {
+            Write-Host "$($Program): $($alreadyDone[$status])."
+            return $true
+        } elseif ($status -in $rebootNeeded) {
+            Write-Host "$($Program) installed, a restart is needed to finish."
+            return $true
+        } elseif ($status -eq $adminContextProhibited) {
+            Write-Host "$($Program) is already installed for the current user; elevated WinGet cannot update it."
             return $true
         }
 
-        Write-Host "Failed to install $($Program)."
+        Write-Host ("Failed to install {0} (WinGet 0x{1:X8})." -f $Program, $status)
         return $false
     }
 
@@ -1902,11 +2520,14 @@ Function Install-WinUtilProgramWinget {
 
         try {
             $status = Invoke-Winget -wingetId $Program
-            if ($status -eq 0) {
+            if ($status -eq 0 -or $status -in $rebootNeeded) {
                 Write-Host "$($Program) uninstalled successfully."
                 return $true
+            } elseif ($status -eq $adminContextProhibited) {
+                Write-Host "$($Program) is installed for the current user only; elevated WinGet cannot uninstall it."
+                return $false
             } else {
-                Write-Host "Failed to uninstall $($Program)."
+                Write-Host ("Failed to uninstall {0} (WinGet 0x{1:X8})." -f $Program, $status)
                 return $false
             }
         } catch {
@@ -1926,7 +2547,13 @@ Function Install-WinUtilProgramWinget {
         $Program = $Programs[$i]
         $result = $false
         # The app name shown in the Install tab, for the progress bar and the intervention report
-        $appName = ($sync.configs.applicationsHashtable.Values | Where-Object { $_.winget -eq $Program } | Select-Object -First 1).content
+        $appName = $null
+        foreach ($app in $sync.configs.applicationsHashtable.Values) {
+            if (($app.winget -split ";") -contains $Program) {
+                $appName = $app.content
+                break
+            }
+        }
         if (-not $appName) { $appName = $Program }
         $operation = if ($Action -eq "Install") { "Installazione di {0}" } else { "Disinstallazione di {0}" }
         Set-WinUtilProgressBar -label ($operation -f $appName) -percent ($i / $count * 100)
@@ -2144,28 +2771,61 @@ Function Invoke-WinUtilCurrentSystem {
     )
     if ($CheckBox -eq "choco") {
         $apps = (choco list | Select-String -Pattern "^\S+").Matches.Value
-        $filter = Get-WinUtilVariables -Type Checkbox | Where-Object {$psitem -like "WPFInstall*"}
-        $sync.GetEnumerator() | Where-Object {$psitem.Key -in $filter} | ForEach-Object {
-            $dependencies = @($sync.configs.applications.$($psitem.Key).choco -split ";")
-            if ($dependencies -in $apps) {
-                Write-Output $psitem.name
+        $sync.configs.applicationsHashtable.GetEnumerator() | ForEach-Object {
+            $packageId = ([string]$_.Value.choco -split ";")[-1].Trim()
+            if ($packageId -and $packageId -ne "na" -and $packageId -in $apps) {
+                Write-Output $_.Key
+            }
+        }
+
+        # Apps without a Chocolatey package are installed with WinGet (see Get-WinUtilSelectedPackages),
+        # so they are looked for in the list of WinGet
+        $wingetFallbackKeys = @($sync.configs.applicationsHashtable.GetEnumerator() | Where-Object {
+            ([string]::IsNullOrWhiteSpace([string]$_.Value.choco) -or $_.Value.choco -eq "na") -and
+            -not ([string]::IsNullOrWhiteSpace([string]$_.Value.winget) -or $_.Value.winget -eq "na")
+        } | ForEach-Object { $_.Key })
+        if ($wingetFallbackKeys.Count -gt 0 -and (Test-WinUtilPackageManager -winget) -eq "installed") {
+            try {
+                Invoke-WinUtilCurrentSystem -CheckBox "winget" | Where-Object { $_ -in $wingetFallbackKeys }
+            } catch {
+                Write-Warning "Could not check the apps installed with WinGet: $($_.Exception.Message)"
             }
         }
     }
 
     if ($checkbox -eq "winget") {
-
         $originalEncoding = [Console]::OutputEncoding
-        [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new()
-        $Sync.InstalledPrograms = winget list -s winget | Select-Object -skip 3 | ConvertFrom-String -PropertyNames "Name", "Id", "Version", "Available" -Delimiter '\s{2,}'
-        [Console]::OutputEncoding = $originalEncoding
+        try {
+            [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new()
+            $installedProgramOutput = @(winget list --accept-source-agreements --disable-interactivity 2>&1)
+            if ($LASTEXITCODE -ne 0) {
+                throw "winget list failed with exit code $LASTEXITCODE."
+            }
+        } finally {
+            [Console]::OutputEncoding = $originalEncoding
+        }
+        $installedProgramText = $installedProgramOutput -join "`n"
 
-        $filter = Get-WinUtilVariables -Type Checkbox | Where-Object {$psitem -like "WPFInstall*"}
-        $sync.GetEnumerator() | Where-Object {$psitem.Key -in $filter} | ForEach-Object {
-            $dependencies = @($sync.configs.applications.$($psitem.Key).winget -split ";")
+        # WinGet pads each column to its widest value plus one space, so the row with the widest Name or Id
+        # has only one space next to its Id. Take the Id column position from the header above the dashes,
+        # which works whatever the language of the column titles.
+        $idColumnStart = 0
+        if ($installedProgramText -match '(?m)^(\S+[^\S\r\n]+)\S[^\r\n]*\r?\n-{3,}') {
+            $idColumnStart = $Matches[1].Length
+        }
 
-            if ($dependencies[-1] -in $sync.InstalledPrograms.Id) {
-                Write-Output $psitem.name
+        $sync.configs.applicationsHashtable.GetEnumerator() | ForEach-Object {
+            $packageId = (([string]$_.Value.winget -split ";")[-1] -replace "^msstore:", "").Trim()
+            if ([string]::IsNullOrWhiteSpace($packageId) -or $packageId -eq "na") {
+                return
+            }
+
+            $escapedPackageId = [regex]::Escape($packageId)
+            $packagePattern = "(?im)[^\S\r\n]{2,}$escapedPackageId(?=[^\S\r\n]{2,}|$)"
+            # Rows whose Name has combining marks or emoji are skipped: they have more characters than columns
+            $idColumnPattern = "(?im)(?<=^[^\r\n\p{M}\p{Cs}\p{Cf}]{$($idColumnStart - 1)}[^\S\r\n])$escapedPackageId(?=[^\S\r\n]|$)"
+            if ($installedProgramText -match $packagePattern -or ($idColumnStart -and $installedProgramText -match $idColumnPattern)) {
+                Write-Output $_.Key
             }
         }
     }
@@ -2184,7 +2844,8 @@ Function Invoke-WinUtilCurrentSystem {
             $invokeScript = $entry.InvokeScript
             $entryType = $entry.Type
 
-            if ($registryKeys -or $serviceKeys) {
+            # A combo box has no applied state to detect: each entry is one of its choices
+            if (($registryKeys -or $serviceKeys) -and $entryType -ne "Combobox") {
                 $Values = @()
 
                 if ($entryType -eq "Toggle") {
@@ -2231,7 +2892,7 @@ Function Invoke-WinUtilCurrentSystem {
 
                 Foreach ($tweaks in $serviceKeys) {
                     Foreach ($tweak in $tweaks) {
-                        $Service = Get-Service -Name $tweak.Name
+                        $Service = Get-Service -Name $tweak.Name -ErrorAction SilentlyContinue
 
                         if ($Service) {
                             $actualValue = $Service.StartType
@@ -2309,7 +2970,9 @@ function Invoke-WinUtilFeatureInstall {
         Foreach( $feature in $sync.configs.feature.$CheckBox.feature ) {
             try {
                 Write-Host "Installing $feature"
-                Enable-WindowsOptionalFeature -Online -FeatureName $feature -All -NoRestart
+                # Without Stop a missing feature (e.g. Windows Sandbox on Home) is only a warning
+                # and the operation would be reported as done
+                Enable-WindowsOptionalFeature -Online -FeatureName $feature -All -NoRestart -ErrorAction Stop
             } catch {
                 $failed = $true
                 if ($_.Exception.Message -like "*requires elevation*") {
@@ -2323,7 +2986,8 @@ function Invoke-WinUtilFeatureInstall {
             }
         }
     }
-    if($sync.configs.feature.$CheckBox.InvokeScript) {
+    # The scripts configure the features, so they are skipped when a feature could not be enabled
+    if($sync.configs.feature.$CheckBox.InvokeScript -and -not $failed) {
         Foreach( $script in $sync.configs.feature.$CheckBox.InvokeScript ) {
             try {
                 $Scriptblock = [scriptblock]::Create($script)
@@ -2389,6 +3053,7 @@ function Invoke-WinUtilFontScaling {
         "IconFontSize",
         "SettingsIconFontSize",
         "CloseIconFontSize",
+        "WindowButtonFontSize",
         "AppEntryFontSize",
         "SearchBarTextBoxFontSize",
         "SearchBarClearButtonFontSize",
@@ -2403,6 +3068,7 @@ function Invoke-WinUtilFontScaling {
         "TabButtonHeight",
         "IconButtonSize",
         "AppEntryWidth",
+        "AppEntryIconSize",
         "SearchBarWidth",
         "SearchBarHeight",
         "CustomDialogWidth",
@@ -2440,6 +3106,73 @@ function Invoke-WinUtilFontScaling {
 }
 
 
+function Invoke-WinUtilProcess {
+    <#
+    .SYNOPSIS
+        Starts a program, waits for it to exit and returns its exit code
+
+    .DESCRIPTION
+        Start-Process -Wait also waits for every process the program started. An installer that
+        opens the application when it has finished would then keep the operation running until
+        the application is closed. Only the program itself is waited for here.
+
+    .PARAMETER FilePath
+        The program to run
+
+    .PARAMETER ArgumentList
+        The arguments of the program
+
+    .PARAMETER NoNewWindow
+        Runs a console program in the window of WinRUtil
+
+    .PARAMETER OutputFile
+        Writes the standard output of the program to this file instead of the window
+
+    .PARAMETER TimeoutSeconds
+        Stops the program and throws an error when it is still running after this many seconds.
+        With 0 the program can run as long as it needs.
+
+    .EXAMPLE
+        $exitCode = Invoke-WinUtilProcess -FilePath "winget" -ArgumentList "upgrade --id Git.Git --silent" -NoNewWindow
+    #>
+
+    param(
+        [Parameter(Mandatory)]
+        [string]$FilePath,
+
+        [string]$ArgumentList,
+
+        [switch]$NoNewWindow,
+
+        [string]$OutputFile,
+
+        [int]$TimeoutSeconds = 0
+    )
+
+    $parameters = @{
+        FilePath    = $FilePath
+        PassThru    = $true
+        NoNewWindow = $NoNewWindow
+    }
+    if ($ArgumentList) {
+        $parameters.ArgumentList = $ArgumentList
+    }
+    if ($OutputFile) {
+        $parameters.RedirectStandardOutput = $OutputFile
+    }
+
+    $process = Start-Process @parameters
+    # ExitCode stays empty unless the handle is opened while the process is still running
+    $null = $process.Handle
+
+    if ($TimeoutSeconds -gt 0 -and -not $process.WaitForExit($TimeoutSeconds * 1000)) {
+        Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+        $minutes = [math]::Ceiling($TimeoutSeconds / 60)
+        throw ("{0} non ha risposto entro {1} {2} ed {3} stato interrotto." -f [IO.Path]::GetFileNameWithoutExtension($FilePath), $minutes, $(if ($minutes -eq 1) { "minuto" } else { "minuti" }), [char]0x00E8)
+    }
+    $process.WaitForExit()
+    return $process.ExitCode
+}
 function Invoke-WinUtilScript {
     <#
 
@@ -2737,7 +3470,7 @@ function Invoke-WinUtilTweaks {
     )
 
     Write-Debug "Tweaks: $($CheckBox)"
-    if($undo) {
+    if ($undo) {
         $Values = @{
             Registry = "OriginalValue"
             Service = "OriginalType"
@@ -2752,46 +3485,48 @@ function Invoke-WinUtilTweaks {
             ScriptType = "InvokeScript"
         }
     }
-    if($sync.configs.tweaks.$CheckBox.service) {
+    if ($sync.configs.tweaks.$CheckBox.service) {
         Write-Debug "KeepServiceStartup is $KeepServiceStartup"
         $sync.configs.tweaks.$CheckBox.service | ForEach-Object {
             $changeservice = $true
 
-        # The check for !($undo) is required, without it the script will throw an error for accessing unavailable member, which's the 'OriginalService' Property
-            if($KeepServiceStartup -AND !($undo)) {
+            # KeepServiceStartup leaves alone a service that the user or another program changed away from
+            # the value this tweak expects. Undo uses the same rule in reverse: OriginalType is restored only
+            # when the service still has the StartupType this tweak applies.
+            $expectedType = if ($undo) { $psitem.StartupType } else { $psitem.$($values.OriginalService) }
+            if ($KeepServiceStartup) {
+                $serviceName = $psitem.Name
                 try {
                     # Check if the service exists
-                    $service = Get-Service -Name $psitem.Name -ErrorAction Stop
-                    if(!($service.StartType.ToString() -eq $psitem.$($values.OriginalService))) {
-                        Write-Debug "Service $($service.Name) was changed in the past to $($service.StartType.ToString()) from it's original type of $($psitem.$($values.OriginalService)), will not change it to $($psitem.$($values.service))"
+                    $service = Get-Service -Name $serviceName -ErrorAction Stop
+                    if (!($service.StartType.ToString() -eq $expectedType)) {
+                        Write-Debug "Service $serviceName has the startup type $($service.StartType) instead of $expectedType, so it is left as it is"
                         $changeservice = $false
                     }
-                } catch [System.ServiceProcess.ServiceNotFoundException] {
-                    Write-Warning "Service $($psitem.Name) was not found."
+                } catch {
+                    # A service that does not exist on this edition of Windows is skipped, it does not stop the tweak
+                    if ($_.FullyQualifiedErrorId -like "NoServiceFoundForGivenName,*") {
+                        $changeservice = $false
+                        Write-Warning "Service $serviceName was not found."
+                    } else {
+                        throw
+                    }
                 }
             }
 
-            if($changeservice) {
-                Write-Debug "$($psitem.Name) and state is $($psitem.$($values.service))"
+            if ($changeservice) {
                 Set-WinUtilService -Name $psitem.Name -StartupType $psitem.$($values.Service)
             }
         }
     }
-    if($sync.configs.tweaks.$CheckBox.registry) {
-        $sync.configs.tweaks.$CheckBox.registry | ForEach-Object {
+    if ($sync.configs.tweaks.$CheckBox.registry) {
+        # Entries with a list of Values belong to a combo box and are set by Set-WinUtilRegistryComboState
+        $sync.configs.tweaks.$CheckBox.registry | Where-Object { -not $psitem.Values } | ForEach-Object {
             Write-Debug "$($psitem.Name) and state is $($psitem.$($values.registry))"
-            if (($psitem.Path -imatch "hku") -and !(Get-PSDrive -Name HKU -ErrorAction SilentlyContinue)) {
-                $null = (New-PSDrive -PSProvider Registry -Name HKU -Root HKEY_USERS)
-                if (Get-PSDrive -Name HKU -ErrorAction SilentlyContinue) {
-                    Write-Debug "HKU drive created successfully."
-                } else {
-                    Write-Debug "Failed to create HKU drive."
-                }
-            }
             Set-WinUtilRegistry -Name $psitem.Name -Path $psitem.Path -Type $psitem.Type -Value $psitem.$($values.registry)
         }
     }
-    if($sync.configs.tweaks.$CheckBox.$($values.ScriptType)) {
+    if ($sync.configs.tweaks.$CheckBox.$($values.ScriptType)) {
         $sync.configs.tweaks.$CheckBox.$($values.ScriptType) | ForEach-Object {
             Write-Debug "$($psitem) and state is $($psitem.$($values.ScriptType))"
             $Scriptblock = [scriptblock]::Create($psitem)
@@ -2799,8 +3534,8 @@ function Invoke-WinUtilTweaks {
         }
     }
 
-    if(!$undo) {
-        if($sync.configs.tweaks.$CheckBox.appx) {
+    if (!$undo) {
+        if ($sync.configs.tweaks.$CheckBox.appx) {
             $sync.configs.tweaks.$CheckBox.appx | ForEach-Object {
                 Write-Debug "UNDO $($psitem.Name)"
                 Remove-WinUtilAPPX -Name $psitem
@@ -2826,10 +3561,13 @@ function Remove-WinUtilAPPX {
     <#
 
     .SYNOPSIS
-        Removes all APPX packages that match the given name
+        Removes all APPX packages that match the given name, for all users
 
     .PARAMETER Name
         The name of the APPX package to remove
+
+    .OUTPUTS
+        True when no package that matches the name is left
 
     .EXAMPLE
         Remove-WinUtilAPPX -Name "Microsoft.Microsoft3DViewer"
@@ -2840,8 +3578,77 @@ function Remove-WinUtilAPPX {
     )
 
     Write-Host "Removing $Name"
-    Get-AppxPackage $Name -AllUsers | Remove-AppxPackage -AllUsers
-    Get-AppxProvisionedPackage -Online | Where-Object DisplayName -like $Name | Remove-AppxProvisionedPackage -Online
+
+    # One package at a time instead of the pipeline: in PowerShell 7 Remove-AppxPackage fails silently
+    # through the pipeline, and Get-AppxPackage -AllUsers returns the same package once per user profile
+    $removed = $true
+    $pkgs = Get-AppxPackage "*$Name*" -AllUsers | Sort-Object -Property PackageFullName -Unique
+    foreach ($pkg in @($pkgs)) {
+        if ($null -eq $pkg) {
+            continue
+        }
+        try {
+            Remove-AppxPackage -Package $pkg.PackageFullName -AllUsers -ErrorAction Stop
+        } catch {
+            Write-Warning "Failed to remove AppX package $($pkg.PackageFullName): $($_.Exception.Message)"
+            $removed = $false
+        }
+    }
+    return $removed
+}
+function Remove-WinUtilProvisionedAPPX {
+    <#
+
+    .SYNOPSIS
+        Removes the provisioned AppX packages that match the given names, so that new user profiles do not get them
+
+    .PARAMETER PackageList
+        An array of names of the APPX packages to remove
+
+    .EXAMPLE
+        Remove-WinUtilProvisionedAPPX -PackageList @("Microsoft.Microsoft3DViewer", "Microsoft.WindowsCalculator")
+
+    #>
+    param (
+        [string[]]$PackageList
+    )
+
+    if ($null -eq $PackageList -or $PackageList.Count -eq 0) {
+        return
+    }
+
+    Write-Host "`nRemoving provisioned packages..."
+
+    # The DISM cmdlets often fail with "Class not registered" or stop responding in PowerShell 7,
+    # so they run in Windows PowerShell 5.1
+    $ps5Command = {
+        $pkgs = $args
+        $provisionedPackages = Get-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue
+        $failures = [System.Collections.Generic.List[string]]::new()
+
+        foreach ($Package in $pkgs) {
+            $provs = $provisionedPackages | Where-Object DisplayName -Like "*$Package*"
+            foreach ($prov in @($provs)) {
+                if ($null -eq $prov) {
+                    continue
+                }
+                try {
+                    Remove-AppxProvisionedPackage -Online -PackageName $prov.PackageName -ErrorAction Stop | Out-Null
+                } catch {
+                    $failures.Add("Failed to remove provisioned AppX package $($prov.PackageName): $($_.Exception.Message)")
+                }
+            }
+        }
+
+        if ($failures.Count -gt 0) {
+            throw ($failures -join [Environment]::NewLine)
+        }
+    }
+
+    $removalOutput = powershell.exe -NoProfile -NonInteractive -Command $ps5Command -args $PackageList 2>&1
+    if ($LASTEXITCODE -ne 0 -or $null -ne $removalOutput) {
+        throw "Provisioned AppX package removal failed: $(($removalOutput | Out-String).Trim())"
+    }
 }
 function Reset-WPFCheckBoxes {
     <#
@@ -2866,7 +3673,9 @@ function Reset-WPFCheckBoxes {
         [string]$checkboxfilterpattern = "**"
     )
 
-    $CheckBoxesToCheck = $sync.selectedApps + $sync.selectedTweaks + $sync.selectedFeatures
+    $CheckBoxesToCheck = @($sync.selectedApps) + @($sync.selectedTweaks) + @($sync.selectedFeatures) + @($sync.selectedAppx)
+    # Imported keys can differ in case from the names of the checkboxes
+    $selectedSet = [System.Collections.Generic.HashSet[string]]::new([string[]]$CheckBoxesToCheck, [StringComparer]::OrdinalIgnoreCase)
     $CheckBoxes = ($sync.GetEnumerator()).where{ $_.Value -is [System.Windows.Controls.CheckBox] -and $_.Name -notlike "WPFToggle*" -and $_.Name -like "$checkboxfilterpattern"}
     Write-Debug "Getting checkboxes to set, number of checkboxes: $($CheckBoxes.Count)"
 
@@ -2879,13 +3688,13 @@ function Reset-WPFCheckBoxes {
 
     foreach ($CheckBox in $CheckBoxes) {
         $checkboxName = $CheckBox.Key
-        if (-not $CheckBoxesToCheck) {
+        if ($selectedSet.Count -eq 0) {
             $sync.$checkBoxName.IsChecked = $false
             continue
         }
 
         # Check if the checkbox name exists in the flattened JSON hashtable
-        if ($CheckBoxesToCheck -contains $checkboxName) {
+        if ($selectedSet.Contains($checkboxName)) {
             # If it exists, set IsChecked to true
             $sync.$checkboxName.IsChecked = $true
             Write-Debug "$checkboxName is checked"
@@ -3003,41 +3812,196 @@ function Set-Preferences{
         Load-Preferences
     }
 }
+function Set-WinUtilAppCategoryFilter {
+    <#
+    .SYNOPSIS
+        Applies the category filter of the Install tab and updates its chips
+
+    .DESCRIPTION
+        The categories shown are in $sync.SelectedAppCategories: an empty list shows every category,
+        which is what the "Tutte" chip stands for. The search text is applied again on top of the categories.
+
+    .PARAMETER Category
+        The category to act on. An empty value shows every category again.
+
+    .PARAMETER Additive
+        Adds the category to the ones shown, or removes it, instead of showing only that category (Ctrl+click)
+    #>
+
+    param(
+        [string]$Category = "",
+        [switch]$Additive
+    )
+
+    if ($null -eq $sync.SelectedAppCategories) {
+        $sync.SelectedAppCategories = [System.Collections.Generic.List[string]]::new()
+    }
+    $selected = $sync.SelectedAppCategories
+
+    if ([string]::IsNullOrWhiteSpace($Category)) {
+        $selected.Clear()
+    } elseif ($Additive) {
+        if ($selected.Contains($Category)) {
+            [void]$selected.Remove($Category)
+        } else {
+            $selected.Add($Category)
+        }
+    } elseif ($selected.Count -eq 1 -and $selected.Contains($Category)) {
+        # A second click on the only category shown shows them all again
+        $selected.Clear()
+    } else {
+        $selected.Clear()
+        $selected.Add($Category)
+    }
+
+    Update-WinUtilAppCategoryChip
+    Find-AppsByNameOrDescription -SearchString $sync.SearchBar.Text -Categories $selected.ToArray()
+}
 function Set-WinUtilDNS {
     <#
 
     .SYNOPSIS
         Sets the DNS of all interfaces that are in the "Up" state. It will lookup the values from the DNS.Json file
 
+    .DESCRIPTION
+        "Fastest" measures the neutral providers and uses the fastest one. When Windows supports it,
+        the provider is also registered for DNS over HTTPS.
+
     .PARAMETER DNSProvider
         The DNS provider to set the DNS server to
+
+    .OUTPUTS
+        True when the DNS was set (or left unchanged with "Default"), false when it was not
 
     .EXAMPLE
         Set-WinUtilDNS -DNSProvider "google"
 
     #>
     param($DNSProvider)
-    if($DNSProvider -eq "Default") {return}
+
+    if ($DNSProvider -eq "Default") {
+        return $true
+    }
+
+    if ($DNSProvider -eq "Fastest") {
+        Write-Host "Measuring the latency of the DNS providers..."
+        $fastest = Get-WinUtilDNSBenchmark | Where-Object { $_.LatencyMs -lt 9999 } | Select-Object -First 1
+        if (-not $fastest) {
+            Write-Warning "Could not measure the latency of any DNS provider: the DNS settings are left as they are."
+            Add-WinUtilSessionAction -Area "Ottimizzazione" -Text "DNS - Imposta sul pi$([char]0x00F9) veloce" -Status "Error"
+            return $false
+        }
+        $DNSProvider = $fastest.Provider
+        Write-Host "Fastest DNS provider: $DNSProvider ($($fastest.LatencyMs) ms)"
+    }
+
     $reportText = if ($DNSProvider -eq "DHCP") { "DNS - Imposta su automatico (DHCP)" } else { "DNS - Imposta su {0}" -f ($DNSProvider -replace "_", " ") }
     try {
         $Adapters = Get-NetAdapter | Where-Object {$_.Status -eq "Up"}
         Write-Host "Ensuring DNS is set to $DNSProvider on the following interfaces:"
         Write-Host $($Adapters | Out-String)
 
-        Foreach ($Adapter in $Adapters) {
-            if($DNSProvider -eq "DHCP") {
-                Set-DnsClientServerAddress -InterfaceIndex $Adapter.ifIndex -ResetServerAddresses
-            } else {
-                Set-DnsClientServerAddress -InterfaceIndex $Adapter.ifIndex -ServerAddresses ("$($sync.configs.dns.$DNSProvider.Primary)", "$($sync.configs.dns.$DNSProvider.Secondary)")
-                Set-DnsClientServerAddress -InterfaceIndex $Adapter.ifIndex -ServerAddresses ("$($sync.configs.dns.$DNSProvider.Primary6)", "$($sync.configs.dns.$DNSProvider.Secondary6)")
+        if ($DNSProvider -ne "DHCP") {
+            $dns = $sync.configs.dns.$DNSProvider
+            if ($null -eq $dns) {
+                throw "DNS provider $DNSProvider was not found in the configuration."
             }
         }
+
+        $dohSupported = [bool](Get-Command Add-DnsClientDohServerAddress -ErrorAction SilentlyContinue)
+        $dnscacheBase = "HKLM:\System\CurrentControlSet\Services\Dnscache\InterfaceSpecificParameters"
+
+        foreach ($Adapter in $Adapters) {
+            $interfaceParams = "$dnscacheBase\$($Adapter.InterfaceGuid)"
+
+            if ($DNSProvider -eq "DHCP") {
+                # Set-DnsClientServerAddress alone can leave static servers on some adapters
+                Set-DnsClientServerAddress -InterfaceIndex $Adapter.ifIndex -ResetServerAddresses
+                netsh interface ip set dnsservers name="$($Adapter.Name)" source=dhcp | Out-Null
+                netsh interface ipv6 set dnsservers name="$($Adapter.Name)" source=dhcp | Out-Null
+
+                # The DNS over HTTPS settings of the provider used before
+                $dohInterfaceSettings = "$interfaceParams\DohInterfaceSettings"
+                if (Test-Path $dohInterfaceSettings) {
+                    if ($dohSupported) {
+                        $dohServerAddresses = @(
+                            Get-ChildItem -Path "$dohInterfaceSettings\Doh" -ErrorAction SilentlyContinue
+                            Get-ChildItem -Path "$dohInterfaceSettings\Doh6" -ErrorAction SilentlyContinue
+                        ) | Select-Object -ExpandProperty PSChildName -Unique
+
+                        foreach ($ip in $dohServerAddresses) {
+                            if (Get-DnsClientDohServerAddress -ServerAddress $ip -ErrorAction SilentlyContinue) {
+                                Remove-DnsClientDohServerAddress -ServerAddress $ip -Confirm:$false -ErrorAction Stop
+                            }
+                        }
+                    }
+                    Remove-Item -Path $dohInterfaceSettings -Recurse -Force -ErrorAction SilentlyContinue
+                }
+            } else {
+                $ipv4Addresses = @(@($dns.Primary, $dns.Secondary) | Where-Object { $_ })
+                $ipv6Addresses = @(@($dns.Primary6, $dns.Secondary6) | Where-Object { $_ })
+
+                if ($dohSupported -and $dns.DohTemplate) {
+                    try {
+                        foreach ($ip in @($ipv4Addresses + $ipv6Addresses)) {
+                            if (Get-DnsClientDohServerAddress -ServerAddress $ip -ErrorAction SilentlyContinue) {
+                                Set-DnsClientDohServerAddress -ServerAddress $ip -DohTemplate $dns.DohTemplate -AllowFallbackToUdp $false -AutoUpgrade $true -ErrorAction Stop
+                            } else {
+                                Add-DnsClientDohServerAddress -ServerAddress $ip -DohTemplate $dns.DohTemplate -AllowFallbackToUdp $false -AutoUpgrade $true -ErrorAction Stop
+                            }
+
+                            # Turns DNS over HTTPS on for this adapter, as the Settings app does
+                            $leaf = if ($ip.Contains(':')) { 'Doh6' } else { 'Doh' }
+                            $regPath = "$interfaceParams\DohInterfaceSettings\$leaf\$ip"
+                            if (-not (Test-Path $regPath)) {
+                                New-Item -Path $regPath -Force -ErrorAction Stop | Out-Null
+                            }
+                            New-ItemProperty -Path $regPath -Name "DohFlags" -Value 1 -PropertyType QWord -Force -ErrorAction Stop | Out-Null
+                        }
+                    } catch {
+                        Write-Warning "DNS over HTTPS setup for provider $DNSProvider failed; continuing with plain DNS: $($psitem.Exception.Message)"
+                    }
+                }
+
+                Set-DnsClientServerAddress -InterfaceIndex $Adapter.ifIndex -ServerAddresses $ipv4Addresses -ErrorAction Stop
+                Set-DnsClientServerAddress -InterfaceIndex $Adapter.ifIndex -ServerAddresses $ipv6Addresses -ErrorAction Stop
+            }
+        }
+        if ($DNSProvider -ne "DHCP" -and $dohSupported -and $dns.DohTemplate) {
+            Clear-DnsClientCache
+        }
         Add-WinUtilSessionAction -Area "Ottimizzazione" -Text $reportText
+        return $true
     } catch {
-        Write-Warning "Unable to set DNS Provider due to an unhandled exception."
-        Write-Warning $psitem.Exception.StackTrace
+        Write-Warning "DNS provider $DNSProvider was not completed because an error occurred."
+        Write-Warning $psitem.Exception.Message
         Add-WinUtilSessionAction -Area "Ottimizzazione" -Text $reportText -Status "Error"
+        return $false
     }
+}
+function Set-WinUtilFontScaleStep {
+    <#
+    .SYNOPSIS
+        Makes the text of WinRUtil bigger or smaller by one step of the text size slider
+
+    .PARAMETER Step
+        The change of the scale factor; 0 restores the normal size
+
+    .EXAMPLE
+        Set-WinUtilFontScaleStep -Step 0.25
+    #>
+
+    param([double]$Step)
+
+    $slider = $sync.FontScalingSlider
+    $value = if ($Step -eq 0) { 1.0 } else { $slider.Value + $Step }
+    $value = [math]::Max($slider.Minimum, [math]::Min($slider.Maximum, $value))
+    if ($value -eq $sync.fontScaleFactor -or ($null -eq $sync.fontScaleFactor -and $value -eq 1.0)) {
+        return
+    }
+
+    $slider.Value = $value
+    Invoke-WinUtilFontScaling -ScaleFactor $value
 }
 function Set-WinUtilProgressbar{
     <#
@@ -3097,7 +4061,27 @@ function Set-WinUtilRegistry {
     )
 
     try {
-        if(!(Test-Path 'HKU:\')) {New-PSDrive -PSProvider Registry -Name HKU -Root HKEY_USERS}
+        if(!(Test-Path 'HKU:\')) {New-PSDrive -PSProvider Registry -Name HKU -Root HKEY_USERS | Out-Null}
+
+        if ($Value -eq "<RemoveEntry>") {
+            # A value that is not there is already in the requested state: undoing a tweak that was never
+            # applied must not fail, and the key must not be created just to remove nothing from it.
+            # Only a missing key or value counts as absent; access errors still reach the handlers below.
+            $valueExists = $true
+            try {
+                Get-ItemProperty -Path $Path -Name $Name -ErrorAction Stop | Out-Null
+            } catch [System.Management.Automation.PSArgumentException] {
+                # The registry provider throws PSArgumentException when a named value is missing
+                $valueExists = $false
+            } catch [System.Management.Automation.ItemNotFoundException] {
+                $valueExists = $false
+            }
+
+            if (-not $valueExists) {
+                Write-Host "$Path\$Name is already absent"
+                return
+            }
+        }
 
         If (!(Test-Path $Path)) {
             Write-Host "$Path was not found. Creating..."
@@ -3121,6 +4105,87 @@ function Set-WinUtilRegistry {
     } catch {
         Write-Warning "Unable to set $Name due to unhandled exception."
         Write-Warning $psitem.Exception.StackTrace
+    }
+}
+function Set-WinUtilRegistryComboState {
+    <#
+    .SYNOPSIS
+        Writes the registry values of a choice of a combo box, and checks them
+
+    .DESCRIPTION
+        When a value cannot be written, the values that were there before are restored.
+
+    .PARAMETER Registry
+        The registry entries of the combo box, with the value of each choice in Values
+
+    .PARAMETER State
+        The name of the choice to apply
+    #>
+    param(
+        [Parameter(Mandatory)]
+        $Registry,
+
+        [Parameter(Mandatory)]
+        [string]$State
+    )
+
+    if ($Registry[0].Values.PSObject.Properties.Name -notcontains $State) {
+        throw "Scelta sconosciuta: '$State'."
+    }
+
+    # The values before the change, to restore them if the change fails halfway
+    $previousValues = foreach ($setting in @($Registry)) {
+        $currentValue = Get-WinUtilRegistryComboValue -Setting $setting
+        [pscustomobject]@{ Setting = $setting; Exists = $currentValue.Exists; Value = $currentValue.Value }
+    }
+
+    try {
+        foreach ($setting in @($Registry)) {
+            $configuredValue = $setting.Values.PSObject.Properties[$State].Value
+            $previousValue = $previousValues | Where-Object Setting -EQ $setting
+            if ($configuredValue -ne "<RemoveEntry>" -or $previousValue.Exists) {
+                Set-WinUtilRegistry -Name $setting.Name -Path $setting.Path -Type $setting.Type -Value $configuredValue
+            }
+        }
+
+        # Set-WinUtilRegistry reports write errors without throwing, so every value is read again
+        foreach ($setting in @($Registry)) {
+            $configuredValue = $setting.Values.PSObject.Properties[$State].Value
+            $currentValue = Get-WinUtilRegistryComboValue -Setting $setting
+            $writeMatches = if ($configuredValue -eq "<RemoveEntry>") {
+                -not $currentValue.Exists
+            } else {
+                $currentValue.Exists -and [string]$currentValue.Value -eq [string]$configuredValue
+            }
+            if (-not $writeMatches) {
+                throw "I valori del registro non corrispondono alla scelta richiesta."
+            }
+        }
+    } catch {
+        $applyError = $_.Exception.Message
+        if ([string]::IsNullOrWhiteSpace($applyError)) {
+            $applyError = "I valori del registro non corrispondono alla scelta richiesta."
+        }
+        $rollbackFailed = $false
+        foreach ($previousValue in $previousValues) {
+            try {
+                $currentValue = Get-WinUtilRegistryComboValue -Setting $previousValue.Setting
+                if ($previousValue.Exists -or $currentValue.Exists) {
+                    $rollbackValue = if ($previousValue.Exists) { $previousValue.Value } else { "<RemoveEntry>" }
+                    Set-WinUtilRegistry -Name $previousValue.Setting.Name -Path $previousValue.Setting.Path -Type $previousValue.Setting.Type -Value $rollbackValue
+                }
+                $restoredValue = Get-WinUtilRegistryComboValue -Setting $previousValue.Setting
+                if ($restoredValue.Exists -ne $previousValue.Exists -or ($restoredValue.Exists -and [string]$restoredValue.Value -ne [string]$previousValue.Value)) {
+                    $rollbackFailed = $true
+                }
+            } catch {
+                $rollbackFailed = $true
+            }
+        }
+        if ($rollbackFailed) {
+            throw ("Impossibile applicare '{0}': {1} Non {2} stato possibile ripristinare i valori precedenti del registro." -f $State, $applyError, [char]0x00E8)
+        }
+        throw "Impossibile applicare '$State': $applyError"
     }
 }
 Function Set-WinUtilService {
@@ -3149,17 +4214,28 @@ Function Set-WinUtilService {
         # Check if the service exists
         $service = Get-Service -Name $Name -ErrorAction Stop
 
+        if (($service.PSObject.Properties.Name -contains "StartType") -and ([string]$service.StartType -eq [string]$StartupType)) {
+            Write-Host "Service $Name is already set to $StartupType"
+            return
+        }
+
         # Service exists, proceed with changing properties -- while handling auto delayed start for PWSH 5
         if (($PSVersionTable.PSVersion.Major -lt 7) -and ($StartupType -eq "AutomaticDelayedStart")) {
-            sc.exe config $Name start=delayed-auto
+            # sc.exe needs the space after "start="
+            sc.exe config $Name start= delayed-auto
+            if ($LASTEXITCODE -ne 0) {
+                throw "sc.exe config failed with exit code $LASTEXITCODE"
+            }
         } else {
             $service | Set-Service -StartupType $StartupType -ErrorAction Stop
         }
-    } catch [System.ServiceProcess.ServiceNotFoundException] {
-        Write-Warning "Service $Name was not found."
     } catch {
-        Write-Warning "Unable to set $Name due to unhandled exception."
-        Write-Warning $_.Exception.Message
+        if ($_.FullyQualifiedErrorId -like "NoServiceFoundForGivenName,*") {
+            Write-Warning "Service $Name was not found."
+        } else {
+            Write-Warning "Unable to set $Name due to unhandled exception."
+            Write-Warning $_.Exception.Message
+        }
     }
 
 }
@@ -3608,6 +4684,25 @@ function Test-WinUtilPackageManager {
 
     return $status
 }
+function Update-WinUtilAppCategoryChip {
+    <#
+    .SYNOPSIS
+        Checks the category chips of the Install tab that match the categories shown
+
+    .DESCRIPTION
+        A toggle button changes its state on every click; the state has to follow the categories
+        shown instead. The "Tutte" chip is checked when no category is selected.
+    #>
+
+    $selected = $sync.SelectedAppCategories
+    if ($null -eq $selected -or $null -eq $sync.AppCategoryChips) {
+        return
+    }
+
+    foreach ($chip in $sync.AppCategoryChips) {
+        $chip.IsChecked = if ($chip.Tag) { $selected.Contains([string]$chip.Tag) } else { $selected.Count -eq 0 }
+    }
+}
 function Update-WinUtilSelections {
     <#
 
@@ -3616,48 +4711,70 @@ function Update-WinUtilSelections {
 
     .PARAMETER flatJson
         The flattened json list of $sync values to select.
+
+    .PARAMETER Replace
+        Replaces the current selections instead of adding to them
+
+    .OUTPUTS
+        The keys that are not known to this version of WinRUtil, which are skipped
     #>
 
     param (
-        $flatJson
+        $flatJson,
+
+        [switch]$Replace
     )
 
     Write-Debug "JSON to import: $($flatJson)"
 
+    $nextSelections = @{
+        selectedApps     = [System.Collections.Generic.List[string]]::new()
+        selectedTweaks   = [System.Collections.Generic.List[string]]::new()
+        selectedToggles  = [System.Collections.Generic.List[string]]::new()
+        selectedFeatures = [System.Collections.Generic.List[string]]::new()
+        selectedAppx     = [System.Collections.Generic.List[string]]::new()
+    }
+
     foreach ($item in $flatJson) {
         # Ensure each item is treated as a string to handle PSCustomObject from JSON deserialization
         $cbkey = [string]$item
-        $group = if ($cbkey.StartsWith("WPFInstall")) { "Install" }
-                    elseif ($cbkey.StartsWith("WPFTweaks")) { "Tweaks" }
-                    elseif ($cbkey.StartsWith("WPFToggle")) { "Toggle" }
-                    elseif ($cbkey.StartsWith("WPFFeature")) { "Feature" }
-                    else { "na" }
+        $listName = switch -Regex ($cbkey) {
+            '^WPFInstall' { 'selectedApps' }
+            '^WPFTweaks'  { 'selectedTweaks' }
+            '^WPFToggle'  { 'selectedToggles' }
+            '^WPFFeature' { 'selectedFeatures' }
+            '^WPFAppx'    { 'selectedAppx' }
+        }
 
-        switch ($group) {
-            "Install" {
-                if (!$sync.selectedApps.Contains($cbkey)) {
-                    $sync.selectedApps.Add($cbkey)
-                    # The List type needs to be specified again, because otherwise Sort-Object will convert the list to a string if there is only a single entry
-                    [System.Collections.Generic.List[string]]$sync.selectedApps = $sync.SelectedApps | Sort-Object
-                }
-            }
-            "Tweaks" {
-                if (!$sync.selectedTweaks.Contains($cbkey)) {
-                    $sync.selectedTweaks.Add($cbkey)
-                }
-            }
-            "Toggle" {
-                if (!$sync.selectedToggles.Contains($cbkey)) {
-                    $sync.selectedToggles.Add($cbkey)
-                }
-            }
-            "Feature" {
-                if (!$sync.selectedFeatures.Contains($cbkey)) {
-                    $sync.selectedFeatures.Add($cbkey)
-                }
-            }
-            default {
-                Write-Host "Unknown group for checkbox: $($cbkey)"
+        # Exports of earlier versions can name entries that no longer exist
+        $isKnown = switch ($listName) {
+            'selectedApps' { $sync.configs.applicationsHashtable.ContainsKey($cbkey) }
+            'selectedTweaks' { $null -ne $sync.configs.tweaks.PSObject.Properties[$cbkey] }
+            'selectedToggles' { $null -ne $sync.configs.tweaks.PSObject.Properties[$cbkey] }
+            'selectedFeatures' { $null -ne $sync.configs.feature.PSObject.Properties[$cbkey] }
+            'selectedAppx' { $null -ne $sync.configs.appxHashtable -and $sync.configs.appxHashtable.ContainsKey($cbkey) }
+            default { $false }
+        }
+        if (-not $isKnown) {
+            Write-Host "Skipping unknown selection: $cbkey"
+            $cbkey
+            continue
+        }
+
+        if ($nextSelections[$listName] -notcontains $cbkey) {
+            $nextSelections[$listName].Add($cbkey)
+        }
+    }
+
+    foreach ($listName in $nextSelections.Keys) {
+        if ($Replace) {
+            $sync[$listName] = $nextSelections[$listName]
+            continue
+        }
+        foreach ($cbkey in $nextSelections[$listName]) {
+            # A preset and a configuration that both name an entry must not select it twice
+            if ($sync.$listName -notcontains $cbkey) {
+                $sync.$listName.Add($cbkey)
             }
         }
     }
@@ -3667,6 +4784,7 @@ function Update-WinUtilSelections {
     Write-Debug "Selected Tweaks: $($sync.selectedTweaks)"
     Write-Debug "Selected Toggles: $($sync.selectedToggles)"
     Write-Debug "Selected Features: $($sync.selectedFeatures)"
+    Write-Debug "Selected AppX: $($sync.selectedAppx)"
     Write-Debug "--------------------------------------"
 }
 function Initialize-WPFUI {
@@ -3782,6 +4900,7 @@ function Initialize-WPFUI {
         "appspanel" {
             $sync.ItemsControl = Initialize-InstallAppArea -TargetElement $TargetGridName
             Initialize-InstallCategoryAppList -TargetElement $sync.ItemsControl -Apps $sync.configs.applicationsHashtable
+            Initialize-WinUtilAppCategoryChips -Apps $sync.configs.applicationsHashtable
         }
         default {
             Write-Output "$TargetGridName not yet implemented"
@@ -3805,45 +4924,214 @@ function Invoke-WinUtilAutoRun {
 
     BusyWait
 
-    Write-Host "Applying tweaks..."
-    Invoke-WPFtweaksbutton
-    BusyWait
-
-    Write-Host "Applying toggles..."
-    $handle = Invoke-WPFRunspace -ScriptBlock {
-        $Toggles = $sync.selectedToggles
-        Write-Debug "Inside Number of toggles to process: $($Toggles.Count)"
-
-        $sync.ProcessRunning = $true
-
-        for ($i = 0; $i -lt $Tweaks.Count; $i++) {
-            Invoke-WinUtilTweaks $Toggles[$i]
-        }
-
-        $sync.ProcessRunning = $false
-        Write-Host "================================="
-        Write-Host "--     Toggles are Finished    ---"
-        Write-Host "================================="
+    # Only the steps with something selected run: the others would ask to select something first
+    if ($sync.selectedTweaks.Count -gt 0) {
+        Write-Host "Applying tweaks..."
+        Invoke-WPFtweaksbutton
+        BusyWait
     }
-    BusyWait
 
-    Write-Host "Applying features..."
-    Invoke-WPFFeatureInstall
-    BusyWait
+    if ($sync.selectedToggles.Count -gt 0) {
+        Write-Host "Applying toggles..."
+        $handle = Invoke-WPFRunspace -ScriptBlock {
+            $Toggles = $sync.selectedToggles
+            Write-Debug "Inside Number of toggles to process: $($Toggles.Count)"
 
-    Write-Host "Installing applications..."
-    Invoke-WPFInstall
-    BusyWait
+            $sync.ProcessRunning = $true
+
+            for ($i = 0; $i -lt $Toggles.Count; $i++) {
+                Invoke-WinUtilTweaks $Toggles[$i]
+            }
+
+            $sync.ProcessRunning = $false
+            Write-Host "================================="
+            Write-Host "--     Toggles are Finished    ---"
+            Write-Host "================================="
+        }
+        BusyWait
+    }
+
+    if ($sync.selectedFeatures.Count -gt 0) {
+        Write-Host "Applying features..."
+        Invoke-WPFFeatureInstall
+        BusyWait
+    }
+
+    if ($sync.selectedApps.Count -gt 0) {
+        Write-Host "Installing applications..."
+        Invoke-WPFInstall
+        BusyWait
+    }
+
+    if ($sync.selectedAppx.Count -gt 0) {
+        Write-Host "Removing Windows apps..."
+        Invoke-WPFAppxRemoval -Confirmed
+        BusyWait
+    }
 
     Write-Host "Done."
 }
-function Invoke-WinUtilRemoveEdge {
-  New-Item -Path "$Env:SystemRoot\SystemApps\Microsoft.MicrosoftEdge_8wekyb3d8bbwe\MicrosoftEdge.exe" -Force
+function Invoke-WPFAppxInstall {
+    <#
 
-  $Path = Resolve-Path -Path "$Env:ProgramFiles (x86)\Microsoft\Edge\Application\*\Installer\setup.exe" | Select-Object -Last 1
-  Start-Process -FilePath $Path -ArgumentList '--uninstall --system-level --force-uninstall --delete-profile' -Wait
+    .SYNOPSIS
+        Installs again the selected Windows apps, from the copy left on the PC or from the Microsoft Store
 
-  Write-Host "Microsoft Edge was removed" -ForegroundColor Green
+    #>
+
+    if ($sync.ProcessRunning) {
+        [System.Windows.MessageBox]::Show("Attendi la fine dell'operazione in corso.", "WinRUtil", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning) | Out-Null
+        return
+    }
+
+    $selected = @($sync.selectedAppx)
+    if ($selected.Count -eq 0) {
+        [System.Windows.MessageBox]::Show("Seleziona le app di Windows da reinstallare.", "WinRUtil", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning) | Out-Null
+        return
+    }
+
+    $appxScript = {
+        param($Selected, $Apps)
+
+        $installed = 0
+        Write-Host "==========================================="
+        Write-Host "--     Installing Windows apps         ---"
+        Write-Host "==========================================="
+        try {
+            for ($i = 0; $i -lt $Selected.Count; $i++) {
+                $app = $Apps[$Selected[$i]]
+                Invoke-WPFUIThread -ScriptBlock {
+                    $sync.WPFAppxStatus.Text = "Installazione {0} di {1}: {2}..." -f ($i + 1), $Selected.Count, $app.Content
+                    Set-WinUtilTaskbaritem -state "Normal" -value ($i / $Selected.Count)
+                }
+
+                $ok = Install-WinUtilAPPX -Name $app.PackageId -StoreId $app.StoreId
+                if ($ok) {
+                    $installed++
+                }
+                Add-WinUtilSessionAction -Area "App di Windows" -Text ("Installazione di {0}" -f $app.Content) -Status $(if ($ok) { "Success" } else { "Error" })
+            }
+            $status = "Installazione completata: {0} app su {1}." -f $installed, $Selected.Count
+        } catch {
+            $status = "Installazione interrotta: $($_.Exception.Message)"
+        } finally {
+            $sync.ProcessRunning = $false
+            Invoke-WPFUIThread -ScriptBlock {
+                $sync.WPFAppxStatus.Text = $status
+                Set-WinUtilTaskbaritem -state "None" -overlay $(if ($installed -eq $Selected.Count) { "checkmark" } else { "warning" })
+            }
+        }
+    }
+
+    $sync.ProcessRunning = $true
+    try {
+        Invoke-WPFRunspace -ParameterList @(("Selected", $selected), ("Apps", $sync.configs.appxHashtable)) -ScriptBlock $appxScript | Out-Null
+    } catch {
+        $sync.ProcessRunning = $false
+        $sync.WPFAppxStatus.Text = "Impossibile avviare l'installazione: $($_.Exception.Message)"
+    }
+}
+function Invoke-WPFAppxRemoval {
+    <#
+
+    .SYNOPSIS
+        Removes the selected Windows apps for all users, also for the user profiles created later
+
+    .PARAMETER Confirmed
+        Removes the apps without asking, for the automatic runs
+
+    #>
+    param([switch]$Confirmed)
+
+    if ($sync.ProcessRunning) {
+        [System.Windows.MessageBox]::Show("Attendi la fine dell'operazione in corso.", "WinRUtil", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning) | Out-Null
+        return
+    }
+
+    $selected = @($sync.selectedAppx)
+    if ($selected.Count -eq 0) {
+        [System.Windows.MessageBox]::Show("Seleziona le app di Windows da rimuovere.", "WinRUtil", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning) | Out-Null
+        return
+    }
+
+    if (-not $Confirmed -and -not $PARAM_NOUI) {
+        $names = ($selected | ForEach-Object { "- $($sync.configs.appxHashtable[$_].Content)" }) -join "`n"
+        $message = "Vuoi rimuovere queste app di Windows per tutti gli utenti?`n`n$names`n`nPotrai reinstallarle in seguito con 'Reinstalla selezionate'."
+        $answer = [System.Windows.MessageBox]::Show($message, "WinRUtil", [System.Windows.MessageBoxButton]::YesNo, [System.Windows.MessageBoxImage]::Question)
+        if ($answer -ne "Yes") {
+            return
+        }
+    }
+
+    $appxScript = {
+        param($Selected, $Apps)
+
+        $removed = 0
+        $packageList = [System.Collections.Generic.List[string]]::new()
+        Write-Host "==========================================="
+        Write-Host "--      Removing Windows apps          ---"
+        Write-Host "==========================================="
+        try {
+            for ($i = 0; $i -lt $Selected.Count; $i++) {
+                $key = $Selected[$i]
+                $app = $Apps[$key]
+                Invoke-WPFUIThread -ScriptBlock {
+                    $sync.WPFAppxStatus.Text = "Rimozione {0} di {1}: {2}..." -f ($i + 1), $Selected.Count, $app.Content
+                    Set-WinUtilTaskbaritem -state "Normal" -value ($i / $Selected.Count)
+                }
+
+                if ($key -eq "WPFAppxMicrosoft_XboxGamingOverlay") {
+                    # The Game Bar must not be running, and without game capture the ms-gamebar
+                    # message no longer appears when a game starts
+                    Stop-Process -Name GameBarFTServer -Force -Confirm:$false -ErrorAction SilentlyContinue
+                    Set-ItemProperty -Path HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\GameDVR -Name AppCaptureEnabled -Value 0 -ErrorAction SilentlyContinue
+                }
+                if ($key -eq "WPFAppxMicrosoft_WindowsNotepad") {
+                    Stop-Process -Name dllhost -Force -Confirm:$false -ErrorAction SilentlyContinue
+                }
+
+                $ok = Remove-WinUtilAPPX -Name $app.PackageId
+                $packageList.Add($app.PackageId)
+
+                if ($key -eq "WPFAppxMSTeams") {
+                    # The Teams meeting add-in for Microsoft Office
+                    Get-Package -Name "Microsoft Teams*" -ErrorAction SilentlyContinue | Uninstall-Package -Force -ErrorAction SilentlyContinue | Out-Null
+                }
+
+                if ($ok) {
+                    $removed++
+                }
+                Add-WinUtilSessionAction -Area "App di Windows" -Text ("Rimozione di {0}" -f $app.Content) -Status $(if ($ok) { "Success" } else { "Error" })
+            }
+
+            $status = "Rimozione completata: {0} app su {1}." -f $removed, $Selected.Count
+            Invoke-WPFUIThread -ScriptBlock {
+                $sync.WPFAppxStatus.Text = "Rimozione delle app per i nuovi profili utente..."
+            }
+            try {
+                Remove-WinUtilProvisionedAPPX -PackageList $packageList.ToArray()
+            } catch {
+                Write-Warning $_.Exception.Message
+                $status += " Alcune app potrebbero comparire di nuovo nei profili utente creati in seguito."
+            }
+        } catch {
+            $status = "Rimozione interrotta: $($_.Exception.Message)"
+        } finally {
+            $sync.ProcessRunning = $false
+            Invoke-WPFUIThread -ScriptBlock {
+                $sync.WPFAppxStatus.Text = $status
+                Set-WinUtilTaskbaritem -state "None" -overlay $(if ($removed -eq $Selected.Count) { "checkmark" } else { "warning" })
+            }
+        }
+    }
+
+    $sync.ProcessRunning = $true
+    try {
+        Invoke-WPFRunspace -ParameterList @(("Selected", $selected), ("Apps", $sync.configs.appxHashtable)) -ScriptBlock $appxScript | Out-Null
+    } catch {
+        $sync.ProcessRunning = $false
+        $sync.WPFAppxStatus.Text = "Impossibile avviare la rimozione: $($_.Exception.Message)"
+    }
 }
 function Invoke-WPFButton {
 
@@ -3902,6 +5190,7 @@ function Invoke-WPFButton {
         "WPFExpandAllCategories" {Invoke-WPFToggleAllCategories -Action "Expand"}
         "WPFStandard" {Invoke-WPFPresets "Standard" -checkboxfilterpattern "WPFTweak*"}
         "WPFMinimal" {Invoke-WPFPresets "Minimal" -checkboxfilterpattern "WPFTweak*"}
+        "WPFAdvanced" {Invoke-WPFPresets "Advanced" -checkboxfilterpattern "WPFTweak*"}
         "WPFClearTweaksSelection" {Invoke-WPFPresets -imported $true -checkboxfilterpattern "WPFTweak*"}
         "WPFClearInstallSelection" {Invoke-WPFPresets -imported $true -checkboxfilterpattern "WPFInstall*"}
         "WPFtweaksbutton" {Invoke-WPFtweaksbutton}
@@ -3925,11 +5214,30 @@ function Invoke-WPFButton {
         "WPFWifiImport" {Invoke-WPFWifiImport}
         "WPFWifiQrSave" {Invoke-WPFWifiQrSave}
         "WPFWifiQrClose" {Invoke-WPFWifiQrClose}
+        "WPFOpenAppxTab" {Invoke-WPFTab "WPFTab9BT"}
+        "WPFRemoveSelectedAppx" {Invoke-WPFAppxRemoval}
+        "WPFInstallSelectedAppx" {Invoke-WPFAppxInstall}
+        "WPFDefaultAppxSelection" {Invoke-WPFPresets "AppxDefault" -checkboxfilterpattern "WPFAppx*"}
+        "WPFSelectAllAppx" {
+            foreach ($key in $sync.configs.appxHashtable.Keys) { $sync.$key.IsChecked = $true }
+        }
+        "WPFClearAppxSelection" {
+            foreach ($key in $sync.configs.appxHashtable.Keys) { $sync.$key.IsChecked = $false }
+        }
+        "WPFGetInstalledAppx" {Invoke-WPFGetInstalledAppx}
         "WPFReportCreate" {Invoke-WPFReportCreate}
         "WPFReportClear" {Invoke-WPFReportClear}
         "WPFSystemInfoRefresh" {Invoke-WPFSystemInfoRefresh}
         "WPFSystemInfoExport" {Invoke-WPFSystemInfoExport}
         "WPFCloseButton" {$sync.Form.Close(); Write-Host "Bye bye!"}
+        "WPFMinimizeButton" {[Windows.SystemCommands]::MinimizeWindow($sync.Form)}
+        "WPFMaximizeButton" {
+            if ($sync.Form.WindowState -eq [Windows.WindowState]::Maximized) {
+                [Windows.SystemCommands]::RestoreWindow($sync.Form)
+            } else {
+                [Windows.SystemCommands]::MaximizeWindow($sync.Form)
+            }
+        }
         "WPFselectedAppsButton" {$sync.selectedAppsPopup.IsOpen = -not $sync.selectedAppsPopup.IsOpen}
         "WPFToggleFOSSHighlight" {
             if ($sync.WPFToggleFOSSHighlight.IsChecked) {
@@ -4347,6 +5655,35 @@ function Invoke-WPFGetInstalled {
         Invoke-WPFUIThread -ScriptBlock { Set-WinUtilTaskbaritem -state "None" }
     }
 }
+function Invoke-WPFGetInstalledAppx {
+    <#
+
+    .SYNOPSIS
+        Selects the Windows apps of the list that are installed on this PC
+
+    #>
+
+    if ($sync.ProcessRunning) {
+        [System.Windows.MessageBox]::Show("Attendi la fine dell'operazione in corso.", "WinRUtil", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning) | Out-Null
+        return
+    }
+
+    $sync.WPFAppxStatus.Text = "Ricerca delle app installate..."
+    Invoke-WPFRunspace -ScriptBlock {
+        # Reading the packages takes a few seconds, so it runs in the background
+        $installed = @(Get-WinUtilInstalledAPPX)
+        Invoke-WPFUIThread -ScriptBlock {
+            $found = 0
+            foreach ($key in $sync.configs.appxHashtable.Keys) {
+                if ($installed -contains $sync.configs.appxHashtable[$key].PackageId) {
+                    $sync.$key.IsChecked = $true
+                    $found++
+                }
+            }
+            $sync.WPFAppxStatus.Text = "App dell'elenco installate su questo PC: $found."
+        }
+    } | Out-Null
+}
 function Invoke-WPFImpex {
     <#
 
@@ -4365,7 +5702,10 @@ function Invoke-WPFImpex {
     #>
     param(
         $type,
-        $Config = $null
+        $Config = $null,
+
+        # Adds the imported selections to the current ones instead of replacing them
+        [switch]$Merge
     )
 
     function ConfigDialog {
@@ -4393,16 +5733,19 @@ function Invoke-WPFImpex {
             try {
                 $Config = ConfigDialog
                 if ($Config) {
-                    $allConfs = ($sync.selectedApps + $sync.selectedTweaks + $sync.selectedToggles + $sync.selectedFeatures) | ForEach-Object { [string]$_ }
+                    $allConfs = ($sync.selectedApps + $sync.selectedTweaks + $sync.selectedToggles + $sync.selectedFeatures + $sync.selectedAppx) | ForEach-Object { [string]$_ }
                     if (-not $allConfs) {
                         [System.Windows.MessageBox]::Show(
-                            "Non hai selezionato nulla da esportare. Seleziona almeno un programma, un'ottimizzazione o una funzione di Windows prima di esportare.",
+                            "Non hai selezionato nulla da esportare. Seleziona almeno un programma, un'ottimizzazione, una funzione di Windows o un'app di Windows prima di esportare.",
                             "WinRUtil", "OK", "Warning")
                         return
                     }
                     $jsonFile = $allConfs | ConvertTo-Json
-                    $jsonFile | Out-File $Config -Force
-                    "iex ""& { `$(irm https://raw.githubusercontent.com/rtecnocopy89/WinRUtil/master/winrutil.ps1) } -Config '$Config'""" | Set-Clipboard
+                    # LiteralPath: brackets are valid in file names
+                    $jsonFile | Out-File -LiteralPath $Config -Force
+                    # The path stays literal when the copied command is pasted into PowerShell, also with apostrophes
+                    $escapedConfig = [System.Management.Automation.Language.CodeGeneration]::EscapeSingleQuotedStringContent($Config)
+                    "& ([ScriptBlock]::Create((irm 'https://raw.githubusercontent.com/rtecnocopy89/WinRUtil/master/winrutil.ps1'))) -Config '$escapedConfig'" | Set-Clipboard
                 }
             } catch {
                 Write-Error "An error occurred while exporting: $_"
@@ -4414,33 +5757,45 @@ function Invoke-WPFImpex {
                 if ($Config) {
                     try {
                         if ($Config -match '^https?://') {
-                            $jsonFile = (Invoke-WebRequest "$Config").Content | ConvertFrom-Json
+                            $jsonFile = (Invoke-WebRequest "$Config" -UseBasicParsing -ErrorAction Stop).Content | ConvertFrom-Json
                         } else {
-                            $jsonFile = Get-Content $Config | ConvertFrom-Json
+                            $jsonFile = Get-Content -LiteralPath $Config -Raw -ErrorAction Stop | ConvertFrom-Json
                         }
                     } catch {
                         Write-Error "Failed to load the JSON file from the specified path or URL: $_"
                         return
                     }
-                    # TODO how to handle old style? detected json type then flatten it in a func?
-                    # $flattenedJson = $jsonFile.PSObject.Properties.Where({ $_.Name -ne "Install" }).ForEach({ $_.Value })
-                    $flattenedJson = $jsonFile
 
-                    if (-not $flattenedJson) {
+                    # Exports of the original WinUtil are an object with the keys grouped by type
+                    $isLegacyConfig = $jsonFile -is [System.Management.Automation.PSCustomObject] -and
+                        $null -ne $jsonFile.PSObject.Properties["WPFInstall"]
+                    if ($isLegacyConfig) {
+                        $flattenedJson = @(
+                            foreach ($property in $jsonFile.PSObject.Properties) {
+                                if ($property.Name -notmatch '^WPF(?:Install|Tweaks|Toggle|Feature|Appx)') {
+                                    continue
+                                }
+                                foreach ($selection in @($property.Value)) {
+                                    if ($selection -is [string] -and -not [string]::IsNullOrWhiteSpace($selection)) {
+                                        $selection
+                                    }
+                                }
+                            }
+                        )
+                    } else {
+                        $flattenedJson = @($jsonFile)
+                    }
+
+                    if ($flattenedJson.Count -eq 0) {
                         [System.Windows.MessageBox]::Show(
                             "Il file selezionato non contiene impostazioni da importare: nessuna modifica applicata.",
                             "WinRUtil", "OK", "Warning")
                         return
                     }
 
-                    # Clear all existing selections before importing so the import replaces
-                    # the current state rather than merging with it
-                    $sync.selectedApps = [System.Collections.Generic.List[string]]::new()
-                    $sync.selectedTweaks = [System.Collections.Generic.List[string]]::new()
-                    $sync.selectedToggles = [System.Collections.Generic.List[string]]::new()
-                    $sync.selectedFeatures = [System.Collections.Generic.List[string]]::new()
-
-                    Update-WinUtilSelections -flatJson $flattenedJson
+                    # The import replaces the current selections, unless it adds to a preset.
+                    # Entries that no longer exist are skipped.
+                    $skipped = @(Update-WinUtilSelections -flatJson $flattenedJson -Replace:(-not $Merge))
 
                     if (!$PARAM_NOUI) {
                         # Set flag so toggle Checked/Unchecked events don't trigger registry writes
@@ -4450,6 +5805,16 @@ function Invoke-WPFImpex {
                             Reset-WPFCheckBoxes -doToggles $true
                         } finally {
                             $sync.ImportInProgress = $false
+                        }
+
+                        if ($skipped.Count -gt 0) {
+                            $skippedText = (@($skipped | Select-Object -First 10) -join "`n")
+                            if ($skipped.Count -gt 10) {
+                                $skippedText += "`n... e altre {0}" -f ($skipped.Count - 10)
+                            }
+                            [System.Windows.MessageBox]::Show(
+                                ("Le impostazioni sono state importate, tranne queste voci che non esistono pi{0} in questa versione di WinRUtil:`n`n{1}" -f [char]0x00F9, $skippedText),
+                                "WinRUtil", "OK", "Warning") | Out-Null
                         }
                     }
                 }
@@ -4552,7 +5917,7 @@ function Invoke-WPFUpgradeRefresh {
     $sync.WPFUpgradeStatus.Text = "Ricerca degli aggiornamenti con {0} in corso..." -f $(if ($manager -eq "Choco") { "Chocolatey" } else { "WinGet" })
     Update-WinUtilUpgradeView
 
-    Invoke-WPFRunspace -ParameterList @(, @("Manager", $manager)) -ScriptBlock {
+    $searchScript = {
         param($Manager)
         $updates = @()
         Invoke-WPFUIThread -ScriptBlock { Set-WinUtilTaskbaritem -state "Indeterminate" }
@@ -4560,8 +5925,16 @@ function Invoke-WPFUpgradeRefresh {
             if ($Manager -eq "Choco" -and -not (Get-Command choco -ErrorAction SilentlyContinue)) {
                 $status = "Chocolatey non {0} installato: non ci sono applicazioni da aggiornare con Chocolatey." -f [char]0x00E8
             } else {
-                if ($Manager -eq "Winget") {
+                if ($Manager -eq "Winget" -and (Test-WinUtilPackageManager -winget) -ne "installed") {
+                    # Right after an update of App Installer WinGet can be missing for a while: installing
+                    # it takes some minutes, so say what is happening
+                    Invoke-WPFUIThread -ScriptBlock {
+                        $sync.WPFUpgradeStatus.Text = "WinGet non {0} disponibile: installazione di WinGet in corso..." -f [char]0x00E8
+                    }
                     Install-WinUtilWinget
+                    Invoke-WPFUIThread -ScriptBlock {
+                        $sync.WPFUpgradeStatus.Text = "Ricerca degli aggiornamenti con WinGet in corso..."
+                    }
                 }
                 $updates = @(Get-WinUtilProgramUpdates -Manager $Manager)
                 $status = switch ($updates.Count) {
@@ -4589,6 +5962,16 @@ function Invoke-WPFUpgradeRefresh {
             }
         }
     }
+
+    try {
+        Invoke-WPFRunspace -ParameterList @(, @("Manager", $manager)) -ScriptBlock $searchScript | Out-Null
+    } catch {
+        # Without the background search the list would wait for ever
+        $sync.UpgradeState = "Ready"
+        $sync.ProcessRunning = $false
+        $sync.WPFUpgradeStatus.Text = "Impossibile cercare gli aggiornamenti: $($_.Exception.Message)"
+        Update-WinUtilUpgradeView
+    }
 }
 
 function Invoke-WPFUpgradeStart {
@@ -4611,7 +5994,7 @@ function Invoke-WPFUpgradeStart {
     $sync.WPFUpgradeList.Items.Refresh()
     Update-WinUtilUpgradeView
 
-    Invoke-WPFRunspace -ParameterList @(, @("Programs", $selected)) -ScriptBlock {
+    $updateScript = {
         param($Programs)
         $updated = 0
         Write-Host "==========================================="
@@ -4661,6 +6044,20 @@ function Invoke-WPFUpgradeStart {
             }
         }
     }
+
+    try {
+        Invoke-WPFRunspace -ParameterList @(, @("Programs", $selected)) -ScriptBlock $updateScript | Out-Null
+    } catch {
+        foreach ($item in $selected) {
+            $item.Status = ""
+            $item.Level = ""
+        }
+        $sync.UpgradeState = "Ready"
+        $sync.ProcessRunning = $false
+        $sync.WPFUpgradeList.Items.Refresh()
+        $sync.WPFUpgradeStatus.Text = "Impossibile avviare l'aggiornamento: $($_.Exception.Message)"
+        Update-WinUtilUpgradeView
+    }
 }
 
 function Update-WinUtilProgram {
@@ -4677,19 +6074,29 @@ function Update-WinUtilProgram {
     param([Parameter(Mandatory)]$Program)
 
     Write-Host "Updating $($Program.Name) ($($Program.Id))..."
+    # Only the package manager is waited for: an installer may leave the updated application open
     if ($Program.Manager -eq "Choco") {
-        $exitCode = (Start-Process -FilePath "choco" -ArgumentList "upgrade $($Program.Id) -y" -Wait -PassThru).ExitCode
+        $exitCode = Invoke-WinUtilProcess -FilePath "choco" -ArgumentList "upgrade $($Program.Id) -y"
         $result = switch ($exitCode) {
             0 { @{ Success = $true; Text = "Aggiornata"; Level = "Success" } }
             { $_ -in 1641, 3010 } { @{ Success = $true; Text = "Aggiornata, riavvia il PC"; Level = "Warning" } }
             default { @{ Success = $false; Text = "Non riuscito (codice $exitCode)"; Level = "Danger" } }
+        }
+    } elseif ($Program.Id -eq "Microsoft.PowerShell" -and ($msiResult = Update-WinUtilPowerShellMSI).Outcome -ne "NotInstalled") {
+        # WinGet does not upgrade PowerShell installed with the official MSI package
+        Write-Host $msiResult.Detail
+        $exitCode = $msiResult.Outcome
+        $result = switch ($msiResult.Outcome) {
+            "Succeeded" { @{ Success = $true; Text = "Aggiornata"; Level = "Success" } }
+            "Skipped" { @{ Success = $false; Text = "Nessun aggiornamento applicabile"; Level = "Warning" } }
+            default { @{ Success = $false; Text = "Non riuscito (pacchetto MSI di PowerShell)"; Level = "Danger" } }
         }
     } else {
         $arguments = "upgrade --id $($Program.Id) --exact --include-unknown --silent --accept-source-agreements --accept-package-agreements"
         if ($Program.Source) {
             $arguments += " --source $($Program.Source)"
         }
-        $exitCode = (Start-Process -FilePath "winget" -ArgumentList $arguments -Wait -PassThru -NoNewWindow).ExitCode
+        $exitCode = Invoke-WinUtilProcess -FilePath "winget" -ArgumentList $arguments -NoNewWindow
         # The meaning of each code is shown by "winget error <code>"
         $result = switch ('0x{0:X8}' -f $exitCode) {
             '0x00000000' { @{ Success = $true; Text = "Aggiornata"; Level = "Success" } }
@@ -4900,13 +6307,14 @@ function Invoke-WPFPresets {
     switch ($checkboxfilterpattern) {
         "WPFTweak*" { $sync.selectedTweaks = [System.Collections.Generic.List[string]]::new() }
         "WPFInstall*" { $sync.selectedApps = [System.Collections.Generic.List[string]]::new() }
-        "WPFeatures" { $sync.selectedFeatures = [System.Collections.Generic.List[string]]::new() }
-        "WPFToggle" { $sync.selectedToggles = [System.Collections.Generic.List[string]]::new() }
+        "WPFAppx*" { $sync.selectedAppx = [System.Collections.Generic.List[string]]::new() }
+        "WPFFeature*" { $sync.selectedFeatures = [System.Collections.Generic.List[string]]::new() }
+        "WPFToggle*" { $sync.selectedToggles = [System.Collections.Generic.List[string]]::new() }
         default {}
     }
 
     if ($preset) {
-        Update-WinUtilSelections -flatJson $CheckBoxesToCheck
+        $null = Update-WinUtilSelections -flatJson $CheckBoxesToCheck
     }
 
     Reset-WPFCheckBoxes -doToggles $false -checkboxfilterpattern $checkboxfilterpattern
@@ -5444,36 +6852,47 @@ function Invoke-WPFRunspace {
     #>
 
     [CmdletBinding()]
+    [OutputType([System.IAsyncResult])]
     Param (
         $ScriptBlock,
         $ArgumentList,
         $ParameterList
     )
 
+    # Dispose the PowerShell instances of earlier calls that have finished. The runspace pool is
+    # shared by the whole session and stays open until the window is closed.
+    if ($null -eq $sync.RunspaceShells) {
+        $sync.RunspaceShells = [System.Collections.ArrayList]::Synchronized([System.Collections.ArrayList]::new())
+    }
+    foreach ($shell in $sync.RunspaceShells.ToArray()) {
+        if ($shell.Handle.IsCompleted) {
+            try {
+                $null = $shell.PowerShell.EndInvoke($shell.Handle)
+            } catch {
+                Write-Debug "Background task ended with an error: $($_.Exception.Message)"
+            }
+            $shell.PowerShell.Dispose()
+            $sync.RunspaceShells.Remove($shell)
+        }
+    }
+
     # Create a PowerShell instance
-    $script:powershell = [powershell]::Create()
+    $powershell = [powershell]::Create()
 
     # Add Scriptblock and Arguments to runspace
-    $script:powershell.AddScript($ScriptBlock)
-    $script:powershell.AddArgument($ArgumentList)
+    [void]$powershell.AddScript($ScriptBlock)
+    [void]$powershell.AddArgument($ArgumentList)
 
     foreach ($parameter in $ParameterList) {
-        $script:powershell.AddParameter($parameter[0], $parameter[1])
+        [void]$powershell.AddParameter($parameter[0], $parameter[1])
     }
 
-    $script:powershell.RunspacePool = $sync.runspace
+    $powershell.RunspacePool = $sync.runspace
 
     # Execute the RunspacePool
-    $script:handle = $script:powershell.BeginInvoke()
+    $handle = $powershell.BeginInvoke()
+    [void]$sync.RunspaceShells.Add([pscustomobject]@{ PowerShell = $powershell; Handle = $handle })
 
-    # Clean up the RunspacePool threads when they are complete, and invoke the garbage collector to clean up the memory
-    if ($script:handle.IsCompleted) {
-        $script:powershell.EndInvoke($script:handle)
-        $script:powershell.Dispose()
-        $sync.runspace.Dispose()
-        $sync.runspace.Close()
-        [System.GC]::Collect()
-    }
     # Return the handle
     return $handle
 }
@@ -5503,74 +6922,41 @@ function Invoke-WPFSelectedCheckboxesUpdate{
         return
     }
 
-    # Get the actual Name from the selectedAppLabel inside the Checkbox
-    $appKey = $checkboxName
-    $group = if ($appKey.StartsWith("WPFInstall")) { "Install" }
-                elseif ($appKey.StartsWith("WPFTweaks")) { "Tweaks" }
-                elseif ($appKey.StartsWith("WPFToggle")) { "Toggle" }
-                elseif ($appKey.StartsWith("WPFFeature")) { "Feature" }
-                else { "na" }
+    $appKey = [string]$checkboxName
+    $listName = switch -Regex ($appKey) {
+        '^WPFInstall' { 'selectedApps' }
+        '^WPFTweaks'  { 'selectedTweaks' }
+        '^WPFToggle'  { 'selectedToggles' }
+        '^WPFFeature' { 'selectedFeatures' }
+        '^WPFAppx'    { 'selectedAppx' }
+    }
+    if (-not $listName) {
+        Write-Host "Unknown group for checkbox: $($appKey)"
+        return
+    }
 
-    switch ($group) {
-        "Install" {
-            if ($type -eq "Add") {
-               if (!$sync.selectedApps.Contains($appKey)) {
-                    $sync.selectedApps.Add($appKey)
-                    # The List type needs to be specified again, because otherwise Sort-Object will convert the list to a string if there is only a single entry
-                    [System.Collections.Generic.List[string]]$sync.selectedApps = $sync.SelectedApps | Sort-Object
-                }
-            }
-            else{
-                $sync.selectedApps.Remove($appKey)
-            }
-
-            $count = $sync.SelectedApps.Count
-            $sync.WPFselectedAppsButton.Content = "App selezionate: $count"
-            # On every change, remove all entries inside the Popup Menu. This is done, so we can keep the alphabetical order even if elements are selected in a random way
-            $sync.selectedAppsstackPanel.Children.Clear()
-            $sync.selectedApps | Foreach-Object { Add-SelectedAppsMenuItem -name $($sync.configs.applicationsHashtable.$_.Content) -key $_ }
+    $selectionChanged = $false
+    if ($type -eq "Add") {
+        if ($sync.$listName -notcontains $appKey) {
+            $sync.$listName.Add($appKey)
+            $selectionChanged = $true
         }
-        "Tweaks" {
-            if ($type -eq "Add") {
-                if (!$sync.selectedTweaks.Contains($appKey)) {
-                    $sync.selectedTweaks.Add($appKey)
-                }
+    } else {
+        # Every copy is removed, also one imported with a different case
+        for ($index = $sync.$listName.Count - 1; $index -ge 0; $index--) {
+            if ($sync.$listName[$index] -eq $appKey) {
+                $sync.$listName.RemoveAt($index)
+                $selectionChanged = $true
             }
-            else{
-                $sync.selectedTweaks.Remove($appKey)
-            }
-        }
-        "Toggle" {
-            if ($type -eq "Add") {
-                if (!$sync.selectedToggles.Contains($appKey)) {
-                    $sync.selectedToggles.Add($appKey)
-                }
-            }
-            else{
-                $sync.selectedToggles.Remove($appKey)
-            }
-        }
-        "Feature" {
-            if ($type -eq "Add") {
-                if (!$sync.selectedFeatures.Contains($appKey)) {
-                    $sync.selectedFeatures.Add($appKey)
-                }
-            }
-            else{
-                $sync.selectedFeatures.Remove($appKey)
-            }
-        }
-        default {
-            Write-Host "Unknown group for checkbox: $($appKey)"
         }
     }
 
-    Write-Debug "-------------------------------------"
-    Write-Debug "Selected Apps: $($sync.selectedApps)"
-    Write-Debug "Selected Tweaks: $($sync.selectedTweaks)"
-    Write-Debug "Selected Toggles: $($sync.selectedToggles)"
-    Write-Debug "Selected Features: $($sync.selectedFeatures)"
-    Write-Debug "--------------------------------------"
+    if ($listName -eq "selectedApps" -and $selectionChanged) {
+        $sync.WPFselectedAppsButton.Content = "App selezionate: $($sync.selectedApps.Count)"
+        # The menu is rebuilt on every change, to keep it in alphabetical order
+        $sync.selectedAppsstackPanel.Children.Clear()
+        $sync.selectedApps | Sort-Object | Foreach-Object { Add-SelectedAppsMenuItem -name $($sync.configs.applicationsHashtable.$_.Content) -key $_ }
+    }
 }
 function Invoke-WPFSSHServer {
     <#
@@ -6445,11 +7831,73 @@ function Invoke-WPFSystemRepair {
         1. Chkdsk - Checks for disk errors, which can cause system file corruption and notifies of early disk failure
         2. SFC - scans protected system files for corruption and fixes them
         3. DISM - Repair a corrupted Windows operating system image
+
+        The exit code of each step is checked: a failed step stops the repair, and the error of
+        DISM is explained.
     #>
 
-    Start-Process cmd.exe -ArgumentList "/c chkdsk /scan /perf" -NoNewWindow -Wait
-    Start-Process cmd.exe -ArgumentList "/c sfc /scannow" -NoNewWindow -Wait
-    Start-Process cmd.exe -ArgumentList "/c dism /online /cleanup-image /restorehealth" -NoNewWindow -Wait
+    # SuccessCodes are the exit codes other than 0 that a step treats as success. The same number
+    # means different things: 1 and 2 are normal results of chkdsk, while 1 from sfc is a failure.
+    $steps = @(
+        @{
+            Label = "CHKDSK (controllo del disco)"
+            Arguments = "/c chkdsk /scan /perf"
+            # 3: the disk could not be checked or has errors that an online scan cannot fix,
+            # and the next steps are not worth running on a disk in that state
+            SuccessCodes = @(1, 2)
+        },
+        @{
+            Label = "SFC (controllo dei file di sistema)"
+            Arguments = "/c sfc /scannow"
+            SuccessCodes = @()
+        },
+        @{
+            Label = "DISM (riparazione dell'immagine di Windows)"
+            Arguments = "/c dism /online /cleanup-image /restorehealth"
+            # 3010: repaired, a restart is needed
+            SuccessCodes = @(3010)
+        }
+    )
+
+    # The most common errors of DISM, which are Windows system error codes
+    $dismErrors = @{
+        2 = "file non trovato"
+        3 = "percorso non trovato"
+        5 = "accesso negato"
+        21 = "dispositivo non pronto"
+        32 = "file in uso da un altro programma"
+        50 = "richiesta non supportata"
+        87 = "parametro non valido"
+        112 = "disco pieno"
+        1168 = "elemento non trovato"
+        1223 = "operazione annullata"
+        1392 = "file o cartella danneggiati"
+        1460 = "tempo scaduto"
+        -2146498529 = "file di origine non trovati: serve Windows Update o un'immagine di Windows come origine"
+        -2146498298 = "impossibile scaricare i file di origine: controlla la connessione a Internet e Windows Update"
+        -2146498297 = "un criterio di gruppo impedisce di scaricare i file di origine da Windows Update"
+    }
+
+    $failure = $null
+    foreach ($step in $steps) {
+        Write-Host "==> $($step.Label)"
+        $exitCode = Invoke-WinUtilProcess -FilePath "cmd.exe" -ArgumentList $step.Arguments -NoNewWindow
+        if ($exitCode -ne 0 -and $step.SuccessCodes -notcontains $exitCode) {
+            $failure = "{0}: codice di uscita {1} (0x{1:X8})" -f $step.Label, $exitCode
+            if ($step.Label -like "DISM*" -and $dismErrors.ContainsKey($exitCode)) {
+                $failure += ", " + $dismErrors[$exitCode]
+            }
+            break
+        }
+    }
+
+    if ($failure) {
+        Write-Warning "System repair stopped. $failure"
+        Set-WinUtilTaskbaritem -state "Error" -overlay "warning"
+        Add-WinUtilSessionAction -Area "Riparazione" -Text "Controllo e riparazione del sistema (CHKDSK, SFC, DISM) - $failure" -Status "Error"
+        [System.Windows.MessageBox]::Show("Controllo e riparazione del sistema non completato.`n`n$failure", "WinRUtil", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning) | Out-Null
+        return
+    }
 
     Write-Host "==> Finished System Repair"
     Set-WinUtilTaskbaritem -state "None" -overlay "checkmark"
@@ -6498,6 +7946,7 @@ function Invoke-WPFTab {
             "System"   = "Sistema"
             "WiFi"     = "Password Wi-Fi"
             "Report"   = "Rapporto di intervento"
+            "AppX"     = "App di Windows"
         }
         $display = $titleMap[[string]$sync.currentTab]
         if (-not $display) { $display = $sync.currentTab }
@@ -6506,9 +7955,9 @@ function Invoke-WPFTab {
 
     # Always reset the filter for the current tab
     if ($sync.currentTab -eq "Install") {
-        # Reset Install tab filter
-        Find-AppsByNameOrDescription -SearchString ""
-    } elseif ($sync.currentTab -eq "Tweaks") {
+        # Reset the search of the Install tab, keeping the categories chosen with the chips
+        Find-AppsByNameOrDescription -SearchString "" -Categories @($sync.SelectedAppCategories)
+    } elseif ($sync.currentTab -eq "Tweaks" -or $sync.currentTab -eq "AppX") {
         # Reset Tweaks tab filter
         Find-TweaksByNameOrDescription -SearchString ""
     } elseif ($sync.currentTab -eq "System") {
@@ -6526,8 +7975,8 @@ function Invoke-WPFTab {
         Stop-WinUtilSystemLiveUpdate
     }
 
-    # Show search bar in Install and Tweaks tabs
-    if ($tabNumber -eq 0 -or $tabNumber -eq 1) {
+    # Show search bar in Install, Tweaks and Windows apps tabs
+    if ($sync.currentTab -in @("Install", "Tweaks", "AppX")) {
         $sync.SearchBar.Visibility = "Visible"
         $searchIcon = ($sync.Form.FindName("SearchBar").Parent.Children | Where-Object { $_ -is [System.Windows.Controls.TextBlock] -and $_.Text -eq [char]0xE721 })[0]
         if ($searchIcon) {
@@ -6664,7 +8113,19 @@ function Invoke-WPFtweaksbutton {
       }
     }
 
-    Set-WinUtilDNS -DNSProvider $dnsProvider
+    if ($dnsProvider -and $dnsProvider -ne "Default") {
+      Set-WinUtilProgressBar -Label "Impostazione del DNS: $dnsProvider" -Percent ($completedSteps / $totalSteps * 100)
+      # Going on after a failed DNS change would leave the PC half configured
+      if (@(Set-WinUtilDNS -DNSProvider $dnsProvider)[-1] -ne $true) {
+        Set-WinUtilProgressBar -Label "DNS non impostato: ottimizzazioni non applicate" -Percent 100
+        $sync.ProcessRunning = $false
+        Invoke-WPFUIThread -ScriptBlock {
+          Set-WinUtilTaskbaritem -state "Error" -overlay "warning"
+          [System.Windows.MessageBox]::Show("Impossibile impostare il DNS su $dnsProvider, quindi le altre ottimizzazioni non sono state applicate. I dettagli sono nella finestra della console.", "WinRUtil", "OK", "Warning") | Out-Null
+        }
+        return
+      }
+    }
 
     for ($i = 0; $i -lt $tweaks.Count; $i++) {
       $tweakName = $sync.configs.tweaks.($tweaks[$i]).Content
@@ -6761,6 +8222,8 @@ function Invoke-WPFUIElements {
             Description = $entryInfo.description
             Type        = $entryInfo.type
             ComboItems  = $entryInfo.ComboItems
+            ComboDescriptions = $entryInfo.ComboDescriptions
+            Registry    = $entryInfo.registry
             Checked     = $entryInfo.Checked
             ButtonWidth = $entryInfo.ButtonWidth
             GroupName   = $entryInfo.GroupName  # Added for RadioButton groupings
@@ -6931,6 +8394,7 @@ function Invoke-WPFUIElements {
 
                         $label = New-Object Windows.Controls.Label
                         $label.Content = $entryInfo.Content
+                        $label.ToolTip = $entryInfo.Description
                         $label.HorizontalAlignment = "Left"
                         $label.VerticalAlignment = "Center"
                         $label.SetResourceReference([Windows.Controls.Control]::FontSizeProperty, "ButtonFontSize")
@@ -6946,11 +8410,21 @@ function Invoke-WPFUIElements {
                         $comboBox.SetResourceReference([Windows.Controls.Control]::MarginProperty, "ButtonMargin")
                         $comboBox.SetResourceReference([Windows.Controls.Control]::FontSizeProperty, "ButtonFontSize")
                         $comboBox.UseLayoutRounding = $true
+                        # A combo box with registry Values applies its choice as soon as it is selected
+                        $comboBox.Tag = [pscustomobject]@{
+                            Registry = $(if ($entryInfo.Registry -and @($entryInfo.Registry)[0].Values) { $entryInfo.Registry } else { $null })
+                            State = $null
+                        }
                         [System.Windows.Automation.AutomationProperties]::SetName($comboBox, $entryInfo.Content)
 
-                        foreach ($comboitem in ($entryInfo.ComboItems -split " ")) {
+                        # The choices are separated by "|" when they contain spaces
+                        $comboItems = if ($entryInfo.ComboItems.Contains("|")) { $entryInfo.ComboItems -split "\|" } else { $entryInfo.ComboItems -split " " }
+                        foreach ($comboitem in $comboItems) {
                             $comboBoxItem = New-Object Windows.Controls.ComboBoxItem
                             $comboBoxItem.Content = $comboitem
+                            if ($entryInfo.ComboDescriptions -and $entryInfo.ComboDescriptions.PSObject.Properties[$comboitem]) {
+                                $comboBoxItem.ToolTip = $entryInfo.ComboDescriptions.PSObject.Properties[$comboitem].Value
+                            }
                             $comboBoxItem.SetResourceReference([Windows.Controls.Control]::FontSizeProperty, "ButtonFontSize")
                             $comboBoxItem.UseLayoutRounding = $true
                             $comboBox.Items.Add($comboBoxItem) | Out-Null
@@ -6959,18 +8433,61 @@ function Invoke-WPFUIElements {
                         $horizontalStackPanel.Children.Add($comboBox) | Out-Null
                         $itemsControl.Items.Add($horizontalStackPanel) | Out-Null
 
-                        $comboBox.SelectedIndex = 0
+                        if ($comboBox.Tag.Registry) {
+                            try {
+                                $comboBox.Tag.State = Get-WinUtilRegistryComboState -Registry $comboBox.Tag.Registry
+                                $comboBox.SelectedIndex = [array]::IndexOf([string[]]$comboItems, [string]$comboBox.Tag.State)
+                            } catch {
+                                # Values written by hand or by another program: no choice is selected until one is chosen
+                                $unknownStateItem = New-Object Windows.Controls.ComboBoxItem
+                                $unknownStateItem.Content = "Personalizzato - scegli un'opzione"
+                                $unknownStateItem.IsEnabled = $false
+                                $unknownStateItem.ToolTip = $_.Exception.Message
+                                $comboBox.Items.Add($unknownStateItem) | Out-Null
+                                $comboBox.SelectedItem = $unknownStateItem
+                            }
+                        } else {
+                            $comboBox.SelectedIndex = 0
+                        }
 
                         # Set initial text
-                        if ($comboBox.Items.Count -gt 0) {
-                            $comboBox.Text = $comboBox.Items[0].Content
+                        if ($comboBox.SelectedItem) {
+                            $comboBox.Text = $comboBox.SelectedItem.Content
                         }
 
                         # Add SelectionChanged event handler to update the text property
                         $comboBox.Add_SelectionChanged({
                             $selectedItem = $this.SelectedItem
-                            if ($selectedItem) {
-                                $this.Text = $selectedItem.Content
+                            if (-not $selectedItem) {
+                                return
+                            }
+                            $this.Text = $selectedItem.Content
+                            $registry = $this.Tag.Registry
+                            if ($registry -and $selectedItem.IsEnabled -and $selectedItem.Content -ne $this.Tag.State) {
+                                try {
+                                    Set-WinUtilRegistryComboState -Registry $registry -State $selectedItem.Content
+                                    $this.Tag.State = $selectedItem.Content
+                                    $label = $this.Parent.Children[0].Content
+                                    Add-WinUtilSessionAction -Area "Ottimizzazione" -Text ("{0}: {1}" -f $label, $selectedItem.Content)
+                                    # The placeholder of an unknown state is no longer needed
+                                    foreach ($item in @($this.Items)) {
+                                        if (-not $item.IsEnabled) {
+                                            $this.Items.Remove($item)
+                                            break
+                                        }
+                                    }
+                                } catch {
+                                    $applyError = $_.Exception.Message
+                                    $previous = $null
+                                    foreach ($item in @($this.Items)) {
+                                        if ($item.Content -eq $this.Tag.State -or (-not $this.Tag.State -and -not $item.IsEnabled)) {
+                                            $previous = $item
+                                            break
+                                        }
+                                    }
+                                    $this.SelectedItem = $previous
+                                    [System.Windows.MessageBox]::Show($applyError, "WinRUtil", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning) | Out-Null
+                                }
                             }
                         })
 
@@ -7226,9 +8743,14 @@ function Invoke-WPFUnInstall {
     Invoke-WPFRunspace -ParameterList @(("PackagesToUninstall", $PackagesToUninstall),("ManagerPreference", $ManagerPreference)) -ScriptBlock {
         param($PackagesToUninstall, $ManagerPreference)
 
-        $packagesSorted = Get-WinUtilSelectedPackages -PackageList $PackagesToUninstall -Preference $ManagerPreference
+        $packagesSorted = Get-WinUtilSelectedPackages -PackageList $PackagesToUninstall -Preference $ManagerPreference -Action Uninstall
         $packagesWinget = $packagesSorted[[PackageManagers]::Winget]
         $packagesChoco = $packagesSorted[[PackageManagers]::Choco]
+
+        if ($packagesWinget -contains "Microsoft.Edge") {
+            # The Edge uninstaller refuses to run unless this file exists
+            New-Item -Path "$Env:SystemRoot\SystemApps\Microsoft.MicrosoftEdge_8wekyb3d8bbwe\MicrosoftEdge.exe" -Force | Out-Null
+        }
 
         try {
             $sync.ProcessRunning = $true
@@ -7262,32 +8784,65 @@ function Invoke-WPFUpdatesdefault {
     .SYNOPSIS
         Resets Windows Update settings to default
 
+    .DESCRIPTION
+        Removes the values written by the other update profiles and enables the update services and
+        tasks again. Other Windows Update policies, such as a WSUS server, are kept.
+
     #>
-    $ErrorActionPreference = 'SilentlyContinue'
 
-    Write-Host "Removing Windows Update policy settings..." -ForegroundColor Green
+    Write-Host "Removing the Windows Update settings managed by WinRUtil..." -ForegroundColor Green
 
-    Remove-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU" -Recurse -Force
-    Remove-Item -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\DeliveryOptimization" -Recurse -Force
-    Remove-Item -Path "HKLM:\SOFTWARE\Microsoft\WindowsUpdate\UX\Settings" -Recurse -Force
-    Remove-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Device Metadata" -Recurse -Force
-    Remove-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DriverSearching" -Recurse -Force
-    Remove-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate" -Recurse -Force
+    $registryValues = @(
+        @{
+            Path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU"
+            Names = @("NoAutoUpdate", "AUOptions", "NoAutoRebootWithLoggedOnUsers", "AUPowerManagement")
+        },
+        @{
+            Path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate"
+            Names = @("ExcludeWUDriversInQualityUpdate", "DeferFeatureUpdates", "DeferFeatureUpdatesPeriodInDays", "DeferQualityUpdates", "DeferQualityUpdatesPeriodInDays")
+        },
+        @{
+            Path = "HKLM:\SOFTWARE\Microsoft\WindowsUpdate\UX\Settings"
+            Names = @("BranchReadinessLevel", "DeferFeatureUpdatesPeriodInDays", "DeferQualityUpdatesPeriodInDays")
+        },
+        @{
+            Path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Device Metadata"
+            Names = @("PreventDeviceMetadataFromNetwork")
+        },
+        @{
+            Path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DriverSearching"
+            Names = @("DontPromptForWindowsUpdate", "DontSearchWindowsUpdate", "DriverUpdateWizardWuSearchEnabled")
+        },
+        @{
+            Path = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\DeliveryOptimization\Config"
+            Names = @("DODownloadMode")
+        }
+    )
+
+    foreach ($registryEntry in $registryValues) {
+        foreach ($valueName in $registryEntry.Names) {
+            Remove-ItemProperty -Path $registryEntry.Path -Name $valueName -ErrorAction SilentlyContinue
+        }
+    }
+
+    # Earlier versions hid the Windows Update page of the Settings app when disabling the updates
+    $explorerPolicyPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer"
+    $settingsPageVisibility = (Get-ItemProperty -Path $explorerPolicyPath -Name "SettingsPageVisibility" -ErrorAction SilentlyContinue).SettingsPageVisibility
+    if ($settingsPageVisibility -eq "hide:windowsupdate") {
+        Remove-ItemProperty -Path $explorerPolicyPath -Name "SettingsPageVisibility" -ErrorAction SilentlyContinue
+    }
 
     Write-Host "Reenabling Windows Update Services..." -ForegroundColor Green
 
     Write-Host "Restored BITS to Manual"
-    Set-Service -Name BITS -StartupType Manual
+    Set-Service -Name BITS -StartupType Manual -ErrorAction SilentlyContinue
 
     Write-Host "Restored wuauserv to Manual"
-    Set-Service -Name wuauserv -StartupType Manual
+    Set-Service -Name wuauserv -StartupType Manual -ErrorAction SilentlyContinue
 
     Write-Host "Restored UsoSvc to Automatic"
-    Start-Service -Name UsoSvc
-    Set-Service -Name UsoSvc -StartupType Automatic
-
-    Write-Host "Restored WaaSMedicSvc to Manual"
-    Set-Service -Name WaaSMedicSvc -StartupType Manual
+    Set-Service -Name UsoSvc -StartupType Automatic -ErrorAction SilentlyContinue
+    Start-Service -Name UsoSvc -ErrorAction SilentlyContinue
 
     Write-Host "Enabling update related scheduled tasks..." -ForegroundColor Green
 
@@ -7300,11 +8855,8 @@ function Invoke-WPFUpdatesdefault {
         '\Microsoft\WindowsUpdate\*'
 
     foreach ($Task in $Tasks) {
-        Get-ScheduledTask -TaskPath $Task | Enable-ScheduledTask -ErrorAction SilentlyContinue
+        Get-ScheduledTask -TaskPath $Task -ErrorAction SilentlyContinue | Enable-ScheduledTask -ErrorAction SilentlyContinue
     }
-
-    Write-Host "Windows Local Policies Reset to Default"
-    secedit /configure /cfg "$Env:SystemRoot\inf\defltbase.inf" /db defltbase.sdb
 
     Write-Host "===================================================" -ForegroundColor Green
     Write-Host "---  Windows Update Settings Reset to Default   ---" -ForegroundColor Green
@@ -7322,29 +8874,42 @@ function Invoke-WPFUpdatesdisable {
     .NOTES
         Disabling Windows Update is not recommended. This is only for advanced users who know what they are doing.
 
+    .PARAMETER Confirmed
+        Disables the updates without asking, for the automatic runs
+
     #>
-    $ErrorActionPreference = 'SilentlyContinue'
+    param([switch]$Confirmed)
+
+    if (-not $Confirmed) {
+        $message = "Disattivando Windows Update si fermano i servizi di aggiornamento, si disattivano le attivit$([char]0x00E0) pianificate e si cancellano gli aggiornamenti scaricati. Gli aggiornamenti di sicurezza non verranno installati finch$([char]0x00E9) non ripristini le impostazioni predefinite.`n`nVuoi continuare?"
+        $answer = [System.Windows.MessageBox]::Show($message, "WinRUtil", [System.Windows.MessageBoxButton]::YesNo, [System.Windows.MessageBoxImage]::Warning)
+        if ($answer -ne "Yes") {
+            return
+        }
+    }
 
     Write-Host "Configuring registry settings..." -ForegroundColor Yellow
-    New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU" -Force
+    # New-Item -Force on an existing key deletes the key and its subkeys first: only missing keys
+    # are created, so the other policies stored there (WSUS, target version...) are kept
+    if (-not (Test-Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU")) {
+        New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU" -Force | Out-Null
+    }
 
     Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU" -Name "NoAutoUpdate" -Type DWord -Value 1
     Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU" -Name "AUOptions" -Type DWord -Value 1
 
-    New-Item -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\DeliveryOptimization\Config" -Force
+    if (-not (Test-Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\DeliveryOptimization\Config")) {
+        New-Item -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\DeliveryOptimization\Config" -Force | Out-Null
+    }
     Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\DeliveryOptimization\Config" -Name "DODownloadMode" -Type DWord -Value 0
 
-    Write-Host "Disabled BITS Service"
-    Set-Service -Name BITS -StartupType Disabled
+    foreach ($serviceName in @("BITS", "wuauserv", "UsoSvc")) {
+        Write-Host "Stopping and disabling $serviceName service."
+        Stop-Service -Name $serviceName -Force -ErrorAction SilentlyContinue
+        Set-Service -Name $serviceName -StartupType Disabled -ErrorAction SilentlyContinue
+    }
 
-    Write-Host "Disabled wuauserv Service"
-    Set-Service -Name wuauserv -StartupType Disabled
-
-    Write-Host "Disabled UsoSvc Service"
-    Stop-Service -Name UsoSvc -Force
-    Set-Service -Name UsoSvc -StartupType Disabled
-
-    Remove-Item "C:\Windows\SoftwareDistribution\*" -Recurse -Force
+    Remove-Item -Path "$env:SystemRoot\SoftwareDistribution\*" -Recurse -Force -ErrorAction SilentlyContinue
     Write-Host "Cleared SoftwareDistribution folder"
 
     Write-Host "Disabling update related scheduled tasks..." -ForegroundColor Yellow
@@ -7358,7 +8923,7 @@ function Invoke-WPFUpdatesdisable {
         '\Microsoft\WindowsUpdate\*'
 
     foreach ($Task in $Tasks) {
-        Get-ScheduledTask -TaskPath $Task | Disable-ScheduledTask -ErrorAction SilentlyContinue
+        Get-ScheduledTask -TaskPath $Task -ErrorAction SilentlyContinue | Disable-ScheduledTask -ErrorAction SilentlyContinue
     }
 
     Write-Host "=================================" -ForegroundColor Green
@@ -7376,40 +8941,88 @@ function Invoke-WPFUpdatessecurity {
 
     .DESCRIPTION
         1. Disables driver offering through Windows Update
-        2. Disables Windows Update automatic restart
-        3. Sets Windows Update to Semi-Annual Channel (Targeted)
-        4. Defers feature updates for 365 days
-        5. Defers quality updates for 4 days
+        2. Defers feature updates for 365 days
+        3. Defers quality updates for 4 days
+        4. Downloads the updates and asks before installing them, so the PC does not restart unexpectedly
 
     #>
 
+    $windowsUpdatePolicyPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate"
+    $automaticUpdatePolicyPath = Join-Path $windowsUpdatePolicyPath "AU"
+
+    Write-Host "Restoring Windows Update availability..."
+    Remove-ItemProperty -Path $automaticUpdatePolicyPath -Name "NoAutoUpdate" -ErrorAction SilentlyContinue
+    Remove-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\DeliveryOptimization\Config" -Name "DODownloadMode" -ErrorAction SilentlyContinue
+
+    # A Windows 11 image made by the Win11 Creator of earlier versions blocks Windows Update until its
+    # first-logon cleanup runs: clear what is left of that block, but keep a real WSUS server
+    Remove-ItemProperty -Path $windowsUpdatePolicyPath -Name "DisableWindowsUpdateAccess" -ErrorAction SilentlyContinue
+    if ((Get-ItemProperty -Path $windowsUpdatePolicyPath -Name "WUServer" -ErrorAction SilentlyContinue).WUServer -eq "http://localhost:8080") {
+        Remove-ItemProperty -Path $windowsUpdatePolicyPath -Name "WUServer" -ErrorAction SilentlyContinue
+        Remove-ItemProperty -Path $windowsUpdatePolicyPath -Name "WUStatusServer" -ErrorAction SilentlyContinue
+        Remove-ItemProperty -Path $automaticUpdatePolicyPath -Name "UseWUServer" -ErrorAction SilentlyContinue
+    }
+
+    Set-Service -Name BITS -StartupType Manual -ErrorAction SilentlyContinue
+    Set-Service -Name wuauserv -StartupType Manual -ErrorAction SilentlyContinue
+    Set-Service -Name UsoSvc -StartupType Automatic -ErrorAction SilentlyContinue
+    Start-Service -Name UsoSvc -ErrorAction SilentlyContinue
+
+    $Tasks =
+        '\Microsoft\Windows\InstallService\*',
+        '\Microsoft\Windows\UpdateOrchestrator\*',
+        '\Microsoft\Windows\UpdateAssistant\*',
+        '\Microsoft\Windows\WaaSMedic\*',
+        '\Microsoft\Windows\WindowsUpdate\*',
+        '\Microsoft\WindowsUpdate\*'
+
+    foreach ($Task in $Tasks) {
+        Get-ScheduledTask -TaskPath $Task -ErrorAction SilentlyContinue | Enable-ScheduledTask -ErrorAction SilentlyContinue
+    }
+
     Write-Host "Disabling driver offering through Windows Update..."
 
-    New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Device Metadata" -Force
+    # New-Item -Force on an existing key deletes the key and its subkeys first: only missing keys
+    # are created, so the other policies stored there (WSUS, target version...) are kept
+    if (-not (Test-Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Device Metadata")) {
+        New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Device Metadata" -Force | Out-Null
+    }
     Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Device Metadata" -Name "PreventDeviceMetadataFromNetwork" -Type DWord -Value 1
 
-    New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DriverSearching" -Force
-
+    if (-not (Test-Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DriverSearching")) {
+        New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DriverSearching" -Force | Out-Null
+    }
     Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DriverSearching" -Name "DontPromptForWindowsUpdate" -Type DWord -Value 1
     Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DriverSearching" -Name "DontSearchWindowsUpdate" -Type DWord -Value 1
     Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DriverSearching" -Name "DriverUpdateWizardWuSearchEnabled" -Type DWord -Value 0
 
-    New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate" -Force
-    Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate" -Name "ExcludeWUDriversInQualityUpdate" -Type DWord -Value 1
+    if (-not (Test-Path $windowsUpdatePolicyPath)) {
+        New-Item -Path $windowsUpdatePolicyPath -Force | Out-Null
+    }
+    Set-ItemProperty -Path $windowsUpdatePolicyPath -Name "ExcludeWUDriversInQualityUpdate" -Type DWord -Value 1
 
-    Write-Host "Setting cumulative updates back by 1 year and security updates by 4 days"
+    Write-Host "Deferring feature updates by 365 days and quality updates by 4 days..."
+    Set-ItemProperty -Path $windowsUpdatePolicyPath -Name "DeferFeatureUpdates" -Type DWord -Value 1
+    Set-ItemProperty -Path $windowsUpdatePolicyPath -Name "DeferFeatureUpdatesPeriodInDays" -Type DWord -Value 365
+    Set-ItemProperty -Path $windowsUpdatePolicyPath -Name "DeferQualityUpdates" -Type DWord -Value 1
+    Set-ItemProperty -Path $windowsUpdatePolicyPath -Name "DeferQualityUpdatesPeriodInDays" -Type DWord -Value 4
 
-    New-Item -Path "HKLM:\SOFTWARE\Microsoft\WindowsUpdate\UX\Settings" -Force
+    # The values that earlier versions wrote in the settings of Windows Update instead of the policies
+    $legacySettingsPath = "HKLM:\SOFTWARE\Microsoft\WindowsUpdate\UX\Settings"
+    foreach ($legacyValue in @("BranchReadinessLevel", "DeferFeatureUpdatesPeriodInDays", "DeferQualityUpdatesPeriodInDays")) {
+        Remove-ItemProperty -Path $legacySettingsPath -Name $legacyValue -ErrorAction SilentlyContinue
+    }
 
-    Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\WindowsUpdate\UX\Settings" -Name "BranchReadinessLevel" -Type DWord -Value 20
-    Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\WindowsUpdate\UX\Settings" -Name "DeferFeatureUpdatesPeriodInDays" -Type DWord -Value 365
-    Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\WindowsUpdate\UX\Settings" -Name "DeferQualityUpdatesPeriodInDays" -Type DWord -Value 4
+    Write-Host "Configuring automatic updates to download and notify before installation..."
+    if (-not (Test-Path $automaticUpdatePolicyPath)) {
+        New-Item -Path $automaticUpdatePolicyPath -Force | Out-Null
+    }
 
-    Write-Host "Disabling Windows Update automatic restart..."
-
-    New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU" -Force
-    Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU" -Name "NoAutoRebootWithLoggedOnUsers" -Type DWord -Value 1
-    Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU" -Name "AUPowerManagement" -Type DWord -Value 0
+    # NoAutoRebootWithLoggedOnUsers is not reliable on recent versions of Windows: AUOptions 3 downloads
+    # the updates and notifies before installing them, so nothing is installed or restarted unasked
+    Remove-ItemProperty -Path $automaticUpdatePolicyPath -Name "NoAutoRebootWithLoggedOnUsers" -ErrorAction SilentlyContinue
+    Set-ItemProperty -Path $automaticUpdatePolicyPath -Name "AUOptions" -Type DWord -Value 3
+    Set-ItemProperty -Path $automaticUpdatePolicyPath -Name "AUPowerManagement" -Type DWord -Value 0
 
     Write-Host "================================="
     Write-Host "-- Updates Set to Recommended ---"
@@ -8233,8 +9846,17 @@ $sync.configs.applications = @'
                            "winget":  "7zip.7zip",
                            "foss":  true
                        },
+    "WPFInstallabdownloadmanager":  {
+                                        "category":  "Utilities",
+                                        "choco":  "ab-download-manager",
+                                        "content":  "AB Download Manager",
+                                        "description":  "AB Download Manager is an open-source download accelerator and manager with multi-threaded downloads, queue scheduling, speed limiting, and browser integration.",
+                                        "link":  "https://abdownloadmanager.com/",
+                                        "winget":  "amir1376.ABDownloadManager",
+                                        "foss":  true
+                                    },
     "WPFInstalladobe":  {
-                            "category":  "Multimedia Tools",
+                            "category":  "Document",
                             "choco":  "adobereader",
                             "content":  "Adobe Acrobat Reader",
                             "description":  "Adobe Acrobat Reader is a free PDF viewer with essential features for viewing, printing, and annotating PDF documents.",
@@ -8314,6 +9936,15 @@ $sync.configs.applications = @'
                                  "winget":  "AutoHotkey.AutoHotkey",
                                  "foss":  true
                              },
+    "WPFInstallbattlenet":  {
+                                "category":  "Games",
+                                "choco":  "na",
+                                "winget":  "Blizzard.BattleNet",
+                                "content":  "Battle.net",
+                                "description":  "Battle.net is a launcher for games created and developed by Activision Blizzard",
+                                "link":  "https://battle.net",
+                                "foss":  false
+                            },
     "WPFInstallbitwarden":  {
                                 "category":  "Utilities",
                                 "choco":  "bitwarden",
@@ -8339,6 +9970,15 @@ $sync.configs.applications = @'
                             "description":  "Brave is a privacy-focused web browser that blocks ads and trackers, offering a faster and safer browsing experience.",
                             "link":  "https://www.brave.com",
                             "winget":  "Brave.Brave",
+                            "foss":  true
+                        },
+    "WPFInstallbruno":  {
+                            "category":  "Development",
+                            "choco":  "bruno",
+                            "content":  "Bruno",
+                            "description":  "Bruno is a local-first API client that stores collections as plain text files for version control and collaboration.",
+                            "link":  "https://www.usebruno.com/",
+                            "winget":  "Bruno.Bruno",
                             "foss":  true
                         },
     "WPFInstallbulkcrapuninstaller":  {
@@ -8377,6 +10017,15 @@ $sync.configs.applications = @'
                            "winget":  "Cemu.Cemu",
                            "foss":  true
                        },
+    "WPFInstallchatgpt":  {
+                              "category":  "Development",
+                              "choco":  "na",
+                              "content":  "ChatGPT Desktop",
+                              "description":  "The official ChatGPT desktop app for Windows, distributed through the Microsoft Store.",
+                              "link":  "https://openai.com/chatgpt/download/",
+                              "winget":  "msstore:9NT1R1C2HH7J",
+                              "foss":  false
+                          },
     "WPFInstallchatterino":  {
                                  "category":  "Communications",
                                  "choco":  "chatterino",
@@ -8400,10 +10049,37 @@ $sync.configs.applications = @'
                                "choco":  "chromium",
                                "content":  "Chromium",
                                "description":  "Chromium is the open-source project that serves as the foundation for various web browsers, including Chrome.",
-                               "link":  "https://github.com/Hibbiki/chromium-win64",
+                               "link":  "https://www.chromium.org/",
                                "winget":  "Hibbiki.Chromium",
                                "foss":  true
                            },
+    "WPFInstallcinebenchr23":  {
+                                   "category":  "Pro Tools",
+                                   "choco":  "na",
+                                   "content":  "Cinebench R23",
+                                   "description":  "Cinebench R23 is a benchmark tool for comparing CPU rendering performance across systems.",
+                                   "link":  "https://www.maxon.net/en/cinebench",
+                                   "winget":  "Maxon.CinebenchR23",
+                                   "foss":  false
+                               },
+    "WPFInstallclaude":  {
+                             "category":  "Development",
+                             "choco":  "claude",
+                             "content":  "Claude Desktop",
+                             "description":  "Anthropic\u0027s Claude desktop application for focused AI-assisted work and chat.",
+                             "link":  "https://claude.ai/download",
+                             "winget":  "Anthropic.Claude",
+                             "foss":  false
+                         },
+    "WPFInstallclaude-code":  {
+                                  "category":  "Development",
+                                  "choco":  "claude-code",
+                                  "content":  "Claude Code",
+                                  "description":  "Anthropic\u0027s agentic coding tool for terminal and IDE development workflows.",
+                                  "link":  "https://code.claude.com/",
+                                  "winget":  "Anthropic.ClaudeCode",
+                                  "foss":  false
+                              },
     "WPFInstallcmake":  {
                             "category":  "Development",
                             "choco":  "cmake",
@@ -8411,6 +10087,15 @@ $sync.configs.applications = @'
                             "description":  "CMake is an open-source, cross-platform family of tools designed to build, test and package software.",
                             "link":  "https://cmake.org/",
                             "winget":  "Kitware.CMake",
+                            "foss":  true
+                        },
+    "WPFInstallcodex":  {
+                            "category":  "Development",
+                            "choco":  "codex",
+                            "content":  "Codex",
+                            "description":  "Codex CLI is an OpenAI coding agent that runs locally in your terminal.",
+                            "link":  "https://developers.openai.com/codex/cli",
+                            "winget":  "OpenAI.Codex",
                             "foss":  true
                         },
     "WPFInstallcpuz":  {
@@ -8490,10 +10175,19 @@ $sync.configs.applications = @'
                              "choco":  "dorion",
                              "content":  "Dorion",
                              "description":  "Tiny alternative Discord client with a smaller footprint, snappier startup, themes, plugins and more!",
-                             "link":  "https://github.com/SpikeHD/Dorion",
+                             "link":  "https://spikehd.dev/projects/dorion/",
                              "winget":  "SpikeHD.Dorion",
                              "foss":  true
                          },
+    "WPFInstalldockerdesktop":  {
+                                    "category":  "Development",
+                                    "choco":  "docker-desktop",
+                                    "content":  "Docker Desktop",
+                                    "description":  "Docker Desktop provides a local environment for building, running, and testing containerized applications on Windows.",
+                                    "link":  "https://www.docker.com/products/docker-desktop/",
+                                    "winget":  "Docker.DockerDesktop",
+                                    "foss":  false
+                                },
     "WPFInstalldotnet6":  {
                               "category":  "Microsoft Tools",
                               "choco":  "dotnet-6.0-runtime",
@@ -8530,6 +10224,15 @@ $sync.configs.applications = @'
                                "winget":  "Microsoft.DotNet.DesktopRuntime.10",
                                "foss":  true
                            },
+    "WPFInstalldropbox":  {
+                              "category":  "Utilities",
+                              "choco":  "dropbox",
+                              "content":  "Dropbox",
+                              "description":  "Dropbox is a cloud storage client for syncing files, sharing content, and keeping documents available across devices.",
+                              "link":  "https://www.dropbox.com/desktop",
+                              "winget":  "Dropbox.Dropbox",
+                              "foss":  false
+                          },
     "WPFInstalleaapp":  {
                             "category":  "Games",
                             "choco":  "ea-app",
@@ -8557,6 +10260,16 @@ $sync.configs.applications = @'
                            "winget":  "Microsoft.Edge",
                            "foss":  false
                        },
+    "WPFInstalles-de":  {
+                            "category":  "Games",
+                            "choco":  "",
+                            "content":  "EmulationStation Desktop Edition",
+                            "_comment":  "This and emulationstation are two completely different things. ES-DE is your frontend for everything and has its own set of emulators. Emulationstation is a graphical frontend for RetroArch.",
+                            "description":  "EmulationStation Desktop Edition is a frontend for browsing and launching games from your multi-platform game collection.",
+                            "link":  "https://es-de.org/",
+                            "winget":  "ES-DE.EmulationStation-DE",
+                            "foss":  true
+                        },
     "WPFInstallenteauth":  {
                                "category":  "Utilities",
                                "choco":  "ente-auth",
@@ -8580,10 +10293,19 @@ $sync.configs.applications = @'
                             "choco":  "files",
                             "content":  "Files",
                             "description":  "Alternative file explorer.",
-                            "link":  "https://github.com/files-community/Files",
+                            "link":  "https://files.community",
                             "winget":  "FilesCommunity.Files",
                             "foss":  true
                         },
+    "WPFInstallfileconverter":  {
+                                    "category":  "Multimedia Tools",
+                                    "choco":  "file-converter",
+                                    "content":  "File Converter",
+                                    "description":  "File Converter converts and compresses files from the Windows Explorer context menu.",
+                                    "link":  "https://file-converter.io/",
+                                    "winget":  "AdrienAllard.FileConverter",
+                                    "foss":  true
+                                },
     "WPFInstallfirefox":  {
                               "category":  "Browsers",
                               "choco":  "firefox",
@@ -8613,13 +10335,40 @@ $sync.configs.applications = @'
                          },
     "WPFInstallflux":  {
                            "category":  "Utilities",
-                           "choco":  "flux",
+                           "choco":  "f.lux",
                            "content":  "F.lux",
                            "description":  "f.lux adjusts the color temperature of your screen to reduce eye strain during nighttime use.",
                            "link":  "https://justgetflux.com/",
                            "winget":  "flux.flux",
                            "foss":  false
                        },
+    "WPFInstallfoobar":  {
+                             "category":  "Multimedia Tools",
+                             "choco":  "foobar2000",
+                             "content":  "foobar2000 (Music Player)",
+                             "description":  "foobar2000 is a highly customizable and extensible music player for Windows, known for its modular design and advanced features.",
+                             "link":  "https://www.foobar2000.org/",
+                             "winget":  "PeterPawlowski.foobar2000",
+                             "foss":  false
+                         },
+    "WPFInstallfnm":  {
+                          "category":  "Development",
+                          "choco":  "fnm",
+                          "content":  "Fast Node Manager",
+                          "description":  "Fast Node Manager (fnm) is a fast, cross-platform tool for installing and switching between Node.js versions.",
+                          "link":  "https://github.com/Schniz/fnm",
+                          "winget":  "Schniz.fnm",
+                          "foss":  true
+                      },
+    "WPFInstallfoxpdfreader":  {
+                                   "category":  "Document",
+                                   "choco":  "foxitreader",
+                                   "content":  "Foxit PDF Reader",
+                                   "description":  "Foxit PDF Reader is a free PDF viewer with a familiar ribbon-style interface.",
+                                   "link":  "https://www.foxit.com/pdf-reader/",
+                                   "winget":  "Foxit.FoxitReader",
+                                   "foss":  false
+                               },
     "WPFInstallgeforcenow":  {
                                  "category":  "Games",
                                  "choco":  "nvidia-geforce-now",
@@ -8647,6 +10396,24 @@ $sync.configs.applications = @'
                           "winget":  "Git.Git",
                           "foss":  true
                       },
+    "WPFInstallgitextensions":  {
+                                    "category":  "Development",
+                                    "choco":  "gitextensions",
+                                    "content":  "Git Extensions",
+                                    "description":  "Git Extensions is a graphical Git client for Windows with repository, history, and commit management tools.",
+                                    "link":  "https://gitextensions.github.io/",
+                                    "winget":  "GitExtensionsTeam.GitExtensions",
+                                    "foss":  true
+                                },
+    "WPFInstallgithubcli":  {
+                                "category":  "Development",
+                                "choco":  "gh",
+                                "content":  "GitHub CLI",
+                                "description":  "GitHub CLI brings pull requests, issues, releases, and other GitHub workflows to the terminal.",
+                                "link":  "https://cli.github.com/",
+                                "winget":  "GitHub.cli",
+                                "foss":  true
+                            },
     "WPFInstallgithubdesktop":  {
                                     "category":  "Development",
                                     "choco":  "git;github-desktop",
@@ -8692,21 +10459,30 @@ $sync.configs.applications = @'
                            "winget":  "TechPowerUp.GPU-Z",
                            "foss":  false
                        },
+    "WPFInstallgsudo":  {
+                            "category":  "Pro Tools",
+                            "choco":  "gsudo",
+                            "content":  "gsudo",
+                            "description":  "gsudo is a sudo equivalent for Windows. It allows you to run commands with elevated administrative privileges directly within the current console window.",
+                            "link":  "https://github.com/gerardog/gsudo",
+                            "winget":  "gerardog.gsudo",
+                            "foss":  true
+                        },
     "WPFInstallhelium":  {
                              "category":  "Browsers",
                              "choco":  "helium",
                              "content":  "Helium",
                              "description":  "Private, fast, and honest web browser.",
-                             "link":  "https://github.com/imputnet/helium/",
+                             "link":  "https://helium.computer",
                              "winget":  "ImputNet.Helium",
                              "foss":  true
                          },
     "WPFInstallhugo":  {
-                           "category":  "Utilities",
+                           "category":  "Development",
                            "choco":  "hugo-extended",
                            "content":  "Hugo",
                            "description":  "The world\u0027s fastest framework for building websites.",
-                           "link":  "https://github.com/gohugoio/hugo/",
+                           "link":  "https://gohugo.io",
                            "winget":  "Hugo.Hugo.Extended",
                            "foss":  true
                        },
@@ -8721,7 +10497,7 @@ $sync.configs.applications = @'
                             },
     "WPFInstallheroiclauncher":  {
                                      "category":  "Games",
-                                     "choco":  "na",
+                                     "choco":  "heroic-games-launcher",
                                      "content":  "Heroic Games Launcher",
                                      "description":  "Heroic Games Launcher is an open-source alternative game launcher for Epic Games Store.",
                                      "link":  "https://heroicgameslauncher.com/",
@@ -8746,6 +10522,15 @@ $sync.configs.applications = @'
                                 "winget":  "CPUID.HWMonitor",
                                 "foss":  false
                             },
+    "WPFInstallimhex":  {
+                            "category":  "Pro Tools",
+                            "choco":  "imhex",
+                            "content":  "ImHex",
+                            "description":  "ImHex is a free and open-source hex editor for reverse engineers and programmers, featuring a custom pattern language for decoding binary formats, a disassembler, and data analysis tools.",
+                            "link":  "https://imhex.werwolv.net/",
+                            "winget":  "WerWolv.ImHex",
+                            "foss":  true
+                        },
     "WPFInstallimageglass":  {
                                  "category":  "Multimedia Tools",
                                  "choco":  "imageglass",
@@ -8755,13 +10540,23 @@ $sync.configs.applications = @'
                                  "winget":  "DuongDieuPhap.ImageGlass",
                                  "foss":  true
                              },
+    "WPFInstallinternetdownloadmanager":  {
+                                              "category":  "Utilities",
+                                              "choco":  "internet-download-manager",
+                                              "content":  "Internet Download Manager",
+                                              "description":  "Internet Download Manager is a download manager for accelerating, resuming, and scheduling file downloads.",
+                                              "link":  "https://www.internetdownloadmanager.com/",
+                                              "winget":  "Tonec.InternetDownloadManager",
+                                              "foss":  false
+                                          },
     "WPFInstallirfanview":  {
                                 "category":  "Multimedia Tools",
                                 "choco":  "irfanview",
                                 "content":  "IrfanView",
                                 "description":  "IrfanView is a lightweight, fast, and free image viewer and editor. Supports multiple formats, batch processing, and powerful plugins.",
                                 "link":  "https://irfanview.com/",
-                                "winget":  "IrfanSkiljan.IrfanView"
+                                "winget":  "IrfanSkiljan.IrfanView",
+                                "foss":  false
                             },
     "WPFInstallitch":  {
                            "category":  "Games",
@@ -8813,7 +10608,7 @@ $sync.configs.applications = @'
                                           "choco":  "jellyfin-media-player",
                                           "content":  "Jellyfin Media Player",
                                           "description":  "Jellyfin Media Player is a client application for the Jellyfin media server, providing access to your media library.",
-                                          "link":  "https://github.com/jellyfin/jellyfin-media-player",
+                                          "link":  "https://jellyfin.org/",
                                           "winget":  "Jellyfin.JellyfinMediaPlayer",
                                           "foss":  true
                                       },
@@ -8839,11 +10634,29 @@ $sync.configs.applications = @'
                                "category":  "Utilities",
                                "choco":  "jpegview",
                                "content":  "JPEG View",
-                               "description":  "JPEGView is a lean, fast and highly configurable viewer/editor for JPEG, BMP, PNG, WEBP, TGA, GIF, JXL, HEIC, HEIF, AVIF and TIFF images with a minimal GUI.",
+                               "description":  "JPEGView is a lean, fast and highly configurable viewer/editor for JPEG, BMP, PNG, WEBP, TGA, GIF, JXL, HEIC, HEIF, AVIF, and TIFF images with a minimal GUI.",
                                "link":  "https://github.com/sylikc/jpegview",
                                "winget":  "sylikc.JPEGView",
                                "foss":  true
                            },
+    "WPFInstalljoplin":  {
+                             "category":  "Document",
+                             "choco":  "joplin",
+                             "content":  "Joplin",
+                             "description":  "Joplin is an open-source note-taking and to-do application with synchronization capabilities.",
+                             "link":  "https://joplinapp.org/",
+                             "winget":  "Joplin.Joplin",
+                             "foss":  true
+                         },
+    "WPFInstallkeepassxc":  {
+                                "category":  "Utilities",
+                                "choco":  "keepassxc",
+                                "content":  "KeePassXC",
+                                "description":  "KeePassXC is a modern, secure, and open-source password manager that stores and manages your most sensitive information. You can run KeePassXC on Windows, macOS, and Linux systems. KeePassXC is for people with extremely high demands of secure personal data management. It saves many different types of information, such as usernames, passwords, URLs, attachments, and notes in an offline, encrypted file that can be stored in any location, including private and public cloud solutions. For easy identification and management, user-defined titles and icons can be specified for entries. In addition, entries are sorted into customizable groups. An integrated search function allows you to use advanced patterns to easily find any entry in your database. A customizable, fast, and easy-to-use password generator utility allows you to create passwords with any combination of characters or easy to remember passphrases.",
+                                "link":  "https://keepassxc.org/",
+                                "winget":  "KeePassXCTeam.KeePassXC",
+                                "foss":  true
+                            },
     "WPFInstallklite":  {
                             "category":  "Multimedia Tools",
                             "choco":  "k-litecodecpack-standard",
@@ -8872,7 +10685,7 @@ $sync.configs.applications = @'
                               "foss":  true
                           },
     "WPFInstalllibreoffice":  {
-                                  "category":  "Multimedia Tools",
+                                  "category":  "Document",
                                   "choco":  "libreoffice-fresh",
                                   "content":  "LibreOffice",
                                   "description":  "LibreOffice is a powerful and free office suite, compatible with other major office suites.",
@@ -8885,7 +10698,7 @@ $sync.configs.applications = @'
                                 "choco":  "librewolf",
                                 "content":  "LibreWolf",
                                 "description":  "LibreWolf is a privacy-focused web browser based on Firefox, with additional privacy and security enhancements.",
-                                "link":  "https://librewolf-community.gitlab.io/",
+                                "link":  "https://librewolf.net/",
                                 "winget":  "LibreWolf.LibreWolf",
                                 "foss":  true
                             },
@@ -8900,13 +10713,21 @@ $sync.configs.applications = @'
                             },
     "WPFInstallmpc-qt":  {
                              "category":  "Multimedia Tools",
-                             "choco":  "mediainfo",
+                             "choco":  "mpc-qt",
                              "content":  "mpc-qt",
-                             "description":  "MPC-HC (Media Player Classic Home Cinema) is considered by many to be the quintessential media player for the Windows desktop. MPC-QT (Media Player Classic Qute Theater) aims to reproduce most of the interface and functionality of MPC-HC while using libmpv to play video instead of DirectShow.",
-                             "link":  "https://github.com/mpc-qt/mpc-qt",
+                             "description":  "Media Player Classic Qute Theater",
+                             "link":  "https://mpc-qt.github.io",
                              "winget":  "mpc-qt.mpc-qt",
                              "foss":  true
                          },
+    "WPFInstallmpv":  {
+                          "category":  "Multimedia Tools",
+                          "content":  "mpv",
+                          "description":  "mpv is a free, open source, and cross-platform media player supporting a wide variety of media formats, codecs, and subtitle types.",
+                          "link":  "https://mpv.io/",
+                          "winget":  "shinchiro.mpv",
+                          "foss":  true
+                      },
     "WPFInstallmatrix":  {
                              "category":  "Communications",
                              "choco":  "element-desktop",
@@ -8916,9 +10737,18 @@ $sync.configs.applications = @'
                              "winget":  "Element.Element",
                              "foss":  true
                          },
+    "WPFInstallminitoolpartitionwizard":  {
+                                              "category":  "Utilities",
+                                              "choco":  "partitionwizard",
+                                              "content":  "MiniTool Partition Wizard",
+                                              "description":  "Comprehensive free partition manager that performs advanced operations Windows natively cannot, such as merging partitions, converting file systems, and organizing disk capacity.",
+                                              "link":  "https://www.partitionwizard.com/",
+                                              "winget":  "MiniTool.PartitionWizard.Free",
+                                              "foss":  false
+                                          },
     "WPFInstallmodrinth":  {
                                "category":  "Games",
-                               "choco":  "na",
+                               "choco":  "modrinth-app",
                                "content":  "Modrinth App",
                                "description":  "Modrinth App is a desktop application for managing Minecraft mods and modpacks.",
                                "link":  "https://modrinth.com/app",
@@ -8939,7 +10769,7 @@ $sync.configs.applications = @'
                             "choco":  "mpc-hc-clsid2",
                             "content":  "Media Player Classic - Home Cinema",
                             "description":  "Media Player Classic - Home Cinema (MPC-HC) is a free and open-source video and audio player for Windows. MPC-HC is based on the original Guliverkli project and contains many additional features and bug fixes.",
-                            "link":  "https://github.com/clsid2/mpc-hc/",
+                            "link":  "https://mpc-hc.org/",
                             "winget":  "clsid2.mpc-hc",
                             "foss":  true
                         },
@@ -8953,7 +10783,7 @@ $sync.configs.applications = @'
                                      "foss":  true
                                  },
     "WPFInstallmsiafterburner":  {
-                                     "category":  "Utilities",
+                                     "category":  "Pro Tools",
                                      "choco":  "msiafterburner",
                                      "content":  "MSI Afterburner",
                                      "description":  "MSI Afterburner is a graphics card overclocking utility with advanced features.",
@@ -8966,7 +10796,7 @@ $sync.configs.applications = @'
                                  "choco":  "mullvad-app",
                                  "content":  "Mullvad VPN",
                                  "description":  "This is the VPN client software for the Mullvad VPN service.",
-                                 "link":  "https://github.com/mullvad/mullvadvpn-app",
+                                 "link":  "https://mullvad.net/",
                                  "winget":  "MullvadVPN.MullvadVPN",
                                  "foss":  true
                              },
@@ -8979,12 +10809,21 @@ $sync.configs.applications = @'
                                      "winget":  "MullvadVPN.MullvadBrowser",
                                      "foss":  true
                                  },
+    "WPFInstallnomacs":  {
+                             "category":  "Multimedia Tools",
+                             "choco":  "nomacs",
+                             "content":  "nomacs",
+                             "description":  "nomacs is a free, open-source image viewer, which supports multiple platforms. You can use it for viewing all common image formats, including RAW and .psd images.",
+                             "link":  "https://nomacs.org/",
+                             "winget":  "nomacs.nomacs",
+                             "foss":  true
+                         },
     "WPFInstallnanazip":  {
                               "category":  "Utilities",
                               "choco":  "nanazip",
                               "content":  "NanaZip",
                               "description":  "NanaZip is a fast and efficient file compression and decompression tool.",
-                              "link":  "https://github.com/M2Team/NanaZip",
+                              "link":  "https://nanazip.org",
                               "winget":  "M2Team.NanaZip",
                               "foss":  true
                           },
@@ -8992,15 +10831,24 @@ $sync.configs.applications = @'
                               "category":  "Selfhosted Tools",
                               "choco":  "netbird",
                               "content":  "NetBird",
-                              "description":  "NetBird is a open-source alternative comparable to TailScale that can be connected to a self-hosted server.",
+                              "description":  "NetBird is an open-source alternative comparable to TailScale that can be connected to a self-hosted server.",
                               "link":  "https://netbird.io/",
                               "winget":  "Netbird.Netbird",
                               "foss":  true
                           },
+    "WPFInstalltailscale":  {
+                                "category":  "Pro Tools",
+                                "choco":  "tailscale",
+                                "content":  "Tailscale",
+                                "description":  "The Tailscale client allows you to connect all your devices using WireGuard\u00ae, without the hassle. Tailscale makes it as easy as installing an app and signing in.",
+                                "link":  "https://tailscale.com/",
+                                "winget":  "Tailscale.Tailscale",
+                                "foss":  false
+                            },
     "WPFInstallnaps2":  {
-                            "category":  "Multimedia Tools",
+                            "category":  "Document",
                             "choco":  "naps2",
-                            "content":  "NAPS2 (Document Scanner)",
+                            "content":  "NAPS2 (Scanner)",
                             "description":  "NAPS2 is a document scanning application that simplifies the process of creating electronic documents.",
                             "link":  "https://www.naps2.com/",
                             "winget":  "Cyanfish.NAPS2",
@@ -9051,8 +10899,16 @@ $sync.configs.applications = @'
                                 "winget":  "OpenJS.NodeJS.LTS",
                                 "foss":  true
                             },
+    "WPFInstallpnpm":  {
+                           "category":  "Development",
+                           "content":  "pnpm",
+                           "description":  "pnpm is a fast and disk space efficient package manager for JavaScript and Node.js applications.",
+                           "link":  "https://pnpm.io/",
+                           "winget":  "pnpm.pnpm",
+                           "foss":  true
+                       },
     "WPFInstallnotepadplus":  {
-                                  "category":  "Multimedia Tools",
+                                  "category":  "Development",
                                   "choco":  "notepadplusplus",
                                   "content":  "Notepad++",
                                   "description":  "Notepad++ is a free, open-source code editor and Notepad replacement with support for multiple languages.",
@@ -9088,7 +10944,7 @@ $sync.configs.applications = @'
                           "foss":  true
                       },
     "WPFInstallobsidian":  {
-                               "category":  "Multimedia Tools",
+                               "category":  "Document",
                                "choco":  "obsidian",
                                "content":  "Obsidian",
                                "description":  "Obsidian is a powerful note-taking and knowledge management application.",
@@ -9096,6 +10952,15 @@ $sync.configs.applications = @'
                                "winget":  "Obsidian.Obsidian",
                                "foss":  false
                            },
+    "WPFInstallokular":  {
+                             "category":  "Document",
+                             "choco":  "okular",
+                             "content":  "Okular",
+                             "description":  "Okular is a versatile document viewer with advanced features.",
+                             "link":  "https://okular.kde.org/",
+                             "winget":  "KDE.Okular",
+                             "foss":  true
+                         },
     "WPFInstallonedrive":  {
                                "category":  "Microsoft Tools",
                                "choco":  "onedrive",
@@ -9106,10 +10971,10 @@ $sync.configs.applications = @'
                                "foss":  false
                            },
     "WPFInstallonlyoffice":  {
-                                 "category":  "Multimedia Tools",
+                                 "category":  "Document",
                                  "choco":  "onlyoffice",
-                                 "content":  "ONLYOffice Desktop",
-                                 "description":  "ONLYOffice Desktop is a comprehensive office suite for document editing and collaboration.",
+                                 "content":  "ONLYOFFICE Desktop",
+                                 "description":  "ONLYOFFICE Desktop is a comprehensive office suite for document editing and collaboration.",
                                  "link":  "https://www.onlyoffice.com/desktop.aspx",
                                  "winget":  "ONLYOFFICE.DesktopEditors",
                                  "foss":  true
@@ -9123,6 +10988,15 @@ $sync.configs.applications = @'
                                     "winget":  "OPAutoClicker.OPAutoClicker",
                                     "foss":  false
                                 },
+    "WPFInstallopencode":  {
+                               "category":  "Development",
+                               "choco":  "opencode",
+                               "content":  "OpenCode",
+                               "description":  "OpenCode is an open-source AI coding agent built for the terminal. It is provider-agnostic and supports local and hosted AI models.",
+                               "link":  "https://opencode.ai/",
+                               "winget":  "SST.opencode",
+                               "foss":  true
+                           },
     "WPFInstallopenrgb":  {
                               "category":  "Utilities",
                               "choco":  "openrgb",
@@ -9136,10 +11010,10 @@ $sync.configs.applications = @'
                               "category":  "Pro Tools",
                               "choco":  "openvpn-connect",
                               "content":  "OpenVPN Connect",
-                              "description":  "OpenVPN Connect is an open-source VPN client that allows you to connect securely to a VPN server. It provides a secure and encrypted connection for protecting your online privacy.",
+                              "description":  "OpenVPN Connect is a VPN client that allows you to connect securely to a VPN server. It provides a secure and encrypted connection for protecting your online privacy.",
                               "link":  "https://openvpn.net/",
                               "winget":  "OpenVPNTechnologies.OpenVPNConnect",
-                              "foss":  true
+                              "foss":  false
                           },
     "WPFInstallOVirtualBox":  {
                                   "category":  "Utilities",
@@ -9161,7 +11035,7 @@ $sync.configs.applications = @'
                              },
     "WPFInstallprocessexplorer":  {
                                       "category":  "Microsoft Tools",
-                                      "choco":  "na",
+                                      "choco":  "procexp",
                                       "content":  "Process Explorer",
                                       "description":  "Process Explorer is a task manager and system monitor.",
                                       "link":  "https://learn.microsoft.com/sysinternals/downloads/process-explorer",
@@ -9195,6 +11069,51 @@ $sync.configs.applications = @'
                              "winget":  "Giorgiotani.Peazip",
                              "foss":  true
                          },
+    "WPFInstallpdf-xchange":  {
+                                  "category":  "Document",
+                                  "choco":  "pdfxchangeeditor",
+                                  "content":  "PDF-XChange Editor",
+                                  "description":  "A comprehensive Windows-based software suite and editor for creating, viewing, editing, annotating, and signing PDF files.",
+                                  "link":  "https://www.pdf-xchange.com/",
+                                  "winget":  "TrackerSoftware.PDF-XChangeEditor",
+                                  "foss":  false
+                              },
+    "WPFInstallpdf24creator":  {
+                                   "category":  "Document",
+                                   "choco":  "pdf24",
+                                   "content":  "PDF24 Creator",
+                                   "description":  "Free and easy-to-use online/desktop PDF tools that make you more productive",
+                                   "link":  "https://tools.pdf24.org/en/creator",
+                                   "winget":  "geeksoftwareGmbH.PDF24Creator",
+                                   "foss":  false
+                               },
+    "WPFInstallpdfgear":  {
+                              "category":  "Document",
+                              "choco":  "pdfgear",
+                              "content":  "PDFgear",
+                              "description":  "PDFgear is a piece of full-featured PDF management software for Windows, macOS, and mobile, and it\u0027s completely free to use.",
+                              "link":  "https://www.pdfgear.com/",
+                              "winget":  "PDFgear.PDFgear",
+                              "foss":  false
+                          },
+    "WPFInstallpdfsam":  {
+                             "category":  "Document",
+                             "choco":  "pdfsam",
+                             "content":  "PDFsam Basic",
+                             "description":  "PDFsam Basic is a free and open-source tool for splitting, merging, and rotating PDF files.",
+                             "link":  "https://pdfsam.org/",
+                             "winget":  "PDFsam.PDFsam",
+                             "foss":  true
+                         },
+    "WPFInstallplaynite":  {
+                               "category":  "Games",
+                               "choco":  "playnite",
+                               "content":  "Playnite",
+                               "description":  "Playnite is an open-source video game library manager with one simple goal: To provide a unified interface for all of your games.",
+                               "link":  "https://playnite.link/",
+                               "winget":  "Playnite.Playnite",
+                               "foss":  true
+                           },
     "WPFInstallplex":  {
                            "category":  "Selfhosted Tools",
                            "choco":  "plexmediaserver",
@@ -9222,6 +11141,15 @@ $sync.configs.applications = @'
                            "winget":  "JanDeDobbeleer.OhMyPosh",
                            "foss":  true
                        },
+    "WPFInstallpostman":  {
+                              "category":  "Development",
+                              "choco":  "postman",
+                              "content":  "Postman",
+                              "description":  "Postman is an API platform and desktop client for designing, testing, documenting, and collaborating on APIs.",
+                              "link":  "https://www.postman.com/downloads/",
+                              "winget":  "Postman.Postman",
+                              "foss":  false
+                          },
     "WPFInstallpowershell":  {
                                  "category":  "Microsoft Tools",
                                  "choco":  "powershell-core",
@@ -9244,7 +11172,7 @@ $sync.configs.applications = @'
                                     "category":  "Games",
                                     "choco":  "prismlauncher",
                                     "content":  "Prism Launcher",
-                                    "description":  "Prism Launcher is an open-source Minecraft launcher with the ability to manage multiple instances, accounts and mods.",
+                                    "description":  "Prism Launcher is an open-source Minecraft launcher with the ability to manage multiple instances, accounts, and mods.",
                                     "link":  "https://prismlauncher.org/",
                                     "winget":  "PrismLauncher.PrismLauncher",
                                     "foss":  true
@@ -9305,13 +11233,22 @@ $sync.configs.applications = @'
                             },
     "WPFInstallprocessmonitor":  {
                                      "category":  "Microsoft Tools",
-                                     "choco":  "procexp",
-                                     "content":  "SysInternals Process Monitor",
+                                     "choco":  "procmon",
+                                     "content":  "Process Monitor",
                                      "description":  "SysInternals Process Monitor is an advanced monitoring tool that shows real-time file system, registry, and process/thread activity.",
                                      "link":  "https://docs.microsoft.com/en-us/sysinternals/downloads/procmon",
                                      "winget":  "Microsoft.Sysinternals.ProcessMonitor",
                                      "foss":  false
                                  },
+    "WPFInstallpstools":  {
+                              "category":  "Microsoft Tools",
+                              "choco":  "pstools",
+                              "content":  "PsTools",
+                              "description":  "Microsoft Sysinternals PsTools provides utilities for managing local and remote Windows systems and monitoring processes. PsExec can run processes under the SYSTEM account when the user has local administrative rights on the target system.",
+                              "link":  "https://learn.microsoft.com/en-us/sysinternals/downloads/pstools",
+                              "winget":  "Microsoft.Sysinternals.PsTools",
+                              "foss":  false
+                          },
     "WPFInstallputty":  {
                             "category":  "Pro Tools",
                             "choco":  "putty",
@@ -9339,6 +11276,15 @@ $sync.configs.applications = @'
                                   "winget":  "qBittorrent.qBittorrent",
                                   "foss":  true
                               },
+    "WPFInstallqownnotes":  {
+                                "category":  "Document",
+                                "choco":  "qownnotes",
+                                "content":  "QOwnNotes",
+                                "description":  "QOwnNotes is a free open-source note-taking app with Nextcloud/ownCloud integration.",
+                                "link":  "https://www.qownnotes.org/",
+                                "winget":  "pbek.QOwnNotes",
+                                "foss":  true
+                            },
     "WPFInstallqtox":  {
                            "category":  "Communications",
                            "choco":  "qtox",
@@ -9367,7 +11313,7 @@ $sync.configs.applications = @'
                                              "foss":  false
                                          },
     "WPFInstallrufus":  {
-                            "category":  "Utilities",
+                            "category":  "Pro Tools",
                             "choco":  "rufus",
                             "content":  "Rufus Imager",
                             "description":  "Rufus is a utility that helps format and create bootable USB drives, such as USB keys or pen drives.",
@@ -9375,15 +11321,6 @@ $sync.configs.applications = @'
                             "winget":  "Rufus.Rufus",
                             "foss":  true
                         },
-    "WPFInstallrustdesk":  {
-                               "category":  "Pro Tools",
-                               "choco":  "rustdesk.portable",
-                               "content":  "RustDesk",
-                               "description":  "RustDesk is a free and open-source remote desktop application. It provides a secure way to connect to remote machines and access desktop environments.",
-                               "link":  "https://rustdesk.com/",
-                               "winget":  "RustDesk.RustDesk",
-                               "foss":  true
-                           },
     "WPFInstallrustlang":  {
                                "category":  "Development",
                                "choco":  "rust",
@@ -9421,7 +11358,7 @@ $sync.configs.applications = @'
                                     "foss":  false
                                 },
     "WPFInstallsysteminformer":  {
-                                     "category":  "Development",
+                                     "category":  "Pro Tools",
                                      "choco":  "systeminformer",
                                      "content":  "System Informer",
                                      "description":  "A free, powerful, multi-purpose tool that helps you monitor system resources, debug software and detect malware.",
@@ -9447,6 +11384,15 @@ $sync.configs.applications = @'
                                 "winget":  "WhirlwindFX.SignalRgb",
                                 "foss":  false
                             },
+    "WPFInstallsimplenote":  {
+                                 "category":  "Document",
+                                 "choco":  "simplenote",
+                                 "content":  "Simplenote",
+                                 "description":  "Simplenote is an easy way to keep notes, lists, ideas and more.",
+                                 "link":  "https://simplenote.com/",
+                                 "winget":  "Automattic.Simplenote",
+                                 "foss":  true
+                             },
     "WPFInstallsimplewall":  {
                                  "category":  "Pro Tools",
                                  "choco":  "simplewall",
@@ -9465,6 +11411,24 @@ $sync.configs.applications = @'
                             "winget":  "SlackTechnologies.Slack",
                             "foss":  false
                         },
+    "WPFInstallstartallback":  {
+                                   "category":  "Utilities",
+                                   "choco":  "StartAllBack",
+                                   "content":  "StartAllBack",
+                                   "description":  "StartAllBack restores and improves Windows taskbar, Start menu, File Explorer, and shell UI behavior.",
+                                   "link":  "https://www.startallback.com/",
+                                   "winget":  "StartIsBack.StartAllBack",
+                                   "foss":  false
+                               },
+    "WPFInstallstarship":  {
+                               "category":  "Development",
+                               "choco":  "starship",
+                               "content":  "Starship (Shell Prompt)",
+                               "description":  "Starship is a fast, customizable, cross-platform prompt for PowerShell and other shells.",
+                               "link":  "https://starship.rs/",
+                               "winget":  "Starship.Starship",
+                               "foss":  true
+                           },
     "WPFInstallsteam":  {
                             "category":  "Games",
                             "choco":  "steam-client",
@@ -9474,6 +11438,15 @@ $sync.configs.applications = @'
                             "winget":  "Valve.Steam",
                             "foss":  false
                         },
+    "WPFInstallroblox":  {
+                             "category":  "Games",
+                             "choco":  "na",
+                             "content":  "Roblox",
+                             "description":  "Roblox is a platform and game creation system that allows users to create and play games developed by the community.",
+                             "link":  "https://www.roblox.com/",
+                             "winget":  "Roblox.Roblox",
+                             "foss":  false
+                         },
     "WPFInstallsublimetext":  {
                                   "category":  "Development",
                                   "choco":  "sublimetext4",
@@ -9483,19 +11456,45 @@ $sync.configs.applications = @'
                                   "winget":  "SublimeHQ.SublimeText.4",
                                   "foss":  false
                               },
+    "WPFInstallsumatra":  {
+                              "category":  "Document",
+                              "choco":  "sumatrapdf",
+                              "content":  "Sumatra PDF",
+                              "description":  "Sumatra PDF is a lightweight and fast PDF viewer with minimalistic design.",
+                              "link":  "https://www.sumatrapdfreader.org/free-pdf-reader.html",
+                              "winget":  "SumatraPDF.SumatraPDF",
+                              "foss":  true
+                          },
     "WPFInstallsunshine":  {
                                "category":  "Selfhosted Tools",
                                "choco":  "sunshine",
                                "content":  "Sunshine/GameStream Server",
                                "description":  "Sunshine is a GameStream server that allows you to remotely play PC games on Android devices, offering low-latency streaming.",
-                               "link":  "https://github.com/LizardByte/Sunshine",
+                               "link":  "https://app.lizardbyte.dev/Sunshine/",
                                "winget":  "LizardByte.Sunshine",
                                "foss":  true
                            },
+    "WPFInstallsynctrayzor":  {
+                                  "category":  "Selfhosted Tools",
+                                  "choco":  "synctrayzor",
+                                  "content":  "SyncTrayzor",
+                                  "description":  "SyncTrayzor is a Windows tray utility that bundles and wraps Syncthing, making it behave like a native application to easily manage and monitor file synchronization.",
+                                  "link":  "https://github.com/GermanCoding/SyncTrayzor",
+                                  "winget":  "GermanCoding.SyncTrayzor"
+                              },
+    "WPFInstallsyncthing":  {
+                                "category":  "Selfhosted Tools",
+                                "choco":  "syncthing",
+                                "content":  "Syncthing (CLI / Web UI)",
+                                "description":  "Syncthing is a decentralized, peer-to-peer file synchronization tool that securely syncs files directly across devices without cloud servers, managed via a local web interface.",
+                                "link":  "https://syncthing.net/",
+                                "winget":  "Syncthing.Syncthing",
+                                "foss":  true
+                            },
     "WPFInstalltcpview":  {
                               "category":  "Microsoft Tools",
                               "choco":  "tcpview",
-                              "content":  "SysInternals TCPView",
+                              "content":  "TCPView",
                               "description":  "SysInternals TCPView is a network monitoring tool that displays a detailed list of all TCP and UDP endpoints on your system.",
                               "link":  "https://docs.microsoft.com/en-us/sysinternals/downloads/tcpview",
                               "winget":  "Microsoft.Sysinternals.TCPView",
@@ -9512,7 +11511,7 @@ $sync.configs.applications = @'
                         },
     "WPFInstallteamviewer":  {
                                  "category":  "Utilities",
-                                 "choco":  "teamviewer9",
+                                 "choco":  "teamviewer",
                                  "content":  "TeamViewer",
                                  "description":  "TeamViewer is a popular remote access and support software that allows you to connect to and control remote devices.",
                                  "link":  "https://www.teamviewer.com/",
@@ -9523,9 +11522,18 @@ $sync.configs.applications = @'
                                  "category":  "Communications",
                                  "choco":  "teamspeak",
                                  "content":  "TeamSpeak 3",
-                                 "description":  "TEAMSPEAK. YOUR TEAM. YOUR RULES. Use crystal clear sound to communicate with your team mates cross-platform with military-grade security, lag-free performance \u0026 unparalleled reliability and uptime.",
+                                 "description":  "TEAMSPEAK. YOUR TEAM. YOUR RULES. Use crystal clear sound to communicate with your teammates cross-platform with military-grade security, lag-free performance \u0026 unparalleled reliability and uptime.",
                                  "link":  "https://www.teamspeak.com/",
                                  "winget":  "TeamSpeakSystems.TeamSpeakClient",
+                                 "foss":  false
+                             },
+    "WPFInstallteamspeak6":  {
+                                 "category":  "Communications",
+                                 "choco":  "na",
+                                 "content":  "TeamSpeak 6",
+                                 "description":  "TEAMSPEAK. YOUR TEAM. YOUR RULES. Use crystal clear sound to communicate with your teammates cross-platform with military-grade security, lag-free performance \u0026 unparalleled reliability and uptime.",
+                                 "link":  "https://www.teamspeak.com/",
+                                 "winget":  "TeamSpeakSystems.TeamSpeakClient.Beta.6",
                                  "foss":  false
                              },
     "WPFInstalltelegram":  {
@@ -9596,7 +11604,7 @@ $sync.configs.applications = @'
                                "choco":  "translucenttb",
                                "content":  "TranslucentTB",
                                "description":  "TranslucentTB is a tool that allows you to customize the transparency of the Windows Taskbar.",
-                               "link":  "https://github.com/TranslucentTB/TranslucentTB",
+                               "link":  "https://translucenttb.github.io",
                                "winget":  "CharlesMilette.TranslucentTB",
                                "foss":  true
                            },
@@ -9612,7 +11620,7 @@ $sync.configs.applications = @'
     "WPFInstallungoogled":  {
                                 "category":  "Browsers",
                                 "choco":  "ungoogled-chromium",
-                                "content":  "Ungoogled",
+                                "content":  "Ungoogled Chromium",
                                 "description":  "Ungoogled Chromium is a version of Chromium without Google\u0027s integration for enhanced privacy and control.",
                                 "link":  "https://github.com/Eloston/ungoogled-chromium",
                                 "winget":  "eloston.ungoogled-chromium",
@@ -9620,16 +11628,34 @@ $sync.configs.applications = @'
                             },
     "WPFInstallunity":  {
                             "category":  "Development",
-                            "choco":  "unityhub",
+                            "choco":  "unity-hub",
                             "content":  "Unity Game Engine",
                             "description":  "Unity is a powerful game development platform for creating 2D, 3D, augmented reality, and virtual reality games.",
                             "link":  "https://unity.com/",
                             "winget":  "Unity.UnityHub",
                             "foss":  false
                         },
+    "WPFInstallvagrant":  {
+                              "category":  "Development",
+                              "choco":  "vagrant",
+                              "content":  "Vagrant",
+                              "description":  "Vagrant builds and manages reproducible virtual machine development environments from declarative configuration.",
+                              "link":  "https://developer.hashicorp.com/vagrant",
+                              "winget":  "Hashicorp.Vagrant",
+                              "foss":  false
+                          },
+    "WPFInstalleverything":  {
+                                 "category":  "Utilities",
+                                 "choco":  "everything",
+                                 "content":  "Everything",
+                                 "description":  "Everything is a search engine that locates files and folders by filename instantly for Windows. Unlike Windows search Everything initially displays every file and folder on your computer (hence the name Everything). You type in a search filter to limit what files and folders are displayed.",
+                                 "link":  "https://www.voidtools.com/",
+                                 "winget":  "voidtools.Everything",
+                                 "foss":  false
+                             },
     "WPFInstallvc2015_32":  {
                                 "category":  "Microsoft Tools",
-                                "choco":  "na",
+                                "choco":  "vcredist2015",
                                 "content":  "Visual C++ 2015-2022 32-bit",
                                 "description":  "Visual C++ 2015-2022 32-bit redistributable package installs runtime components of Visual C++ libraries required to run 32-bit applications.",
                                 "link":  "https://support.microsoft.com/en-us/help/2977003/the-latest-supported-visual-c-downloads",
@@ -9638,7 +11664,7 @@ $sync.configs.applications = @'
                             },
     "WPFInstallvc2015_64":  {
                                 "category":  "Microsoft Tools",
-                                "choco":  "na",
+                                "choco":  "vcredist2015",
                                 "content":  "Visual C++ 2015-2022 64-bit",
                                 "description":  "Visual C++ 2015-2022 64-bit redistributable package installs runtime components of Visual C++ libraries required to run 64-bit applications.",
                                 "link":  "https://support.microsoft.com/en-us/help/2977003/the-latest-supported-visual-c-downloads",
@@ -9658,8 +11684,8 @@ $sync.configs.applications = @'
                               "category":  "Communications",
                               "choco":  "na",
                               "content":  "Vesktop",
-                              "description":  "A cross platform electron-based desktop app aiming to give you a snappier Discord experience with Vencord pre-installed.",
-                              "link":  "https://github.com/Vencord/Vesktop",
+                              "description":  "A cross-platform electron-based desktop app aiming to give you a snappier Discord experience with Vencord pre-installed.",
+                              "link":  "https://vesktop.dev",
                               "winget":  "Vencord.Vesktop",
                               "foss":  true
                           },
@@ -9744,6 +11770,15 @@ $sync.configs.applications = @'
                                "winget":  "Waterfox.Waterfox",
                                "foss":  true
                            },
+    "WPFInstallwhatsapp":  {
+                               "category":  "Communications",
+                               "choco":  "na",
+                               "content":  "WhatsApp Desktop",
+                               "description":  "WhatsApp Desktop is the official Windows desktop messaging app from Meta, distributed through the Microsoft Store.",
+                               "link":  "https://www.whatsapp.com/download",
+                               "winget":  "msstore:9NKSQGP7F2NH",
+                               "foss":  false
+                           },
     "WPFInstallwingetui":  {
                                "category":  "Utilities",
                                "choco":  "wingetui",
@@ -9807,6 +11842,15 @@ $sync.configs.applications = @'
                                 "winget":  "MHNexus.HxD",
                                 "foss":  false
                             },
+    "WPFInstallxournal":  {
+                              "category":  "Document",
+                              "choco":  "xournalplusplus",
+                              "content":  "Xournal++",
+                              "description":  "Xournal++ is an open-source handwriting notetaking software with PDF annotation capabilities.",
+                              "link":  "https://xournalpp.github.io/",
+                              "winget":  "Xournal++.Xournal++",
+                              "foss":  true
+                          },
     "WPFInstallyarn":  {
                            "category":  "Development",
                            "choco":  "yarn",
@@ -9854,9 +11898,8 @@ $sync.configs.applications = @'
                           },
     "WPFInstallOverwolf":  {
                                "category":  "Games",
-                               "choco":  "overwolf",
-                               "content":  "Overwolf",
-                               "description":  "Popular platform for game overlays and companion apps (mod managers, trackers, etc.), widely used by gamers.",
+                               "content":  "CurseForge",
+                               "description":  "CurseForge is a desktop application for managing mods and modpacks across multiple games, powered by Overwolf.",
                                "link":  "https://www.overwolf.com/app/overwolf-curseforge",
                                "winget":  "Overwolf.CurseForge",
                                "foss":  false
@@ -9872,7 +11915,7 @@ $sync.configs.applications = @'
                        },
     "WPFInstallZenBrowser":  {
                                  "category":  "Browsers",
-                                 "choco":  "zen-browser",
+                                 "choco":  "na",
                                  "content":  "Zen Browser",
                                  "description":  "The modern, privacy-focused, performance-driven browser built on Firefox.",
                                  "link":  "https://zen-browser.app/",
@@ -9888,6 +11931,24 @@ $sync.configs.applications = @'
                           "winget":  "ZedIndustries.Zed",
                           "foss":  true
                       },
+    "WPFInstallzotero":  {
+                             "category":  "Document",
+                             "choco":  "zotero",
+                             "content":  "Zotero",
+                             "description":  "Zotero is a free, easy-to-use tool to help you collect, organize, cite, and share your research materials.",
+                             "link":  "https://www.zotero.org/",
+                             "winget":  "DigitalScholar.Zotero",
+                             "foss":  true
+                         },
+    "WPFInstalldeskflow":  {
+                               "category":  "Utilities",
+                               "choco":  "deskflow",
+                               "content":  "Deskflow",
+                               "description":  "Deskflow is a free and open-source software KVM that lets you share a single keyboard and mouse across multiple computers.",
+                               "link":  "https://github.com/deskflow/deskflow",
+                               "winget":  "Deskflow.Deskflow",
+                               "foss":  true
+                           },
     "WPFInstallRuby":  {
                            "category":  "Development",
                            "choco":  "ruby",
@@ -9905,7 +11966,16 @@ $sync.configs.applications = @'
                           "content":  "Lua",
                           "link":  "https://github.com/rjpcomputing/luaforwindows",
                           "foss":  true
-                      }
+                      },
+    "WPFInstallCloudflareWARP":  {
+                                     "category":  "Utilities",
+                                     "choco":  "warp",
+                                     "winget":  "Cloudflare.Warp",
+                                     "description":  "WARP is a freemium VPN service provided by Cloudflare. Includes usage of Cloudflare\u0027s DNS",
+                                     "content":  "Cloudflare WARP",
+                                     "link":  "https://one.one.one.one",
+                                     "foss":  false
+                                 }
 }
 '@ | ConvertFrom-Json
 $sync.configs.appnavigation = @'
@@ -9994,55 +12064,338 @@ $sync.configs.appnavigation = @'
                                }
 }
 '@ | ConvertFrom-Json
+$sync.configs.appx = @'
+{
+    "WPFAppxMicrosoft_WindowsFeedbackHub":  {
+                                                "Category":  "App Microsoft",
+                                                "Content":  "Hub di Feedback",
+                                                "Description":  "Permette di inviare a Microsoft segnalazioni di problemi, suggerimenti e dati di diagnostica.",
+                                                "Panel":  "1",
+                                                "PackageId":  "Microsoft.WindowsFeedbackHub",
+                                                "StoreId":  "9NBLGGH4R32N"
+                                            },
+    "WPFAppxMicrosoft_GetHelp":  {
+                                     "Category":  "App Microsoft",
+                                     "Content":  "Richiedi assistenza",
+                                     "Description":  "Offre guide di risoluzione dei problemi, documentazione di supporto e il contatto con l\u0027assistenza Microsoft.",
+                                     "Panel":  "1",
+                                     "PackageId":  "Microsoft.GetHelp",
+                                     "StoreId":  "9PKDZBMV1H3T"
+                                 },
+    "WPFAppxMicrosoft_OutlookForWindows":  {
+                                               "Category":  "App Microsoft",
+                                               "Content":  "Outlook per Windows",
+                                               "Description":  "Il nuovo Outlook: posta elettronica, calendario e contatti.",
+                                               "Panel":  "1",
+                                               "PackageId":  "Microsoft.OutlookForWindows",
+                                               "StoreId":  "9NRX63209R7B"
+                                           },
+    "WPFAppxMSTeams":  {
+                           "Category":  "App Microsoft",
+                           "Content":  "Microsoft Teams",
+                           "Description":  "Messaggistica, videochiamate, condivisione di file e collaborazione.",
+                           "Panel":  "1",
+                           "PackageId":  "MSTeams",
+                           "StoreId":  "XP8BT8DW290MPQ"
+                       },
+    "WPFAppxClipchamp_Clipchamp":  {
+                                       "Category":  "Utilit\u00e0 e produttivit\u00e0",
+                                       "Content":  "Clipchamp",
+                                       "Description":  "Editor video semplice da usare, con modelli, effetti e linea temporale.",
+                                       "Panel":  "0",
+                                       "PackageId":  "Clipchamp.Clipchamp",
+                                       "StoreId":  "9P1J8S7CCWWT"
+                                   },
+    "WPFAppxMicrosoft_MicrosoftOfficeHub":  {
+                                                "Category":  "App Microsoft",
+                                                "Content":  "Microsoft 365",
+                                                "Description":  "Avvio rapido delle app di Microsoft 365 nel cloud e dei documenti recenti.",
+                                                "Panel":  "1",
+                                                "PackageId":  "Microsoft.MicrosoftOfficeHub",
+                                                "StoreId":  "9WZDNCRD29V9"
+                                            },
+    "WPFAppxMicrosoft_ZuneMusic":  {
+                                       "Category":  "Utilit\u00e0 e produttivit\u00e0",
+                                       "Content":  "Lettore multimediale",
+                                       "Description":  "Riproduce file audio e video locali, con playlist e trasmissione ad altri dispositivi.",
+                                       "Panel":  "0",
+                                       "PackageId":  "Microsoft.ZuneMusic",
+                                       "StoreId":  "9WZDNCRFJ3PT"
+                                   },
+    "WPFAppxMicrosoft_BingSearch":  {
+                                        "Category":  "Bing e servizi web",
+                                        "Content":  "Ricerca Bing",
+                                        "Description":  "Integra la ricerca e i servizi web di Bing nel sistema operativo.",
+                                        "Panel":  "1",
+                                        "PackageId":  "Microsoft.BingSearch",
+                                        "StoreId":  "9NZBF4GT040C"
+                                    },
+    "WPFAppxMicrosoftCorporationII_QuickAssist":  {
+                                                      "Category":  "Utilit\u00e0 e produttivit\u00e0",
+                                                      "Content":  "Assistenza rapida",
+                                                      "Description":  "Permette di ricevere o dare assistenza tecnica remota condividendo lo schermo via Internet.",
+                                                      "Panel":  "0",
+                                                      "PackageId":  "MicrosoftCorporationII.QuickAssist",
+                                                      "StoreId":  "9P7BP5VNWKX5"
+                                                  },
+    "WPFAppxMicrosoft_WindowsDevHome":  {
+                                            "Category":  "Strumenti per sviluppatori",
+                                            "Content":  "Dev Home",
+                                            "Description":  "Dashboard per gli sviluppatori: configurazione dell\u0027ambiente, sincronizzazione dei repository e widget di sistema.",
+                                            "Panel":  "0",
+                                            "PackageId":  "Microsoft.Windows.DevHome",
+                                            "StoreId":  "9N8MHTPHNGVV"
+                                        },
+    "WPFAppxMicrosoft_WindowsCrossDevice":  {
+                                                "Category":  "Ecosistema Microsoft",
+                                                "Content":  "Dispositivi mobili",
+                                                "Description":  "Gestisce il collegamento in background con i telefoni associati. Rimuoverla pu\u00f2 disattivare le funzioni tra dispositivi delle Impostazioni, come lo schermo del telefono, il trasferimento dei file e l\u0027hotspot.",
+                                                "Panel":  "1",
+                                                "PackageId":  "MicrosoftWindows.CrossDevice",
+                                                "StoreId":  "9NTXGKQ8P7N0"
+                                            },
+    "WPFAppxMicrosoft_Todos":  {
+                                   "Category":  "Utilit\u00e0 e produttivit\u00e0",
+                                   "Content":  "Microsoft To Do",
+                                   "Description":  "Crea e sincronizza attivit\u00e0, elenchi e promemoria.",
+                                   "Panel":  "0",
+                                   "PackageId":  "Microsoft.Todos",
+                                   "StoreId":  "9NBLGGH5R558"
+                               },
+    "WPFAppxMicrosoft_PowerAutomateDesktop":  {
+                                                  "Category":  "Strumenti per sviluppatori",
+                                                  "Content":  "Power Automate",
+                                                  "Description":  "Automatizza attivit\u00e0 ripetitive del desktop con flussi visuali senza codice.",
+                                                  "Panel":  "0",
+                                                  "PackageId":  "Microsoft.PowerAutomateDesktop",
+                                                  "StoreId":  "9NFTCH6J7FHV"
+                                              },
+    "WPFAppxMicrosoft_YourPhone":  {
+                                       "Category":  "Ecosistema Microsoft",
+                                       "Content":  "Collegamento al telefono",
+                                       "Description":  "Porta sul PC messaggi, notifiche, foto e chiamate del telefono.",
+                                       "Panel":  "1",
+                                       "PackageId":  "Microsoft.YourPhone",
+                                       "StoreId":  "9NMPJ99VJBWV"
+                                   },
+    "WPFAppxMicrosoft_MicrosoftStickyNotes":  {
+                                                  "Category":  "Utilit\u00e0 e produttivit\u00e0",
+                                                  "Content":  "Sticky Notes",
+                                                  "Description":  "Note rapide sul desktop, sincronizzate tra i dispositivi.",
+                                                  "Panel":  "0",
+                                                  "PackageId":  "Microsoft.MicrosoftStickyNotes",
+                                                  "StoreId":  "9NBLGGH4QGHW"
+                                              },
+    "WPFAppxMicrosoft_WindowsSoundRecorder":  {
+                                                  "Category":  "Utilit\u00e0 e produttivit\u00e0",
+                                                  "Content":  "Registratore di suoni",
+                                                  "Description":  "Registra e taglia l\u0027audio del microfono.",
+                                                  "Panel":  "0",
+                                                  "PackageId":  "Microsoft.WindowsSoundRecorder",
+                                                  "StoreId":  "9WZDNCRFHWKN"
+                                              },
+    "WPFAppxMicrosoft_WindowsAlarms":  {
+                                           "Category":  "Utilit\u00e0 e produttivit\u00e0",
+                                           "Content":  "Orologio",
+                                           "Description":  "Orologi del mondo, sveglie, timer, cronometro e sessioni di concentrazione.",
+                                           "Panel":  "0",
+                                           "PackageId":  "Microsoft.WindowsAlarms",
+                                           "StoreId":  "9WZDNCRFJ3PR"
+                                       },
+    "WPFAppxMicrosoft_Paint":  {
+                                   "Category":  "Utilit\u00e0 e produttivit\u00e0",
+                                   "Content":  "Paint",
+                                   "Description":  "Disegno e modifica di base delle immagini.",
+                                   "Panel":  "0",
+                                   "PackageId":  "Microsoft.Paint",
+                                   "StoreId":  "9PCFS5B6T72H"
+                               },
+    "WPFAppxMicrosoft_WindowsNotepad":  {
+                                            "Category":  "Utilit\u00e0 e produttivit\u00e0",
+                                            "Content":  "Blocco note",
+                                            "Description":  "Editor di testo leggero con le schede, per file di testo e frammenti di codice.",
+                                            "Panel":  "0",
+                                            "PackageId":  "Microsoft.WindowsNotepad",
+                                            "StoreId":  "9MSMLRH6LZF3"
+                                        },
+    "WPFAppxMicrosoft_ScreenSketch":  {
+                                          "Category":  "Utilit\u00e0 e produttivit\u00e0",
+                                          "Content":  "Strumento di cattura",
+                                          "Description":  "Cattura schermate e registrazioni dello schermo, con annotazioni, ritaglio e riconoscimento del testo (OCR).",
+                                          "Panel":  "0",
+                                          "PackageId":  "Microsoft.ScreenSketch",
+                                          "StoreId":  "9MZ95KL8MR0L"
+                                      },
+    "WPFAppxMicrosoft_Copilot":  {
+                                     "Category":  "Bing e servizi web",
+                                     "Content":  "Copilot",
+                                     "Description":  "L\u0027assistente di intelligenza artificiale di Microsoft per risposte, scrittura e ricerca sul web.",
+                                     "Panel":  "1",
+                                     "PackageId":  "Microsoft.Copilot",
+                                     "StoreId":  "9NHT9RB2F4HD"
+                                 },
+    "WPFAppxMicrosoft_WindowsCalculator":  {
+                                               "Category":  "Utilit\u00e0 e produttivit\u00e0",
+                                               "Content":  "Calcolatrice",
+                                               "Description":  "Calcoli standard, scientifici, da programmatore e conversioni di unit\u00e0.",
+                                               "Panel":  "0",
+                                               "PackageId":  "Microsoft.WindowsCalculator",
+                                               "StoreId":  "9WZDNCRFHVN5"
+                                           },
+    "WPFAppxMicrosoft_WindowsCamera":  {
+                                           "Category":  "Utilit\u00e0 e produttivit\u00e0",
+                                           "Content":  "Fotocamera",
+                                           "Description":  "Scatta foto e registra video con la webcam o altre fotocamere collegate.",
+                                           "Panel":  "0",
+                                           "PackageId":  "Microsoft.WindowsCamera",
+                                           "StoreId":  "9WZDNCRFJBBG"
+                                       },
+    "WPFAppxMicrosoft_WindowsPhotos":  {
+                                           "Category":  "Utilit\u00e0 e produttivit\u00e0",
+                                           "Content":  "Foto",
+                                           "Description":  "Organizza, visualizza e ritaglia le immagini, con regolazioni di base e album.",
+                                           "Panel":  "0",
+                                           "PackageId":  "Microsoft.Windows.Photos",
+                                           "StoreId":  "9WZDNCRFJBH4"
+                                       },
+    "WPFAppxMicrosoft_BingNews":  {
+                                      "Category":  "Bing e servizi web",
+                                      "Content":  "Notizie",
+                                      "Description":  "Notizie del giorno e articoli personalizzati.",
+                                      "Panel":  "1",
+                                      "PackageId":  "Microsoft.BingNews",
+                                      "StoreId":  "9WZDNCRFHVFW"
+                                  },
+    "WPFAppxMicrosoft_BingWeather":  {
+                                         "Category":  "Bing e servizi web",
+                                         "Content":  "Meteo",
+                                         "Description":  "Meteo locale in tempo reale, mappe radar e previsioni.",
+                                         "Panel":  "1",
+                                         "PackageId":  "Microsoft.BingWeather",
+                                         "StoreId":  "9WZDNCRFJ3Q2"
+                                     },
+    "WPFAppxMicrosoft_GamingApp":  {
+                                       "Category":  "Xbox e giochi",
+                                       "Content":  "App Xbox",
+                                       "Description":  "Raccolta dei giochi, community e PC Game Pass.",
+                                       "Panel":  "1",
+                                       "PackageId":  "Microsoft.GamingApp",
+                                       "StoreId":  "9MV0B5HZVK9Z"
+                                   },
+    "WPFAppxMicrosoft_XboxGamingOverlay":  {
+                                               "Category":  "Xbox e giochi",
+                                               "Content":  "Xbox Game Bar",
+                                               "Description":  "Widget durante il gioco, volumi, monitoraggio del sistema e registrazione delle partite.",
+                                               "Panel":  "1",
+                                               "PackageId":  "Microsoft.XboxGamingOverlay",
+                                               "StoreId":  "9NZKPSTSNW4P"
+                                           },
+    "WPFAppxMicrosoft_XboxIdentityProvider":  {
+                                                  "Category":  "Xbox e giochi",
+                                                  "Content":  "Provider di identit\u00e0 Xbox",
+                                                  "Description":  "Gestisce l\u0027accesso alla rete Xbox per i giochi collegati. Attenzione: rimuoverlo pu\u00f2 impedire l\u0027accesso con l\u0027account Microsoft anche in giochi e app non Xbox che lo usano.",
+                                                  "Panel":  "1",
+                                                  "PackageId":  "Microsoft.XboxIdentityProvider",
+                                                  "StoreId":  "9WZDNCRD1HKW"
+                                              },
+    "WPFAppxMicrosoft_XboxSpeechToTextOverlay":  {
+                                                     "Category":  "Xbox e giochi",
+                                                     "Content":  "Xbox Speech To Text Overlay",
+                                                     "Description":  "Sottotitoli in tempo reale e trascrizione vocale per le chat di gioco.",
+                                                     "Panel":  "1",
+                                                     "PackageId":  "Microsoft.XboxSpeechToTextOverlay"
+                                                 },
+    "WPFAppxMicrosoft_Xbox_TCUI":  {
+                                       "Category":  "Xbox e giochi",
+                                       "Content":  "Xbox TCUI",
+                                       "Description":  "Finestre di accesso all\u0027account usate dai giochi. Attenzione: rimuoverlo pu\u00f2 impedire l\u0027accesso con l\u0027account Microsoft in giochi e app che non richiedono l\u0027app Xbox.",
+                                       "Panel":  "1",
+                                       "PackageId":  "Microsoft.Xbox.TCUI"
+                                   },
+    "WPFAppxMicrosoft_StartExperiencesApp":  {
+                                                 "Category":  "Bing e servizi web",
+                                                 "Content":  "Start Experiences App (Widget)",
+                                                 "Description":  "Fornisce la bacheca dei widget di Windows, con notizie, meteo, sport e finanza.",
+                                                 "Panel":  "1",
+                                                 "PackageId":  "Microsoft.StartExperiencesApp",
+                                                 "StoreId":  "9PC1H9VN18CM"
+                                             },
+    "WPFAppxMicrosoft_MicrosoftSolitaireCollection":  {
+                                                          "Category":  "Xbox e giochi",
+                                                          "Content":  "Microsoft Solitaire Collection",
+                                                          "Description":  "Giochi di carte Klondike, Spider, FreeCell, Pyramid e TriPeaks, con sfide giornaliere.",
+                                                          "Panel":  "1",
+                                                          "PackageId":  "Microsoft.MicrosoftSolitaireCollection"
+                                                      },
+    "WPFAppxMicrosoft_ZuneVideo":  {
+                                       "Category":  "Utilit\u00e0 e produttivit\u00e0",
+                                       "Content":  "Film e TV",
+                                       "Description":  "Il lettore video predefinito, con il negozio per acquistare o noleggiare film.",
+                                       "Panel":  "0",
+                                       "PackageId":  "Microsoft.ZuneVideo",
+                                       "StoreId":  "9WZDNCRFJ3P2"
+                                   }
+}
+'@ | ConvertFrom-Json
 $sync.configs.dns = @'
 {
     "Google":  {
+                   "BenchmarkEligible":  true,
                    "Primary":  "8.8.8.8",
                    "Secondary":  "8.8.4.4",
                    "Primary6":  "2001:4860:4860::8888",
-                   "Secondary6":  "2001:4860:4860::8844"
+                   "Secondary6":  "2001:4860:4860::8844",
+                   "DohTemplate":  "https://dns.google/dns-query"
                },
     "Cloudflare":  {
+                       "BenchmarkEligible":  true,
                        "Primary":  "1.1.1.1",
                        "Secondary":  "1.0.0.1",
                        "Primary6":  "2606:4700:4700::1111",
-                       "Secondary6":  "2606:4700:4700::1001"
+                       "Secondary6":  "2606:4700:4700::1001",
+                       "DohTemplate":  "https://cloudflare-dns.com/dns-query"
                    },
     "Cloudflare_Malware":  {
                                "Primary":  "1.1.1.2",
                                "Secondary":  "1.0.0.2",
                                "Primary6":  "2606:4700:4700::1112",
-                               "Secondary6":  "2606:4700:4700::1002"
+                               "Secondary6":  "2606:4700:4700::1002",
+                               "DohTemplate":  "https://security.cloudflare-dns.com/dns-query"
                            },
     "Cloudflare_Malware_Adult":  {
                                      "Primary":  "1.1.1.3",
                                      "Secondary":  "1.0.0.3",
                                      "Primary6":  "2606:4700:4700::1113",
-                                     "Secondary6":  "2606:4700:4700::1003"
+                                     "Secondary6":  "2606:4700:4700::1003",
+                                     "DohTemplate":  "https://family.cloudflare-dns.com/dns-query"
                                  },
     "Open_DNS":  {
                      "Primary":  "208.67.222.222",
                      "Secondary":  "208.67.220.220",
                      "Primary6":  "2620:119:35::35",
-                     "Secondary6":  "2620:119:53::53"
+                     "Secondary6":  "2620:119:53::53",
+                     "DohTemplate":  "https://doh.opendns.com/dns-query"
                  },
     "Quad9":  {
                   "Primary":  "9.9.9.9",
                   "Secondary":  "149.112.112.112",
                   "Primary6":  "2620:fe::fe",
-                  "Secondary6":  "2620:fe::9"
+                  "Secondary6":  "2620:fe::9",
+                  "DohTemplate":  "https://dns.quad9.net/dns-query"
               },
     "AdGuard_Ads_Trackers":  {
                                  "Primary":  "94.140.14.14",
                                  "Secondary":  "94.140.15.15",
                                  "Primary6":  "2a10:50c0::ad1:ff",
-                                 "Secondary6":  "2a10:50c0::ad2:ff"
+                                 "Secondary6":  "2a10:50c0::ad2:ff",
+                                 "DohTemplate":  "https://dns.adguard-dns.com/dns-query"
                              },
     "AdGuard_Ads_Trackers_Malware_Adult":  {
                                                "Primary":  "94.140.14.15",
                                                "Secondary":  "94.140.15.16",
                                                "Primary6":  "2a10:50c0::bad1:ff",
-                                               "Secondary6":  "2a10:50c0::bad2:ff"
+                                               "Secondary6":  "2a10:50c0::bad2:ff",
+                                               "DohTemplate":  "https://family.adguard-dns.com/dns-query"
                                            }
 }
 '@ | ConvertFrom-Json
@@ -10080,9 +12433,6 @@ $sync.configs.feature = @'
                               "feature":  [
                                               "Microsoft-Hyper-V-All"
                                           ],
-                              "InvokeScript":  [
-                                                   "bcdedit /set hypervisorschedulertype classic"
-                                               ],
                               "link":  "https://github.com/rtecnocopy89/WinRUtil"
                           },
     "WPFFeatureslegacymedia":  {
@@ -10237,17 +12587,6 @@ $sync.configs.feature = @'
                            "function":  "Invoke-WPFFixesWinget",
                            "link":  "https://github.com/rtecnocopy89/WinRUtil"
                        },
-    "WPFPanelControl":  {
-                            "Content":  "Pannello di controllo",
-                            "category":  "Pannelli classici di Windows",
-                            "panel":  "2",
-                            "Type":  "Button",
-                            "ButtonWidth":  "300",
-                            "InvokeScript":  [
-                                                 "control"
-                                             ],
-                            "link":  "https://github.com/rtecnocopy89/WinRUtil"
-                        },
     "WPFPanelComputer":  {
                              "Content":  "Gestione computer",
                              "category":  "Pannelli classici di Windows",
@@ -10259,6 +12598,28 @@ $sync.configs.feature = @'
                                               ],
                              "link":  "https://github.com/rtecnocopy89/WinRUtil"
                          },
+    "WPFPanelControl":  {
+                            "Content":  "Pannello di controllo",
+                            "category":  "Pannelli classici di Windows",
+                            "panel":  "2",
+                            "Type":  "Button",
+                            "ButtonWidth":  "300",
+                            "InvokeScript":  [
+                                                 "control"
+                                             ],
+                            "link":  "https://github.com/rtecnocopy89/WinRUtil"
+                        },
+    "WPFPanelMouse":  {
+                          "Content":  "Propriet\u00e0 del mouse",
+                          "category":  "Pannelli classici di Windows",
+                          "panel":  "2",
+                          "Type":  "Button",
+                          "ButtonWidth":  "300",
+                          "InvokeScript":  [
+                                               "main.cpl"
+                                           ],
+                          "link":  "https://github.com/rtecnocopy89/WinRUtil"
+                      },
     "WPFPanelNetwork":  {
                             "Content":  "Connessioni di rete",
                             "category":  "Pannelli classici di Windows",
@@ -10292,6 +12653,17 @@ $sync.configs.feature = @'
                                              ],
                             "link":  "https://github.com/rtecnocopy89/WinRUtil"
                         },
+    "WPFPanelPrograms":  {
+                             "Content":  "Programmi e funzionalit\u00e0",
+                             "category":  "Pannelli classici di Windows",
+                             "panel":  "2",
+                             "Type":  "Button",
+                             "ButtonWidth":  "300",
+                             "InvokeScript":  [
+                                                  "appwiz.cpl"
+                                              ],
+                             "link":  "https://github.com/rtecnocopy89/WinRUtil"
+                         },
     "WPFPanelRegion":  {
                            "Content":  "Area geografica",
                            "category":  "Pannelli classici di Windows",
@@ -10303,17 +12675,17 @@ $sync.configs.feature = @'
                                             ],
                            "link":  "https://github.com/rtecnocopy89/WinRUtil"
                        },
-    "WPFPanelRestore":  {
-                            "Content":  "Ripristino configurazione di sistema",
-                            "category":  "Pannelli classici di Windows",
-                            "panel":  "2",
-                            "Type":  "Button",
-                            "ButtonWidth":  "300",
-                            "InvokeScript":  [
-                                                 "rstrui.exe"
-                                             ],
-                            "link":  "https://github.com/rtecnocopy89/WinRUtil"
-                        },
+    "WPFPanelSecurity":  {
+                             "Content":  "Sicurezza e manutenzione",
+                             "category":  "Pannelli classici di Windows",
+                             "panel":  "2",
+                             "Type":  "Button",
+                             "ButtonWidth":  "300",
+                             "InvokeScript":  [
+                                                  "wscui.cpl"
+                                              ],
+                             "link":  "https://github.com/rtecnocopy89/WinRUtil"
+                         },
     "WPFPanelSound":  {
                           "Content":  "Audio",
                           "category":  "Pannelli classici di Windows",
@@ -10347,6 +12719,28 @@ $sync.configs.feature = @'
                                               ],
                              "link":  "https://github.com/rtecnocopy89/WinRUtil"
                          },
+    "WPFPanelFirewall":  {
+                             "Content":  "Windows Defender Firewall",
+                             "category":  "Pannelli classici di Windows",
+                             "panel":  "2",
+                             "Type":  "Button",
+                             "ButtonWidth":  "300",
+                             "InvokeScript":  [
+                                                  "firewall.cpl"
+                                              ],
+                             "link":  "https://github.com/rtecnocopy89/WinRUtil"
+                         },
+    "WPFPanelRestore":  {
+                            "Content":  "Ripristino configurazione di sistema",
+                            "category":  "Pannelli classici di Windows",
+                            "panel":  "2",
+                            "Type":  "Button",
+                            "ButtonWidth":  "300",
+                            "InvokeScript":  [
+                                                 "rstrui.exe"
+                                             ],
+                            "link":  "https://github.com/rtecnocopy89/WinRUtil"
+                        },
     "WPFWinUtilSSHServer":  {
                                 "Content":  "Server OpenSSH - Attiva",
                                 "category":  "z__Accesso remoto",
@@ -10365,31 +12759,68 @@ $sync.configs.preset = @'
                      "WPFTweaksConsumerFeatures",
                      "WPFTweaksDisableExplorerAutoDiscovery",
                      "WPFTweaksWPBT",
-                     "WPFTweaksDVR",
-                     "WPFTweaksDeBloat",
                      "WPFTweaksLocation",
                      "WPFTweaksServices",
                      "WPFTweaksTelemetry",
+                     "WPFTweaksDeliveryOptimization",
                      "WPFTweaksDiskCleanup",
                      "WPFTweaksDeleteTempFiles",
                      "WPFTweaksEndTaskOnTaskbar",
-                     "WPFTweaksRestorePoint",
-                     "WPFTweaksPowershell7Tele"
+                     "WPFTweaksRestorePoint"
                  ],
     "Minimal":  [
                     "WPFTweaksConsumerFeatures",
-                    "WPFTweaksDeBloat",
                     "WPFTweaksWPBT",
                     "WPFTweaksServices",
                     "WPFTweaksTelemetry"
-                ]
+                ],
+    "Advanced":  [
+                     "WPFTweaksRestorePoint",
+                     "WPFTweaksActivity",
+                     "WPFTweaksConsumerFeatures",
+                     "WPFTweaksDisableExplorerAutoDiscovery",
+                     "WPFTweaksWPBT",
+                     "WPFTweaksLocation",
+                     "WPFTweaksServices",
+                     "WPFTweaksTelemetry",
+                     "WPFTweaksDeliveryOptimization",
+                     "WPFTweaksDeleteTempFiles",
+                     "WPFTweaksEndTaskOnTaskbar",
+                     "WPFTweaksDisableStoreSearch",
+                     "WPFTweaksRevertStartMenu",
+                     "WPFTweaksWidget",
+                     "WPFTweaksRemoveOneDrive",
+                     "WPFTweaksWindowsAI",
+                     "WPFTweaksRightClickMenu"
+                 ],
+    "AppxDefault":  [
+                        "WPFAppxMicrosoft_WindowsFeedbackHub",
+                        "WPFAppxMicrosoft_GetHelp",
+                        "WPFAppxMicrosoft_MicrosoftOfficeHub",
+                        "WPFAppxMicrosoft_WindowsCalculator",
+                        "WPFAppxClipchamp_Clipchamp",
+                        "WPFAppxMicrosoft_WindowsAlarms",
+                        "WPFAppxMicrosoftCorporationII_QuickAssist",
+                        "WPFAppxMicrosoft_WindowsSoundRecorder",
+                        "WPFAppxMicrosoft_MicrosoftStickyNotes",
+                        "WPFAppxMicrosoft_Todos",
+                        "WPFAppxMicrosoft_MicrosoftSolitaireCollection",
+                        "WPFAppxMicrosoft_PowerAutomateDesktop",
+                        "WPFAppxMicrosoft_WindowsDevHome",
+                        "WPFAppxMicrosoft_BingWeather",
+                        "WPFAppxMicrosoft_StartExperiencesApp",
+                        "WPFAppxMicrosoft_BingNews",
+                        "WPFAppxMicrosoft_Copilot",
+                        "WPFAppxMicrosoft_BingSearch"
+                    ]
 }
 '@ | ConvertFrom-Json
 $sync.configs.themes = @'
 {
     "shared":  {
-                   "AppEntryWidth":  "200",
+                   "AppEntryWidth":  "220",
                    "AppEntryFontSize":  "11",
+                   "AppEntryIconSize":  "18",
                    "AppEntryMargin":  "1,0,1,0",
                    "AppEntryBorderThickness":  "0",
                    "CustomDialogFontSize":  "12",
@@ -10413,6 +12844,7 @@ $sync.configs.themes = @'
                    "IconButtonSize":  "35",
                    "SettingsIconFontSize":  "18",
                    "CloseIconFontSize":  "18",
+                   "WindowButtonFontSize":  "11",
                    "ButtonFontSize":  "12",
                    "ButtonFontFamily":  "Inter, Segoe UI Variable, Segoe UI",
                    "ButtonWidth":  "200",
@@ -10541,14 +12973,14 @@ $sync.configs.tweaks = @'
 {
     "WPFTweaksActivity":  {
                               "Content":  "Cronologia attivit\u00e0 - Disattiva",
-                              "Description":  "Cancella la cronologia dei documenti recenti, degli appunti e dei comandi eseguiti.",
+                              "Description":  "Impedisce a Windows di pubblicare o caricare le attivit\u00e0 dell\u0027utente, senza cancellare la cronologia degli appunti.",
                               "category":  "Ottimizzazioni essenziali",
                               "panel":  "1",
                               "registry":  [
                                                {
                                                    "Path":  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\System",
                                                    "Name":  "EnableActivityFeed",
-                                                   "Value":  "0",
+                                                   "Value":  "1",
                                                    "Type":  "DWord",
                                                    "OriginalValue":  "\u003cRemoveEntry\u003e"
                                                },
@@ -10606,22 +13038,22 @@ $sync.configs.tweaks = @'
                             "InvokeScript":  [
                                                  "\r\n      # Sometimes if you dont stop the Widgets process the removal may fail\r\n\r\n      Get-Process *Widget* | Stop-Process\r\n      Get-AppxPackage Microsoft.WidgetsPlatformRuntime -AllUsers | Remove-AppxPackage -AllUsers\r\n      Get-AppxPackage MicrosoftWindows.Client.WebExperience -AllUsers | Remove-AppxPackage -AllUsers\r\n\r\n      Invoke-WinUtilExplorerUpdate -action \"restart\"\r\n      Write-Host \"Removed widgets\"\r\n      "
                                              ],
-                            "UndoScript":  [
-                                               "\r\n      Write-Host \"Restoring widgets AppxPackages\"\r\n\r\n      Add-AppxPackage -Register \"C:\\Program Files\\WindowsApps\\Microsoft.WidgetsPlatformRuntime*\\AppxManifest.xml\" -DisableDevelopmentMode\r\n      Add-AppxPackage -Register \"C:\\Program Files\\WindowsApps\\MicrosoftWindows.Client.WebExperience*\\AppxManifest.xml\" -DisableDevelopmentMode\r\n\r\n      Invoke-WinUtilExplorerUpdate -action \"restart\"\r\n      "
-                                           ],
                             "link":  "https://github.com/rtecnocopy89/WinRUtil"
                         },
     "WPFTweaksRevertStartMenu":  {
                                      "Content":  "Menu Start precedente - Attiva",
-                                     "Description":  "Ripristina il layout del menu Start in uso prima del nuovo menu introdotto gradualmente con la 25H2.",
+                                     "Description":  "Ripristina il layout del menu Start in uso prima del nuovo menu introdotto gradualmente con la 25H2. Nelle versioni pi\u00f9 recenti di Windows NON FUNZIONA.",
                                      "category":  "Ottimizzazioni essenziali",
                                      "panel":  "1",
-                                     "InvokeScript":  [
-                                                          "\r\n      Invoke-WebRequest https://github.com/thebookisclosed/ViVe/releases/download/v0.3.4/ViVeTool-v0.3.4-IntelAmd.zip -OutFile ViVeTool.zip\r\n\r\n      Expand-Archive ViVeTool.zip\r\n      Remove-Item ViVeTool.zip\r\n\r\n      Start-Process \u0027ViVeTool\\ViVeTool.exe\u0027 -ArgumentList \u0027/disable /id:47205210\u0027 -Wait -NoNewWindow\r\n\r\n      Remove-Item ViVeTool -Recurse\r\n\r\n      Write-Host \u0027Old start menu reverted. Please restart your computer to take effect.\u0027\r\n      "
-                                                      ],
-                                     "UndoScript":  [
-                                                        "\r\n      Invoke-WebRequest https://github.com/thebookisclosed/ViVe/releases/download/v0.3.4/ViVeTool-v0.3.4-IntelAmd.zip -OutFile ViVeTool.zip\r\n\r\n      Expand-Archive ViVeTool.zip\r\n      Remove-Item ViVeTool.zip\r\n\r\n      Start-Process \u0027ViVeTool\\ViVeTool.exe\u0027 -ArgumentList \u0027/enable /id:47205210\u0027 -Wait -NoNewWindow\r\n\r\n      Remove-Item ViVeTool -Recurse\r\n\r\n      Write-Host \u0027New start menu reverted. Please restart your computer to take effect.\u0027\r\n      "
-                                                    ],
+                                     "registry":  [
+                                                      {
+                                                          "Path":  "HKLM:\\SYSTEM\\ControlSet001\\Control\\FeatureManagement\\Overrides\\8\\3036241548",
+                                                          "Name":  "EnabledState",
+                                                          "Value":  "1",
+                                                          "Type":  "DWord",
+                                                          "OriginalValue":  "\u003cRemoveEntry\u003e"
+                                                      }
+                                                  ],
                                      "link":  "https://github.com/rtecnocopy89/WinRUtil"
                                  },
     "WPFTweaksDisableStoreSearch":  {
@@ -10630,10 +13062,10 @@ $sync.configs.tweaks = @'
                                         "category":  "Ottimizzazioni essenziali",
                                         "panel":  "1",
                                         "InvokeScript":  [
-                                                             "icacls \"$Env:LocalAppData\\Packages\\Microsoft.WindowsStore_8wekyb3d8bbwe\\LocalState\\store.db\" /deny Everyone:F"
+                                                             "icacls \"$Env:LocalAppData\\Packages\\Microsoft.WindowsStore_8wekyb3d8bbwe\\LocalState\\store.db\" /deny *S-1-1-0:F"
                                                          ],
                                         "UndoScript":  [
-                                                           "icacls \"$Env:LocalAppData\\Packages\\Microsoft.WindowsStore_8wekyb3d8bbwe\\LocalState\\store.db\" /grant Everyone:F"
+                                                           "icacls \"$Env:LocalAppData\\Packages\\Microsoft.WindowsStore_8wekyb3d8bbwe\\LocalState\\store.db\" /grant *S-1-1-0:F"
                                                        ],
                                         "link":  "https://github.com/rtecnocopy89/WinRUtil"
                                     },
@@ -10645,7 +13077,7 @@ $sync.configs.tweaks = @'
                               "service":  [
                                               {
                                                   "Name":  "lfsvc",
-                                                  "StartupType":  "Disable",
+                                                  "StartupType":  "Disabled",
                                                   "OriginalType":  "Manual"
                                               }
                                           ],
@@ -10696,16 +13128,6 @@ $sync.configs.tweaks = @'
                                                   "OriginalType":  "Automatic"
                                               },
                                               {
-                                                  "Name":  "RemoteAccess",
-                                                  "StartupType":  "Disabled",
-                                                  "OriginalType":  "Disabled"
-                                              },
-                                              {
-                                                  "Name":  "RemoteRegistry",
-                                                  "StartupType":  "Disabled",
-                                                  "OriginalType":  "Disabled"
-                                              },
-                                              {
                                                   "Name":  "StorSvc",
                                                   "StartupType":  "Manual",
                                                   "OriginalType":  "Automatic"
@@ -10714,33 +13136,23 @@ $sync.configs.tweaks = @'
                                                   "Name":  "SharedAccess",
                                                   "StartupType":  "Disabled",
                                                   "OriginalType":  "Automatic"
-                                              },
-                                              {
-                                                  "Name":  "TermService",
-                                                  "StartupType":  "Manual",
-                                                  "OriginalType":  "Manual"
-                                              },
-                                              {
-                                                  "Name":  "TroubleshootingSvc",
-                                                  "StartupType":  "Manual",
-                                                  "OriginalType":  "Manual"
-                                              },
-                                              {
-                                                  "Name":  "seclogon",
-                                                  "StartupType":  "Manual",
-                                                  "OriginalType":  "Manual"
-                                              },
-                                              {
-                                                  "Name":  "ssh-agent",
-                                                  "StartupType":  "Disabled",
-                                                  "OriginalType":  "Disabled"
                                               }
                                           ],
-                              "InvokeScript":  [
-                                                   "\r\n      $Memory = (Get-CimInstance Win32_PhysicalMemory | Measure-Object Capacity -Sum).Sum / 1KB\r\n      Set-ItemProperty -Path \"HKLM:\\SYSTEM\\CurrentControlSet\\Control\" -Name SvcHostSplitThresholdInKB -Value $Memory\r\n      "
-                                               ],
                               "link":  "https://github.com/rtecnocopy89/WinRUtil"
                           },
+    "WPFTweaksSvcHostSplitting":  {
+                                      "Content":  "Suddivisione dei processi svchost.exe - Disattiva",
+                                      "Description":  "Disattiva la suddivisione dei servizi in processi svchost.exe separati: i processi diminuiscono e si risparmia un po\u0027 di memoria. Consigliato sui PC poco potenti con 12 GB di RAM o meno. Pu\u00f2 interferire con i servizi Xbox. Riavvia Windows dopo la modifica.",
+                                      "category":  "z__Ottimizzazioni avanzate - ATTENZIONE",
+                                      "panel":  "1",
+                                      "InvokeScript":  [
+                                                           "\r\n      # A threshold above the physical memory disables svchost service splitting\r\n      $Memory = (Get-CimInstance Win32_PhysicalMemory | Measure-Object Capacity -Sum).Sum / 1KB\r\n      Set-ItemProperty -Path \"HKLM:\\SYSTEM\\CurrentControlSet\\Control\" -Name SvcHostSplitThresholdInKB -Value $Memory -Type DWord\r\n      "
+                                                       ],
+                                      "UndoScript":  [
+                                                         "\r\n      # Windows client default (0x380000): splitting back on\r\n      Set-ItemProperty -Path \"HKLM:\\SYSTEM\\CurrentControlSet\\Control\" -Name SvcHostSplitThresholdInKB -Value 3670016 -Type DWord -Force\r\n      "
+                                                     ],
+                                      "link":  "https://github.com/rtecnocopy89/WinRUtil"
+                                  },
     "WPFTweaksBraveDebloat":  {
                                   "Content":  "Browser Brave - Alleggerisci",
                                   "Description":  "Disattiva varie funzioni non necessarie come Brave Rewards, Leo AI, Crypto Wallet e VPN.",
@@ -10987,7 +13399,7 @@ $sync.configs.tweaks = @'
                              },
     "WPFTweaksConsumerFeatures":  {
                                       "Content":  "Funzionalit\u00e0 consumer - Disattiva",
-                                      "Description":  "Windows non installer\u00e0 pi\u00f9 da solo giochi, app di terze parti o collegamenti ad app del Microsoft Store per l\u0027utente connesso. Alcune app predefinite non saranno disponibili (ad es. Collegamento al telefono).",
+                                      "Description":  "Impedisce l\u0027installazione automatica delle app promosse e riduce i suggerimenti di app dal Microsoft Store.",
                                       "category":  "Ottimizzazioni essenziali",
                                       "panel":  "1",
                                       "registry":  [
@@ -11003,9 +13415,21 @@ $sync.configs.tweaks = @'
                                   },
     "WPFTweaksTelemetry":  {
                                "Content":  "Telemetria - Disattiva",
-                               "Description":  "Disattiva la telemetria di Microsoft.",
+                               "Description":  "Disattiva la telemetria di Microsoft, compresa quella di PowerShell 7.",
                                "category":  "Ottimizzazioni essenziali",
                                "panel":  "1",
+                               "service":  [
+                                               {
+                                                   "Name":  "diagtrack",
+                                                   "StartupType":  "Disabled",
+                                                   "OriginalType":  "Automatic"
+                                               },
+                                               {
+                                                   "Name":  "WerSvc",
+                                                   "StartupType":  "Disabled",
+                                                   "OriginalType":  "Manual"
+                                               }
+                                           ],
                                "registry":  [
                                                 {
                                                     "Path":  "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\AdvertisingInfo",
@@ -11090,29 +13514,65 @@ $sync.configs.tweaks = @'
                                                     "Value":  "0",
                                                     "Type":  "DWord",
                                                     "OriginalValue":  "\u003cRemoveEntry\u003e"
+                                                },
+                                                {
+                                                    "Path":  "HKCU:\\Software\\Microsoft\\Siuf\\Rules",
+                                                    "Name":  "PeriodInNanoSeconds",
+                                                    "Value":  "\u003cRemoveEntry\u003e",
+                                                    "Type":  "DWord",
+                                                    "OriginalValue":  "\u003cRemoveEntry\u003e"
                                                 }
                                             ],
                                "InvokeScript":  [
-                                                    "\r\n      # Disable Defender Auto Sample Submission\r\n      Set-MpPreference -SubmitSamplesConsent 2\r\n\r\n      # Disable (Connected User Experiences and Telemetry) Service\r\n      Set-Service -Name diagtrack -StartupType Disabled\r\n\r\n      # Disable (Windows Error Reporting Manager) Service\r\n      Set-Service -Name wermgr -StartupType Disabled\r\n\r\n      Remove-ItemProperty -Path \"HKCU:\\Software\\Microsoft\\Siuf\\Rules\" -Name PeriodInNanoSeconds\r\n      "
+                                                    "\r\n      # Disable Defender Auto Sample Submission\r\n      Set-MpPreference -SubmitSamplesConsent 2\r\n\r\n      # Disable PowerShell 7 telemetry\r\n      [Environment]::SetEnvironmentVariable(\u0027POWERSHELL_TELEMETRY_OPTOUT\u0027, \u00271\u0027, \u0027Machine\u0027)\r\n      "
                                                 ],
                                "UndoScript":  [
-                                                  "\r\n      # Enable Defender Auto Sample Submission\r\n      Set-MpPreference -SubmitSamplesConsent 1\r\n\r\n      # Enable (Connected User Experiences and Telemetry) Service\r\n      Set-Service -Name diagtrack -StartupType Automatic\r\n\r\n      # Enable (Windows Error Reporting Manager) Service\r\n      Set-Service -Name wermgr -StartupType Automatic\r\n      "
+                                                  "\r\n      # Enable Defender Auto Sample Submission\r\n      Set-MpPreference -SubmitSamplesConsent 1\r\n\r\n      # Enable PowerShell 7 telemetry\r\n      [Environment]::SetEnvironmentVariable(\u0027POWERSHELL_TELEMETRY_OPTOUT\u0027, \u0027\u0027, \u0027Machine\u0027)\r\n      "
                                               ],
                                "link":  "https://github.com/rtecnocopy89/WinRUtil"
                            },
+    "WPFTweaksDeliveryOptimization":  {
+                                          "Content":  "Ottimizzazione recapito - Disattiva",
+                                          "Description":  "Impedisce a Windows di usare la connessione del PC per inviare aggiornamenti ad altri computer su Internet o nella rete locale.",
+                                          "category":  "Ottimizzazioni essenziali",
+                                          "panel":  "1",
+                                          "registry":  [
+                                                           {
+                                                               "Path":  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\DeliveryOptimization",
+                                                               "Name":  "DODownloadMode",
+                                                               "Value":  "0",
+                                                               "Type":  "DWord",
+                                                               "OriginalValue":  "\u003cRemoveEntry\u003e"
+                                                           }
+                                                       ],
+                                          "link":  "https://github.com/rtecnocopy89/WinRUtil"
+                                      },
     "WPFTweaksRemoveEdge":  {
                                 "Content":  "Microsoft Edge - Rimuovi",
-                                "Description":  "Sblocca le restrizioni del programma di disinstallazione di Microsoft Edge e lo usa per rimuovere Edge.",
+                                "Description":  "Disinstalla Microsoft Edge creando un file MicrosoftEdge.exe fittizio nella cartella del vecchio Edge: cos\u00ec Windows sblocca il programma di disinstallazione ufficiale e Edge viene rimosso dal sistema.",
                                 "category":  "z__Ottimizzazioni avanzate - ATTENZIONE",
                                 "panel":  "1",
                                 "InvokeScript":  [
-                                                     "Invoke-WinUtilRemoveEdge"
+                                                     "\r\n      $EdgeAppDir = \"$Env:ProgramFiles (x86)\\Microsoft\\Edge\\Application\"\r\n      $Path = $null\r\n      if (Test-Path -LiteralPath $EdgeAppDir -ErrorAction Stop) {\r\n          $InstallerPattern = Join-Path $EdgeAppDir \"*\\Installer\\setup.exe\"\r\n          if (Test-Path -Path $InstallerPattern -ErrorAction Stop) {\r\n              $Path = Resolve-Path -Path $InstallerPattern -ErrorAction Stop | Select-Object -Last 1\r\n          }\r\n      }\r\n\r\n      if ($Path) {\r\n          New-Item -Path \"$Env:SystemRoot\\SystemApps\\Microsoft.MicrosoftEdge_8wekyb3d8bbwe\\MicrosoftEdge.exe\" -Force\r\n          Start-Process -FilePath $Path -ArgumentList \"--uninstall --system-level --force-uninstall --delete-profile\" -Wait\r\n          Write-Host \"Microsoft Edge was removed\"\r\n      } else {\r\n          Write-Host \"Microsoft Edge is not installed\"\r\n      }\r\n      "
                                                  ],
                                 "UndoScript":  [
-                                                   "\r\n      Write-Host \u0027Installing Microsoft Edge...\u0027\r\n      winget install Microsoft.Edge --source winget\r\n      "
+                                                   "\r\n      Write-Host \"Installing Microsoft Edge...\"\r\n      winget install Microsoft.Edge --source winget\r\n      "
                                                ],
                                 "link":  "https://github.com/rtecnocopy89/WinRUtil"
                             },
+    "WPFTweaksDisableBitLocker":  {
+                                      "Content":  "BitLocker - Disattiva",
+                                      "Description":  "Disattiva BitLocker e decrittografa l\u0027unit\u00e0 di sistema.",
+                                      "category":  "Ottimizzazioni essenziali",
+                                      "panel":  "1",
+                                      "InvokeScript":  [
+                                                           "Disable-BitLocker -MountPoint $Env:SystemDrive"
+                                                       ],
+                                      "UndoScript":  [
+                                                         "Enable-BitLocker -MountPoint $Env:SystemDrive"
+                                                     ],
+                                      "link":  "https://github.com/rtecnocopy89/WinRUtil"
+                                  },
     "WPFTweaksUTC":  {
                          "Content":  "Data e ora - Imposta l\u0027orologio su UTC",
                          "Description":  "Indispensabile sui PC con doppio avvio: allinea l\u0027orario con i sistemi Linux.",
@@ -11135,39 +13595,43 @@ $sync.configs.tweaks = @'
                                     "category":  "z__Ottimizzazioni avanzate - ATTENZIONE",
                                     "panel":  "1",
                                     "InvokeScript":  [
-                                                         "\r\n      # Deny permission to remove OneDrive folder\r\n      icacls $Env:OneDrive /deny \"Administrators:(D,DC)\"\r\n\r\n      Write-Host \"Uninstalling OneDrive...\"\r\n      Start-Process \u0027C:\\Windows\\System32\\OneDriveSetup.exe\u0027 -ArgumentList \u0027/uninstall\u0027 -Wait\r\n\r\n      # Some of OneDrive files use explorer, and OneDrive uses FileCoAuth\r\n      Write-Host \"Removing leftover OneDrive Files...\"\r\n      Stop-Process -Name FileCoAuth,Explorer\r\n      Remove-Item \"$Env:LocalAppData\\Microsoft\\OneDrive\" -Recurse -Force\r\n      Remove-Item \"C:\\ProgramData\\Microsoft OneDrive\" -Recurse -Force\r\n\r\n      # Grant back permission to access OneDrive folder\r\n      icacls $Env:OneDrive /grant \"Administrators:(D,DC)\"\r\n\r\n      # Disable OneSyncSvc\r\n      Set-Service -Name OneSyncSvc -StartupType Disabled\r\n      "
+                                                         "\r\n      $OneDrivePath = $Env:OneDrive\r\n      $OneDriveFolderExists = -not [string]::IsNullOrWhiteSpace($OneDrivePath) -and (Test-Path -LiteralPath $OneDrivePath -PathType Container -ErrorAction Stop)\r\n\r\n      if ($OneDriveFolderExists) {\r\n          $OneDriveAcl = Get-Acl -LiteralPath $OneDrivePath -ErrorAction Stop\r\n      } else {\r\n          Write-Host \"OneDrive folder is already absent; skipping folder permissions and cleanup.\"\r\n      }\r\n\r\n      try {\r\n          if ($OneDriveFolderExists) {\r\n              # Protect user files while the uninstaller runs.\r\n              icacls $OneDrivePath /deny \"*S-1-5-32-544:(D,DC)\"\r\n              if ($LASTEXITCODE -ne 0) { throw \"Unable to protect the OneDrive folder (icacls exit code $LASTEXITCODE).\" }\r\n          }\r\n\r\n          Write-Host \"Uninstalling OneDrive...\"\r\n          Start-Process -FilePath (Join-Path $Env:SystemRoot \"System32\\OneDriveSetup.exe\") -ArgumentList \u0027/uninstall\u0027 -Wait -ErrorAction Stop\r\n\r\n          # Some of OneDrive files use explorer, and OneDrive uses FileCoAuth\r\n          Write-Host \"Removing leftover OneDrive Files...\"\r\n\r\n          Get-Process -ErrorAction Stop | Where-Object ProcessName -eq \u0027FileCoAuth\u0027 | Stop-Process -ErrorAction Stop\r\n          Get-Process -ErrorAction Stop | Where-Object ProcessName -eq \u0027Explorer\u0027 | Stop-Process -ErrorAction Stop\r\n\r\n          $OneDriveLeftovers = @(\"$Env:LocalAppData\\Microsoft\\OneDrive\", \"$Env:ProgramData\\Microsoft OneDrive\")\r\n          foreach ($LeftoverPath in $OneDriveLeftovers) {\r\n              if (Test-Path -LiteralPath $LeftoverPath -ErrorAction Stop) {\r\n                  Remove-Item -LiteralPath $LeftoverPath -Recurse -Force -ErrorAction Stop\r\n              }\r\n          }\r\n      } finally {\r\n          if ($OneDriveFolderExists) {\r\n              # Restore access even when uninstall or leftover cleanup fails.\r\n              Set-Acl -LiteralPath $OneDrivePath -AclObject $OneDriveAcl -ErrorAction Stop\r\n          }\r\n      }\r\n\r\n      if ($OneDriveFolderExists -and -not (Get-ChildItem -LiteralPath $OneDrivePath -Force -ErrorAction Stop)) {\r\n          # Refuse to delete if files appeared after the emptiness check.\r\n          [System.IO.Directory]::Delete($OneDrivePath, $false)\r\n          [Environment]::SetEnvironmentVariable(\u0027OneDrive\u0027, $null, \u0027User\u0027)\r\n      }\r\n\r\n      # OneSyncSvc is a per-user template; Get-Service only exposes user instances.\r\n      # Skip the operation if this Windows installation has no template.\r\n      if (Test-Path -LiteralPath \u0027HKLM:\\SYSTEM\\CurrentControlSet\\Services\\OneSyncSvc\u0027) {\r\n          Set-Service -Name OneSyncSvc -StartupType Disabled\r\n      }\r\n      "
                                                      ],
                                     "UndoScript":  [
-                                                       "\r\n      Write-Host \"Installing OneDrive\"\r\n      winget install Microsoft.Onedrive --source winget\r\n\r\n      # Enabled OneSyncSvc\r\n      Set-Service -Name OneSyncSvc -StartupType Automatic\r\n      "
+                                                       "\r\n      Write-Host \"Installing OneDrive\"\r\n      winget install Microsoft.Onedrive --source winget\r\n\r\n      # Enable OneSyncSvc when the per-user service template exists\r\n      if (Test-Path -LiteralPath \u0027HKLM:\\SYSTEM\\CurrentControlSet\\Services\\OneSyncSvc\u0027) {\r\n          Set-Service -Name OneSyncSvc -StartupType Automatic\r\n      }\r\n      "
                                                    ],
                                     "link":  "https://github.com/rtecnocopy89/WinRUtil"
                                 },
-    "WPFTweaksRemoveHome":  {
-                                "Content":  "Home di Esplora file - Disattiva",
-                                "Description":  "Rimuove Home da Esplora file e imposta Questo PC come cartella predefinita.",
-                                "category":  "z__Ottimizzazioni avanzate - ATTENZIONE",
-                                "panel":  "1",
-                                "InvokeScript":  [
-                                                     "\r\n      Remove-Item \"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Desktop\\NameSpace\\{f874310e-b6b7-47dc-bc84-b9e6b38f5903}\"\r\n      Set-ItemProperty -Path \"HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced\" -Name LaunchTo -Value 1\r\n      "
-                                                 ],
-                                "UndoScript":  [
-                                                   "\r\n      New-Item \"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Desktop\\NameSpace\\{f874310e-b6b7-47dc-bc84-b9e6b38f5903}\"\r\n      Set-ItemProperty -Path \"HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced\" -Name LaunchTo -Value 0\r\n      "
-                                               ],
-                                "link":  "https://github.com/rtecnocopy89/WinRUtil"
-                            },
-    "WPFTweaksRemoveGallery":  {
-                                   "Content":  "Raccolta di Esplora file - Disattiva",
-                                   "Description":  "Rimuove Raccolta da Esplora file e imposta Questo PC come cartella predefinita.",
-                                   "category":  "z__Ottimizzazioni avanzate - ATTENZIONE",
-                                   "panel":  "1",
-                                   "InvokeScript":  [
-                                                        "\r\n      Remove-Item \"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Desktop\\NameSpace\\{e88865ea-0e1c-4e20-9aa6-edcd0212c87c}\"\r\n      "
-                                                    ],
-                                   "UndoScript":  [
-                                                      "\r\n      New-Item \"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Desktop\\NameSpace\\{e88865ea-0e1c-4e20-9aa6-edcd0212c87c}\"\r\n      "
-                                                  ],
-                                   "link":  "https://github.com/rtecnocopy89/WinRUtil"
-                               },
+    "WPFTweaksRemoveHomeAndGallery":  {
+                                          "Content":  "Home e Raccolta di Esplora file - Disattiva",
+                                          "Description":  "Rimuove Home e Raccolta da Esplora file e imposta Questo PC come cartella predefinita.",
+                                          "category":  "z__Ottimizzazioni avanzate - ATTENZIONE",
+                                          "panel":  "1",
+                                          "registry":  [
+                                                           {
+                                                               "Path":  "HKCU:\\Software\\Classes\\CLSID\\{f874310e-b6b7-47dc-bc84-b9e6b38f5903}",
+                                                               "Name":  "System.IsPinnedToNameSpaceTree",
+                                                               "Value":  "0",
+                                                               "Type":  "DWord",
+                                                               "OriginalValue":  "\u003cRemoveEntry\u003e"
+                                                           },
+                                                           {
+                                                               "Path":  "HKCU:\\Software\\Classes\\CLSID\\{e88865ea-0e1c-4e20-9aa6-edcd0212c87c}",
+                                                               "Name":  "System.IsPinnedToNameSpaceTree",
+                                                               "Value":  "0",
+                                                               "Type":  "DWord",
+                                                               "OriginalValue":  "\u003cRemoveEntry\u003e"
+                                                           },
+                                                           {
+                                                               "Path":  "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+                                                               "Name":  "LaunchTo",
+                                                               "Value":  "1",
+                                                               "Type":  "DWord",
+                                                               "OriginalValue":  "\u003cRemoveEntry\u003e"
+                                                           }
+                                                       ],
+                                          "link":  "https://github.com/rtecnocopy89/WinRUtil"
+                                      },
     "WPFTweaksDisplay":  {
                              "Content":  "Effetti visivi - Imposta per le prestazioni migliori",
                              "Description":  "Imposta le opzioni di sistema per privilegiare le prestazioni. Si pu\u00f2 fare anche a mano da sysdm.cpl.",
@@ -11199,7 +13663,7 @@ $sync.configs.tweaks = @'
                                                   "Path":  "HKCU:\\Control Panel\\Keyboard",
                                                   "Name":  "KeyboardDelay",
                                                   "Value":  "0",
-                                                  "Type":  "DWord",
+                                                  "Type":  "String",
                                                   "OriginalValue":  "1"
                                               },
                                               {
@@ -11243,20 +13707,6 @@ $sync.configs.tweaks = @'
                                                   "Value":  "0",
                                                   "Type":  "DWord",
                                                   "OriginalValue":  "1"
-                                              },
-                                              {
-                                                  "Path":  "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
-                                                  "Name":  "ShowTaskViewButton",
-                                                  "Value":  "0",
-                                                  "Type":  "DWord",
-                                                  "OriginalValue":  "1"
-                                              },
-                                              {
-                                                  "Path":  "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Search",
-                                                  "Name":  "SearchboxTaskbarMode",
-                                                  "Value":  "0",
-                                                  "Type":  "DWord",
-                                                  "OriginalValue":  "1"
                                               }
                                           ],
                              "InvokeScript":  [
@@ -11267,60 +13717,19 @@ $sync.configs.tweaks = @'
                                             ],
                              "link":  "https://github.com/rtecnocopy89/WinRUtil"
                          },
-    "WPFTweaksXboxRemoval":  {
-                                 "Content":  "Componenti Xbox e gaming - Rimuovi",
-                                 "Description":  "Rimuove i servizi Xbox, l\u0027app Xbox, la Game Bar e i relativi componenti di autenticazione.",
-                                 "category":  "z__Ottimizzazioni avanzate - ATTENZIONE",
-                                 "panel":  "1",
-                                 "registry":  [
-                                                  {
-                                                      "Path":  "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\GameDVR",
-                                                      "Name":  "AppCaptureEnabled",
-                                                      "Value":  "0",
-                                                      "Type":  "DWord",
-                                                      "OriginalValue":  "1"
-                                                  }
-                                              ],
-                                 "appx":  [
-                                              "Microsoft.XboxIdentityProvider",
-                                              "Microsoft.XboxSpeechToTextOverlay",
-                                              "Microsoft.GamingApp",
-                                              "Microsoft.Xbox.TCUI",
-                                              "Microsoft.XboxGamingOverlay"
-                                          ],
-                                 "link":  "https://github.com/rtecnocopy89/WinRUtil"
-                             },
-    "WPFTweaksDeBloat":  {
-                             "Content":  "App preinstallate superflue - Rimuovi",
-                             "Description":  "Rimuove molte app preinstallate di Windows che la maggior parte degli utenti non usa.",
-                             "category":  "Ottimizzazioni essenziali",
-                             "panel":  "1",
-                             "appx":  [
-                                          "Microsoft.WindowsFeedbackHub",
-                                          "Microsoft.BingNews",
-                                          "Microsoft.BingSearch",
-                                          "Microsoft.BingWeather",
-                                          "Clipchamp.Clipchamp",
-                                          "Microsoft.Todos",
-                                          "Microsoft.PowerAutomateDesktop",
-                                          "Microsoft.MicrosoftSolitaireCollection",
-                                          "Microsoft.WindowsSoundRecorder",
-                                          "Microsoft.MicrosoftStickyNotes",
-                                          "Microsoft.Windows.DevHome",
-                                          "Microsoft.Paint",
-                                          "Microsoft.OutlookForWindows",
-                                          "Microsoft.WindowsAlarms",
-                                          "Microsoft.StartExperiencesApp",
-                                          "Microsoft.GetHelp",
-                                          "Microsoft.ZuneMusic",
-                                          "MicrosoftCorporationII.QuickAssist",
-                                          "MSTeams"
-                                      ],
-                             "InvokeScript":  [
-                                                  "\r\n      $TeamsPath = \"$Env:LocalAppData\\Microsoft\\Teams\\Update.exe\"\r\n\r\n      if (Test-Path $TeamsPath) {\r\n        Write-Host \"Uninstalling Teams\"\r\n        Start-Process $TeamsPath -ArgumentList -uninstall -wait\r\n\r\n        Write-Host \"Deleting Teams directory\"\r\n        Remove-Item $TeamsPath -Recurse -Force\r\n      }\r\n      "
-                                              ],
-                             "link":  "https://github.com/rtecnocopy89/WinRUtil"
-                         },
+    "WPFTweaksReservedStorage":  {
+                                     "Content":  "Archiviazione riservata - Disattiva",
+                                     "Description":  "Disattiva l\u0027archiviazione riservata di Windows (7-10 GB tenuti da parte per aggiornamenti e file temporanei). Consigliato solo sui dischi piccoli: riattivala prima dei grandi aggiornamenti di Windows, per evitare errori di installazione.",
+                                     "category":  "z__Ottimizzazioni avanzate - ATTENZIONE",
+                                     "panel":  "1",
+                                     "InvokeScript":  [
+                                                          "DISM /Online /Set-ReservedStorageState /State:Disabled"
+                                                      ],
+                                     "UndoScript":  [
+                                                        "DISM /Online /Set-ReservedStorageState /State:Enabled"
+                                                    ],
+                                     "link":  "https://github.com/rtecnocopy89/WinRUtil"
+                                 },
     "WPFTweaksRestorePoint":  {
                                   "Content":  "Punto di ripristino - Crea",
                                   "Description":  "Crea un punto di ripristino prima di applicare le modifiche, per poter tornare indietro se necessario.",
@@ -11357,19 +13766,6 @@ $sync.configs.tweaks = @'
                                                    ],
                                       "link":  "https://github.com/rtecnocopy89/WinRUtil"
                                   },
-    "WPFTweaksPowershell7Tele":  {
-                                     "Content":  "Telemetria di PowerShell 7 - Disattiva",
-                                     "Description":  "Crea la variabile di ambiente \u0027POWERSHELL_TELEMETRY_OPTOUT\u0027 con valore \u00271\u0027, cos\u00ec PowerShell 7 non invia dati di telemetria.",
-                                     "category":  "Ottimizzazioni essenziali",
-                                     "panel":  "1",
-                                     "InvokeScript":  [
-                                                          "[Environment]::SetEnvironmentVariable(\u0027POWERSHELL_TELEMETRY_OPTOUT\u0027, \u00271\u0027, \u0027Machine\u0027)"
-                                                      ],
-                                     "UndoScript":  [
-                                                        "[Environment]::SetEnvironmentVariable(\u0027POWERSHELL_TELEMETRY_OPTOUT\u0027, \u0027\u0027, \u0027Machine\u0027)"
-                                                    ],
-                                     "link":  "https://github.com/rtecnocopy89/WinRUtil"
-                                 },
     "WPFTweaksStorage":  {
                              "Content":  "Sensore memoria - Disattiva",
                              "Description":  "Sensore memoria elimina automaticamente i file temporanei.",
@@ -11386,19 +13782,32 @@ $sync.configs.tweaks = @'
                                           ],
                              "link":  "https://github.com/rtecnocopy89/WinRUtil"
                          },
-    "WPFTweaksRemoveCopilot":  {
-                                   "Content":  "Microsoft Copilot - Disattiva",
-                                   "Description":  "Rimuove i pacchetti AppX di Copilot e i relativi pacchetti di intelligenza artificiale.",
-                                   "category":  "z__Ottimizzazioni avanzate - ATTENZIONE",
-                                   "panel":  "1",
-                                   "InvokeScript":  [
-                                                        "\r\n      Get-AppxPackage -AllUsers *Copilot* | Remove-AppxPackage -AllUsers\r\n      Get-AppxPackage -AllUsers Microsoft.MicrosoftOfficeHub | Remove-AppxPackage -AllUsers\r\n\r\n      $Appx = (Get-AppxPackage MicrosoftWindows.Client.CoreAI).PackageFullName\r\n      $Sid = (Get-LocalUser $Env:UserName).Sid.Value\r\n\r\n      New-Item \"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Appx\\AppxAllUserStore\\EndOfLife\\$Sid\\$Appx\" -Force\r\n      Remove-AppxPackage $Appx\r\n\r\n      Write-Host \"Copilot Removed\"\r\n      "
-                                                    ],
-                                   "UndoScript":  [
-                                                      "\r\n      Write-Host \"Installing Copilot...\"\r\n      winget install --name Copilot --source msstore --accept-package-agreements --accept-source-agreements --silent\r\n      "
-                                                  ],
-                                   "link":  "https://github.com/rtecnocopy89/WinRUtil"
-                               },
+    "WPFTweaksWindowsAI":  {
+                               "Content":  "Funzioni di intelligenza artificiale (Copilot, Recall) - Disattiva e rimuovi",
+                               "Description":  "Rimuove e disattiva tutte le funzioni e i pacchetti di intelligenza artificiale di Windows, tra cui Copilot e Recall.",
+                               "category":  "z__Ottimizzazioni avanzate - ATTENZIONE",
+                               "panel":  "1",
+                               "registry":  [
+                                                {
+                                                    "Path":  "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer",
+                                                    "Name":  "SettingsPageVisibility",
+                                                    "Value":  "hide:aicomponents",
+                                                    "Type":  "String",
+                                                    "OriginalValue":  "\u003cRemoveEntry\u003e"
+                                                },
+                                                {
+                                                    "Path":  "HKLM:\\SOFTWARE\\Policies\\WindowsNotepad",
+                                                    "Name":  "DisableAIFeatures",
+                                                    "Value":  "1",
+                                                    "Type":  "DWord",
+                                                    "OriginalValue":  "\u003cRemoveEntry\u003e"
+                                                }
+                                            ],
+                               "InvokeScript":  [
+                                                    "\r\n      $Appx = (Get-AppxPackage MicrosoftWindows.Client.CoreAI).PackageFullName\r\n      $Sid = (Get-LocalUser $Env:UserName).Sid.Value\r\n\r\n      New-Item \"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Appx\\AppxAllUserStore\\EndOfLife\\$Sid\\$Appx\" -Force\r\n\r\n      Get-AppxPackage -AllUsers \"*Copilot*\" | Remove-AppxPackage -AllUsers\r\n      winget uninstall -e --name \"Copilot\" --silent --force --accept-source-agreements 2\u003e$null\r\n      Get-AppxPackage -AllUsers Microsoft.MicrosoftOfficeHub | Remove-AppxPackage -AllUsers\r\n\r\n      if ($Appx) {\r\n          Remove-AppxPackage $Appx\r\n      }\r\n\r\n      # WSAIFabricSvc only exists on some Windows 11 builds; without the guard a\r\n      # missing service aborts the rest of this script block and Recall stays enabled\r\n      if (Get-Service -Name WSAIFabricSvc -ErrorAction SilentlyContinue) {\r\n          Set-Service -Name WSAIFabricSvc -StartupType Disabled\r\n      }\r\n      # Store/MSIX PowerShell 7 can hang or fail COM activation in DISM.\r\n      $RecallCommand = {\r\n          Disable-WindowsOptionalFeature -FeatureName Recall -Online -NoRestart -ErrorAction Stop | Out-Null\r\n      }\r\n      $RecallOutput = powershell.exe -NoProfile -NonInteractive -Command $RecallCommand 2\u003e\u00261\r\n      if ($LASTEXITCODE -ne 0) {\r\n          throw \"Failed to disable Recall (exit code $LASTEXITCODE): $(($RecallOutput | Out-String).Trim())\"\r\n      }\r\n      $RecallOutput | ForEach-Object { Write-Host $_ }\r\n\r\n      Write-Host \"Windows AI Disabled\"\r\n      "
+                                                ],
+                               "link":  "https://github.com/rtecnocopy89/WinRUtil"
+                           },
     "WPFTweaksWPBT":  {
                           "Content":  "Windows Platform Binary Table (WPBT) - Disattiva",
                           "Description":  "Se attiva, la WPBT permette al produttore del PC di eseguire programmi all\u0027avvio, come software antifurto o driver, e di installare software senza il consenso dell\u0027utente. \u00c8 un potenziale rischio per la sicurezza.",
@@ -11415,6 +13824,22 @@ $sync.configs.tweaks = @'
                                        ],
                           "link":  "https://github.com/rtecnocopy89/WinRUtil"
                       },
+    "WPFTweaksPreventDeviceMetadataFromNetwork":  {
+                                                      "Content":  "App complementari dei dispositivi - Blocca",
+                                                      "Description":  "Impedisce l\u0027installazione di software aggiuntivo quando si collega un dispositivo (ad es. pubblicit\u00e0 quando si collega un monitor), che pu\u00f2 essere un rischio per la sicurezza.",
+                                                      "category":  "Ottimizzazioni essenziali",
+                                                      "panel":  "1",
+                                                      "registry":  [
+                                                                       {
+                                                                           "Path":  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Device Metadata",
+                                                                           "Name":  "PreventDeviceMetadataFromNetwork",
+                                                                           "Value":  "1",
+                                                                           "Type":  "DWord",
+                                                                           "OriginalValue":  "\u003cRemoveEntry\u003e"
+                                                                       }
+                                                                   ],
+                                                      "link":  "https://github.com/rtecnocopy89/WinRUtil"
+                                                  },
     "WPFTweaksRazerBlock":  {
                                 "Content":  "Installazione automatica del software Razer - Disattiva",
                                 "Description":  "Blocca TUTTE le installazioni di software Razer. Le periferiche funzionano anche senza.",
@@ -11437,13 +13862,26 @@ $sync.configs.tweaks = @'
                                                  }
                                              ],
                                 "InvokeScript":  [
-                                                     "\r\n      $RazerPath = \"C:\\Windows\\Installer\\Razer\"\r\n\r\n      if (Test-Path $RazerPath) {\r\n        Remove-Item $RazerPath\\* -Recurse -Force\r\n      } else {\r\n        New-Item -Path $RazerPath -ItemType Directory\r\n      }\r\n\r\n      icacls $RazerPath /deny \"Everyone:(W)\"\r\n      "
+                                                     "\r\n      $RazerPath = \"$Env:SystemRoot\\Installer\\Razer\"\r\n\r\n      if (Test-Path $RazerPath) {\r\n        Remove-Item $RazerPath\\* -Recurse -Force\r\n      } else {\r\n        New-Item -Path $RazerPath -ItemType Directory\r\n      }\r\n\r\n      icacls $RazerPath /deny \"*S-1-1-0:(W)\"\r\n      "
                                                  ],
                                 "UndoScript":  [
-                                                   "\r\n      icacls \"C:\\Windows\\Installer\\Razer\" /remove:d Everyone\r\n      "
+                                                   "\r\n      icacls \"$Env:SystemRoot\\Installer\\Razer\" /remove:d *S-1-1-0\r\n      "
                                                ],
                                 "link":  "https://github.com/rtecnocopy89/WinRUtil"
                             },
+    "WPFTweaksLogiBlock":  {
+                               "Content":  "Installazione automatica di Logi Download Assistant - Disattiva",
+                               "Description":  "Blocca Logi Download Assistant, che Windows Update reinstalla insieme ai driver dei dispositivi Logitech. Le periferiche Logitech funzionano anche senza.",
+                               "category":  "z__Ottimizzazioni avanzate - ATTENZIONE",
+                               "panel":  "1",
+                               "InvokeScript":  [
+                                                    "\r\n      Stop-Process -Name \"logi_download_assistant\" -Force -ErrorAction SilentlyContinue\r\n\r\n      $ProgramFiles64 = if ($Env:ProgramW6432) { $Env:ProgramW6432 } else { $Env:ProgramFiles }\r\n      $LogiPath = \"$ProgramFiles64\\LogiDownloadAssistant\"\r\n\r\n      if (Test-Path $LogiPath) {\r\n        Remove-Item $LogiPath\\* -Recurse -Force\r\n      } else {\r\n        New-Item -Path $LogiPath -ItemType Directory\r\n      }\r\n\r\n      icacls $LogiPath /deny \"*S-1-1-0:(W)\"\r\n      if ($LASTEXITCODE -ne 0) { throw \"icacls failed to deny write access on $LogiPath (exit code $LASTEXITCODE)\" }\r\n      "
+                                                ],
+                               "UndoScript":  [
+                                                  "\r\n      $ProgramFiles64 = if ($Env:ProgramW6432) { $Env:ProgramW6432 } else { $Env:ProgramFiles }\r\n      $LogiPath = \"$ProgramFiles64\\LogiDownloadAssistant\"\r\n\r\n      if (Test-Path $LogiPath) {\r\n        icacls $LogiPath /remove:d \"*S-1-1-0\"\r\n        if ($LASTEXITCODE -ne 0) { throw \"icacls failed to remove the write-deny rule on $LogiPath (exit code $LASTEXITCODE)\" }\r\n      }\r\n      "
+                                              ],
+                               "link":  "https://github.com/rtecnocopy89/WinRUtil"
+                           },
     "WPFTweaksDisableNotifications":  {
                                           "Content":  "Notifiche e calendario nell\u0027area di notifica - Disattiva",
                                           "Description":  "Disattiva tutte le notifiche, COMPRESO il calendario.",
@@ -11473,10 +13911,10 @@ $sync.configs.tweaks = @'
                                    "category":  "z__Ottimizzazioni avanzate - ATTENZIONE",
                                    "panel":  "1",
                                    "InvokeScript":  [
-                                                        "\r\n      $hostsUrl = \"https://github.com/Ruddernation-Designs/Adobe-URL-Block-List/raw/refs/heads/master/hosts\"\r\n      $hosts = \"$Env:SystemRoot\\System32\\drivers\\etc\\hosts\"\r\n\r\n      Move-Item $hosts \"$hosts.bak\"\r\n      Invoke-WebRequest $hostsUrl -OutFile $hosts\r\n      ipconfig /flushdns\r\n\r\n      Write-Host \"Added Adobe url block list from host file\"\r\n      "
+                                                        "\r\n      $hostsUrl = Invoke-RestMethod -Uri https://github.com/Ruddernation-Designs/Adobe-URL-Block-List/raw/refs/heads/master/hosts\r\n      Add-Content -Path \"$Env:SystemRoot\\System32\\drivers\\etc\\hosts\" -Value $hostsUrl\r\n\r\n      ipconfig /flushdns\r\n      Write-Host \u0027Added Adobe url block list from host file\u0027\r\n      "
                                                     ],
                                    "UndoScript":  [
-                                                      "\r\n      $hosts = \"$Env:SystemRoot\\System32\\drivers\\etc\\hosts\"\r\n\r\n      Remove-Item $hosts\r\n      Move-Item \"$hosts.bak\" $hosts\r\n      ipconfig /flushdns\r\n\r\n      Write-Host \"Removed Adobe url block list from host file\"\r\n      "
+                                                      "\r\n      Set-Content \"$Env:SystemRoot\\System32\\drivers\\etc\\hosts\" (\r\n          (Get-Content \"$Env:SystemRoot\\System32\\drivers\\etc\\hosts\") -join \"`n\" -replace \u0027(?s)#New Ver.*\u0027, \u0027\u0027\r\n      )\r\n\r\n      ipconfig /flushdns\r\n      Write-Host \u0027Removed Adobe url block list from host file\u0027\r\n      "
                                                   ],
                                    "link":  "https://github.com/rtecnocopy89/WinRUtil"
                                },
@@ -11486,10 +13924,10 @@ $sync.configs.tweaks = @'
                                     "category":  "z__Ottimizzazioni avanzate - ATTENZIONE",
                                     "panel":  "1",
                                     "InvokeScript":  [
-                                                         "\r\n      New-Item -Path \"HKCU:\\Software\\Classes\\CLSID\\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\" -Name \"InprocServer32\" -force -value \"\"\r\n      Write-Host Restarting explorer.exe ...\r\n      Stop-Process -Name \"explorer\" -Force\r\n      "
+                                                         "\r\n      New-Item -Path \"HKCU:\\Software\\Classes\\CLSID\\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\" -Name InprocServer32 -Value \"\" -Force\r\n      Stop-Process -Name explorer\r\n      "
                                                      ],
                                     "UndoScript":  [
-                                                       "\r\n      Remove-Item -Path \"HKCU:\\Software\\Classes\\CLSID\\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\" -Recurse -Confirm:$false -Force\r\n      # Restarting Explorer in the Undo Script might not be necessary, as the Registry change without restarting Explorer does work, but just to make sure.\r\n      Write-Host Restarting explorer.exe ...\r\n      Stop-Process -Name \"explorer\" -Force\r\n      "
+                                                       "Remove-Item -Path \"HKCU:\\Software\\Classes\\CLSID\\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\" -Recurse"
                                                    ],
                                     "link":  "https://github.com/rtecnocopy89/WinRUtil"
                                 },
@@ -11509,7 +13947,7 @@ $sync.configs.tweaks = @'
                                      "category":  "Ottimizzazioni essenziali",
                                      "panel":  "1",
                                      "InvokeScript":  [
-                                                          "\r\n      Remove-Item -Path \"$Env:Temp\\*\" -Recurse -Force\r\n      Remove-Item -Path \"$Env:SystemRoot\\Temp\\*\" -Recurse -Force\r\n      "
+                                                          "\r\n      # A temp folder always holds files something has open, including this run\u0027s own, and\r\n      # the job layer counts a logged error as a failed step\r\n      Remove-Item -Path \"$Env:Temp\\*\" -Recurse -Force -ErrorAction SilentlyContinue\r\n      Remove-Item -Path \"$Env:SystemRoot\\Temp\\*\" -Recurse -Force -ErrorAction SilentlyContinue\r\n      "
                                                       ],
                                      "link":  "https://github.com/rtecnocopy89/WinRUtil"
                                  },
@@ -11589,40 +14027,19 @@ $sync.configs.tweaks = @'
                                                 ],
                                    "link":  "https://github.com/rtecnocopy89/WinRUtil"
                                },
-    "WPFTweaksDisableFSO":  {
-                                "Content":  "Ottimizzazioni a schermo intero - Disattiva",
-                                "Description":  "Disattiva le ottimizzazioni a schermo intero (FSO) in tutte le applicazioni. NOTA: disattiva anche la gestione del colore nello schermo intero esclusivo.",
-                                "category":  "z__Ottimizzazioni avanzate - ATTENZIONE",
-                                "panel":  "1",
-                                "registry":  [
-                                                 {
-                                                     "Path":  "HKCU:\\System\\GameConfigStore",
-                                                     "Name":  "GameDVR_DXGIHonorFSEWindowsCompatible",
-                                                     "Value":  "1",
-                                                     "Type":  "DWord",
-                                                     "OriginalValue":  "0"
-                                                 }
-                                             ],
-                                "link":  "https://github.com/rtecnocopy89/WinRUtil"
-                            },
-    "WPFToggleDisableCrossDeviceResume":  {
-                                              "Content":  "Ripresa tra dispositivi",
-                                              "Description":  "Controlla la funzione Riprendi di Windows 11 24H2 e successive, che permette di riprendere un\u0027attivit\u00e0 dal telefono al PC e viceversa.",
-                                              "category":  "Preferenze",
-                                              "panel":  "2",
-                                              "Type":  "Toggle",
-                                              "registry":  [
-                                                               {
-                                                                   "Path":  "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\CrossDeviceResume\\Configuration",
-                                                                   "Name":  "IsResumeAllowed",
-                                                                   "Value":  "1",
-                                                                   "Type":  "DWord",
-                                                                   "OriginalValue":  "0",
-                                                                   "DefaultState":  "true"
-                                                               }
-                                                           ],
-                                              "link":  "https://github.com/rtecnocopy89/WinRUtil"
-                                          },
+    "WPFTweaksDisableExplorerAutoDiscovery":  {
+                                                  "Content":  "Rilevamento automatico del tipo di cartella - Disattiva",
+                                                  "Description":  "Esplora file cerca di indovinare il tipo di cartella in base al contenuto e questo rallenta la navigazione. ATTENZIONE: disattiva il raggruppamento in Esplora file.",
+                                                  "category":  "Ottimizzazioni essenziali",
+                                                  "panel":  "1",
+                                                  "InvokeScript":  [
+                                                                       "\r\n      # Previously detected folders\r\n      $bags = \"HKCU:\\Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\Shell\\Bags\"\r\n\r\n      # Folder types lookup table\r\n      $bagMRU = \"HKCU:\\Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\Shell\\BagMRU\"\r\n\r\n      # Flush Explorer view database\r\n      Remove-Item -Path $bags -Recurse -Force\r\n      Write-Host \"Removed $bags\"\r\n\r\n      Remove-Item -Path $bagMRU -Recurse -Force\r\n      Write-Host \"Removed $bagMRU\"\r\n\r\n      # Every folder\r\n      $allFolders = \"HKCU:\\Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\Shell\\Bags\\AllFolders\\Shell\"\r\n\r\n      if (!(Test-Path $allFolders)) {\r\n        New-Item -Path $allFolders -Force\r\n        Write-Host \"Created $allFolders\"\r\n      }\r\n\r\n      # Generic view\r\n      New-ItemProperty -Path $allFolders -Name \"FolderType\" -Value \"NotSpecified\" -PropertyType String -Force\r\n      Write-Host \"Set FolderType to NotSpecified\"\r\n\r\n      Write-Host Please sign out and back in, or restart your computer to apply the changes!\r\n      "
+                                                                   ],
+                                                  "UndoScript":  [
+                                                                     "\r\n      # Previously detected folders\r\n      $bags = \"HKCU:\\Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\Shell\\Bags\"\r\n\r\n      # Folder types lookup table\r\n      $bagMRU = \"HKCU:\\Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\Shell\\BagMRU\"\r\n\r\n      # Flush Explorer view database\r\n      Remove-Item -Path $bags -Recurse -Force\r\n      Write-Host \"Removed $bags\"\r\n\r\n      Remove-Item -Path $bagMRU -Recurse -Force\r\n      Write-Host \"Removed $bagMRU\"\r\n\r\n      Write-Host Please sign out and back in, or restart your computer to apply the changes!\r\n      "
+                                                                 ],
+                                                  "link":  "https://github.com/rtecnocopy89/WinRUtil"
+                                              },
     "WPFToggleDetailedBSoD":  {
                                   "Content":  "Schermata blu dettagliata",
                                   "Description":  "Se attiva, la schermata blu (BSoD) mostra informazioni pi\u00f9 dettagliate.",
@@ -11820,30 +14237,49 @@ $sync.configs.tweaks = @'
                                                      "Value":  "0",
                                                      "Type":  "DWord",
                                                      "OriginalValue":  "1",
-                                                     "DefaultState":  "false",
-                                                     "link":  "https://github.com/rtecnocopy89/WinRUtil"
+                                                     "DefaultState":  "false"
                                                  }
                                              ],
                                 "link":  "https://github.com/rtecnocopy89/WinRUtil"
                             },
-    "WPFToggleMultiplaneOverlay":  {
-                                       "Content":  "Multiplane Overlay",
-                                       "Description":  "Attiva o disattiva il Multiplane Overlay, che a volte causa problemi con alcune schede video.",
-                                       "category":  "Preferenze",
-                                       "panel":  "2",
-                                       "Type":  "Toggle",
-                                       "registry":  [
-                                                        {
-                                                            "Path":  "HKLM:\\SOFTWARE\\Microsoft\\Windows\\Dwm",
-                                                            "Name":  "OverlayTestMode",
-                                                            "Value":  "0",
-                                                            "Type":  "DWord",
-                                                            "OriginalValue":  "5",
-                                                            "DefaultState":  "true"
-                                                        }
-                                                    ],
-                                       "link":  "https://github.com/rtecnocopy89/WinRUtil"
-                                   },
+    "WPFMultiplaneOverlay":  {
+                                 "Content":  "Multiplane Overlay",
+                                 "Description":  "Il Multiplane Overlay compone pi\u00f9 livelli di immagine e con alcune schede video pu\u00f2 causare problemi. La modifica viene applicata subito.",
+                                 "category":  "Preferenze",
+                                 "panel":  "2",
+                                 "Type":  "Combobox",
+                                 "ComboItems":  "Attivo|Disattivato (compatibilit\u00e0)|Disattivato completamente",
+                                 "ComboDescriptions":  {
+                                                           "Attivo":  "Usa il comportamento predefinito di Windows.",
+                                                           "Disattivato (compatibilit\u00e0)":  "Disattiva l\u0027MPO con OverlayTestMode=5, il metodo meno aggressivo.",
+                                                           "Disattivato completamente":  "Disattiva l\u0027MPO con OverlayTestMode=5 e DisableOverlays=1, il metodo pi\u00f9 aggressivo."
+                                                       },
+                                 "registry":  [
+                                                  {
+                                                      "Path":  "HKLM:\\SOFTWARE\\Microsoft\\Windows\\Dwm",
+                                                      "Name":  "OverlayTestMode",
+                                                      "Type":  "DWord",
+                                                      "DefaultValue":  "0",
+                                                      "Values":  {
+                                                                     "Attivo":  "\u003cRemoveEntry\u003e",
+                                                                     "Disattivato (compatibilit\u00e0)":  "5",
+                                                                     "Disattivato completamente":  "5"
+                                                                 }
+                                                  },
+                                                  {
+                                                      "Path":  "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\GraphicsDrivers",
+                                                      "Name":  "DisableOverlays",
+                                                      "Type":  "DWord",
+                                                      "DefaultValue":  "0",
+                                                      "Values":  {
+                                                                     "Attivo":  "\u003cRemoveEntry\u003e",
+                                                                     "Disattivato (compatibilit\u00e0)":  "\u003cRemoveEntry\u003e",
+                                                                     "Disattivato completamente":  "1"
+                                                                 }
+                                                  }
+                                              ],
+                                 "link":  "https://github.com/rtecnocopy89/WinRUtil"
+                             },
     "WPFToggleMouseAcceleration":  {
                                        "Content":  "Accelerazione del mouse",
                                        "Description":  "Se attiva, il movimento del puntatore dipende dalla velocit\u00e0 con cui si sposta il mouse.",
@@ -11855,7 +14291,7 @@ $sync.configs.tweaks = @'
                                                             "Path":  "HKCU:\\Control Panel\\Mouse",
                                                             "Name":  "MouseSpeed",
                                                             "Value":  "1",
-                                                            "Type":  "DWord",
+                                                            "Type":  "String",
                                                             "OriginalValue":  "0",
                                                             "DefaultState":  "true"
                                                         },
@@ -11863,7 +14299,7 @@ $sync.configs.tweaks = @'
                                                             "Path":  "HKCU:\\Control Panel\\Mouse",
                                                             "Name":  "MouseThreshold1",
                                                             "Value":  "6",
-                                                            "Type":  "DWord",
+                                                            "Type":  "String",
                                                             "OriginalValue":  "0",
                                                             "DefaultState":  "true"
                                                         },
@@ -11871,7 +14307,7 @@ $sync.configs.tweaks = @'
                                                             "Path":  "HKCU:\\Control Panel\\Mouse",
                                                             "Name":  "MouseThreshold2",
                                                             "Value":  "10",
-                                                            "Type":  "DWord",
+                                                            "Type":  "String",
                                                             "OriginalValue":  "0",
                                                             "DefaultState":  "true"
                                                         }
@@ -11904,6 +14340,24 @@ $sync.configs.tweaks = @'
                                           ],
                              "link":  "https://github.com/rtecnocopy89/WinRUtil"
                          },
+    "WPFToggleWindowSnapping":  {
+                                    "Content":  "Ancoraggio delle finestre",
+                                    "Description":  "Attiva o disattiva l\u0027ancoraggio delle finestre quando vengono trascinate verso i bordi dello schermo.",
+                                    "category":  "Preferenze",
+                                    "panel":  "2",
+                                    "Type":  "Toggle",
+                                    "registry":  [
+                                                     {
+                                                         "Path":  "HKCU:\\Control Panel\\Desktop",
+                                                         "Name":  "WindowArrangementActive",
+                                                         "Value":  "1",
+                                                         "Type":  "String",
+                                                         "OriginalValue":  "0",
+                                                         "DefaultState":  "true"
+                                                     }
+                                                 ],
+                                    "link":  "https://github.com/rtecnocopy89/WinRUtil"
+                                },
     "WPFToggleStandbyFix":  {
                                 "Content":  "Rete durante la sospensione S0",
                                 "Description":  "Attiva o disattiva la connessione di rete durante la sospensione S0 (Modern Standby).",
@@ -11994,6 +14448,23 @@ $sync.configs.tweaks = @'
                                             ],
                                "link":  "https://github.com/rtecnocopy89/WinRUtil"
                            },
+    "WPFToggleDisableLockscreen":  {
+                                       "Content":  "Salta la schermata di blocco",
+                                       "Description":  "Salta del tutto la schermata di blocco: all\u0027avvio e alla riattivazione compare subito la schermata di accesso.",
+                                       "category":  "Preferenze",
+                                       "panel":  "2",
+                                       "Type":  "Toggle",
+                                       "registry":  [
+                                                        {
+                                                            "Path":  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Personalization",
+                                                            "Name":  "NoLockScreen",
+                                                            "Value":  "1",
+                                                            "Type":  "DWord",
+                                                            "OriginalValue":  "\u003cRemoveEntry\u003e"
+                                                        }
+                                                    ],
+                                       "link":  "https://github.com/rtecnocopy89/WinRUtil"
+                                   },
     "WPFToggleStartMenuRecommendations":  {
                                               "Content":  "Consigliati nel menu Start",
                                               "Description":  "Se disattivo, il menu Start non mostra pi\u00f9 i contenuti consigliati. ATTENZIONE: disattiva anche Windows Spotlight nella schermata di blocco.",
@@ -12112,8 +14583,53 @@ $sync.configs.tweaks = @'
                                            ],
                               "link":  "https://github.com/rtecnocopy89/WinRUtil"
                           },
+    "WPFToggleGameMode":  {
+                              "Content":  "Modalit\u00e0 gioco",
+                              "Description":  "Attiva o disattiva la Modalit\u00e0 gioco, con cui Windows d\u00e0 la priorit\u00e0 ai giochi nell\u0027uso delle risorse del sistema.",
+                              "category":  "Preferenze",
+                              "panel":  "2",
+                              "Type":  "Toggle",
+                              "registry":  [
+                                               {
+                                                   "Path":  "HKCU:\\Software\\Microsoft\\GameBar",
+                                                   "Name":  "AllowAutoGameMode",
+                                                   "Value":  "1",
+                                                   "Type":  "DWord",
+                                                   "OriginalValue":  "0",
+                                                   "DefaultState":  "true"
+                                               },
+                                               {
+                                                   "Path":  "HKCU:\\Software\\Microsoft\\GameBar",
+                                                   "Name":  "AutoGameModeEnabled",
+                                                   "Value":  "1",
+                                                   "Type":  "DWord",
+                                                   "OriginalValue":  "0",
+                                                   "DefaultState":  "true"
+                                               }
+                                           ],
+                              "link":  "https://github.com/rtecnocopy89/WinRUtil"
+                          },
+    "WPFToggleLongPaths":  {
+                               "Content":  "Percorsi lunghi",
+                               "Description":  "Attiva o disattiva il supporto ai percorsi dei file pi\u00f9 lunghi di 260 caratteri.",
+                               "category":  "Preferenze",
+                               "panel":  "2",
+                               "Type":  "Toggle",
+                               "registry":  [
+                                                {
+                                                    "Path":  "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\FileSystem",
+                                                    "Name":  "LongPathsEnabled",
+                                                    "Value":  "1",
+                                                    "Type":  "DWord",
+                                                    "OriginalValue":  "0",
+                                                    "DefaultState":  "false"
+                                                }
+                                            ],
+                               "link":  "https://github.com/rtecnocopy89/WinRUtil"
+                           },
     "WPFOOSUbutton":  {
                           "Content":  "O\u0026O ShutUp10++ - Esegui",
+                          "Description":  "Scarica O\u0026O ShutUp10++ da oo-software.com e lo avvia, senza installarlo.",
                           "category":  "z__Ottimizzazioni avanzate - ATTENZIONE",
                           "panel":  "1",
                           "Type":  "Button",
@@ -12124,12 +14640,12 @@ $sync.configs.tweaks = @'
                          "category":  "z__Ottimizzazioni avanzate - ATTENZIONE",
                          "panel":  "1",
                          "Type":  "Combobox",
-                         "ComboItems":  "Default DHCP Google Cloudflare Cloudflare_Malware Cloudflare_Malware_Adult Open_DNS Quad9 AdGuard_Ads_Trackers AdGuard_Ads_Trackers_Malware_Adult",
+                         "ComboItems":  "Default DHCP Fastest Google Cloudflare Cloudflare_Malware Cloudflare_Malware_Adult Open_DNS Quad9 AdGuard_Ads_Trackers AdGuard_Ads_Trackers_Malware_Adult",
                          "link":  "https://github.com/rtecnocopy89/WinRUtil"
                      },
     "WPFAddUltPerf":  {
                           "Content":  "Profilo Prestazioni eccellenti - Attiva",
-                          "category":  "z__Piani di alimentazione",
+                          "category":  "z__Piani di alimentazione - NON PER I PORTATILI",
                           "panel":  "2",
                           "Type":  "Button",
                           "ButtonWidth":  "300",
@@ -12137,25 +14653,12 @@ $sync.configs.tweaks = @'
                       },
     "WPFRemoveUltPerf":  {
                              "Content":  "Profilo Prestazioni eccellenti - Disattiva",
-                             "category":  "z__Piani di alimentazione",
+                             "category":  "z__Piani di alimentazione - NON PER I PORTATILI",
                              "panel":  "2",
                              "Type":  "Button",
                              "ButtonWidth":  "300",
                              "link":  "https://github.com/rtecnocopy89/WinRUtil"
-                         },
-    "WPFTweaksDisableExplorerAutoDiscovery":  {
-                                                  "Content":  "Rilevamento automatico del tipo di cartella - Disattiva",
-                                                  "Description":  "Esplora file cerca di indovinare il tipo di cartella in base al contenuto e questo rallenta la navigazione. ATTENZIONE: disattiva il raggruppamento in Esplora file.",
-                                                  "category":  "Ottimizzazioni essenziali",
-                                                  "panel":  "1",
-                                                  "InvokeScript":  [
-                                                                       "\r\n      # Previously detected folders\r\n      $bags = \"HKCU:\\Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\Shell\\Bags\"\r\n\r\n      # Folder types lookup table\r\n      $bagMRU = \"HKCU:\\Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\Shell\\BagMRU\"\r\n\r\n      # Flush Explorer view database\r\n      Remove-Item -Path $bags -Recurse -Force\r\n      Write-Host \"Removed $bags\"\r\n\r\n      Remove-Item -Path $bagMRU -Recurse -Force\r\n      Write-Host \"Removed $bagMRU\"\r\n\r\n      # Every folder\r\n      $allFolders = \"HKCU:\\Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\Shell\\Bags\\AllFolders\\Shell\"\r\n\r\n      if (!(Test-Path $allFolders)) {\r\n        New-Item -Path $allFolders -Force\r\n        Write-Host \"Created $allFolders\"\r\n      }\r\n\r\n      # Generic view\r\n      New-ItemProperty -Path $allFolders -Name \"FolderType\" -Value \"NotSpecified\" -PropertyType String -Force\r\n      Write-Host \"Set FolderType to NotSpecified\"\r\n\r\n      Write-Host Please sign out and back in, or restart your computer to apply the changes!\r\n      "
-                                                                   ],
-                                                  "UndoScript":  [
-                                                                     "\r\n      # Previously detected folders\r\n      $bags = \"HKCU:\\Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\Shell\\Bags\"\r\n\r\n      # Folder types lookup table\r\n      $bagMRU = \"HKCU:\\Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\Shell\\BagMRU\"\r\n\r\n      # Flush Explorer view database\r\n      Remove-Item -Path $bags -Recurse -Force\r\n      Write-Host \"Removed $bags\"\r\n\r\n      Remove-Item -Path $bagMRU -Recurse -Force\r\n      Write-Host \"Removed $bagMRU\"\r\n\r\n      Write-Host Please sign out and back in, or restart your computer to apply the changes!\r\n      "
-                                                                 ],
-                                                  "link":  "https://github.com/rtecnocopy89/WinRUtil"
-                                              }
+                         }
 }
 '@ | ConvertFrom-Json
 $inputXML = @'
@@ -12348,6 +14851,35 @@ $inputXML = @'
             </Setter>
 
 
+    </Style>
+    <!-- Category filters of the Install tab. Only the colours change on check, so the chips keep their width -->
+    <Style x:Key="AppCategoryChipStyle" TargetType="ToggleButton">
+        <Setter Property="Margin" Value="0,0,6,6"/>
+        <Setter Property="Padding" Value="11,3,11,3"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="FontSize" Value="{DynamicResource ButtonFontSize}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource ButtonFontFamily}"/>
+        <Setter Property="Foreground" Value="{DynamicResource MainForegroundColor}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="ChipBorder" Background="{DynamicResource AppInstallUnselectedColor}"
+                            BorderBrush="{DynamicResource AppInstallHighlightedColor}" BorderThickness="1"
+                            CornerRadius="12" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="ChipBorder" Property="Background" Value="{DynamicResource AppInstallHighlightedColor}"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="ChipBorder" Property="Background" Value="{DynamicResource AppInstallSelectedColor}"/>
+                            <Setter TargetName="ChipBorder" Property="BorderBrush" Value="{DynamicResource AccentColor}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
     <Style TargetType="Button" x:Key="HoverButtonStyle">
         <Setter Property="Foreground" Value="{DynamicResource MainForegroundColor}" />
@@ -13168,6 +15700,12 @@ $inputXML = @'
                             <TextBlock Text="Ottimizza" FontSize="14" VerticalAlignment="Center" Foreground="{DynamicResource MainForegroundColor}"/>
                         </StackPanel>
                     </ToggleButton>
+                    <ToggleButton Name="WPFTab9BT">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE71D;" FontSize="15" Width="24" VerticalAlignment="Center" Foreground="{DynamicResource MainForegroundColor}"/>
+                            <TextBlock Text="App di Windows" FontSize="14" VerticalAlignment="Center" Foreground="{DynamicResource MainForegroundColor}"/>
+                        </StackPanel>
+                    </ToggleButton>
                     <ToggleButton Name="WPFTab3BT">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xEC7A;" FontSize="15" Width="24" VerticalAlignment="Center" Foreground="{DynamicResource MainForegroundColor}"/>
@@ -13399,6 +15937,39 @@ $inputXML = @'
                     </Border>
                 </Popup>
 
+                    <Button Name="WPFMinimizeButton"
+                    Content="&#xE921;" BorderThickness="0"
+                    BorderBrush="Transparent"
+                    Background="Transparent"
+                    Width="{DynamicResource IconButtonSize}" Height="{DynamicResource IconButtonSize}"
+                    HorizontalAlignment="Right" VerticalAlignment="Top"
+                    Margin="0,0,0,0"
+                    FontFamily="Segoe MDL2 Assets"
+                    Foreground="{DynamicResource MainForegroundColor}" FontSize="{DynamicResource WindowButtonFontSize}"
+                    ToolTip="Riduci a icona" AutomationProperties.Name="Riduci a icona"/>
+                    <Button Name="WPFMaximizeButton" BorderThickness="0"
+                    BorderBrush="Transparent"
+                    Background="Transparent"
+                    Width="{DynamicResource IconButtonSize}" Height="{DynamicResource IconButtonSize}"
+                    HorizontalAlignment="Right" VerticalAlignment="Top"
+                    Margin="0,0,0,0"
+                    FontFamily="Segoe MDL2 Assets"
+                    Foreground="{DynamicResource MainForegroundColor}" FontSize="{DynamicResource WindowButtonFontSize}">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                <Setter Property="Content" Value="&#xE922;"/>
+                                <Setter Property="ToolTip" Value="Ingrandisci"/>
+                                <Setter Property="AutomationProperties.Name" Value="Ingrandisci"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Value="Maximized">
+                                        <Setter Property="Content" Value="&#xE923;"/>
+                                        <Setter Property="ToolTip" Value="Ripristina"/>
+                                        <Setter Property="AutomationProperties.Name" Value="Ripristina"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
                     <Button
                     Content="&#xD7;" BorderThickness="0"
                 BorderBrush="Transparent"
@@ -13407,7 +15978,8 @@ $inputXML = @'
                 HorizontalAlignment="Right" VerticalAlignment="Top"
                 Margin="0,0,0,0"
                 FontFamily="{DynamicResource FontFamily}"
-                Foreground="{DynamicResource MainForegroundColor}" FontSize="{DynamicResource CloseIconFontSize}" Name="WPFCloseButton" />
+                Foreground="{DynamicResource MainForegroundColor}" FontSize="{DynamicResource CloseIconFontSize}" Name="WPFCloseButton"
+                ToolTip="Chiudi" AutomationProperties.Name="Chiudi"/>
                 </StackPanel>
             </Grid>
         </Grid>
@@ -13425,7 +15997,15 @@ $inputXML = @'
                         <Grid Name="appscategory" Grid.Column="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
                         </Grid>
 
-                        <Grid Name="appspanel" Grid.Column="1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                        <Grid Grid.Column="1">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <!-- Category filters, built from applications.json by Initialize-WinUtilAppCategoryChips -->
+                            <WrapPanel Name="WPFAppCategoryChips" Grid.Row="0" Orientation="Horizontal" Margin="5,5,5,0"/>
+                            <Grid Name="appspanel" Grid.Row="1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                            </Grid>
                         </Grid>
                     </Grid>
 
@@ -13575,12 +16155,16 @@ $inputXML = @'
 
                             <StackPanel Background="Transparent" Orientation="Vertical" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Margin="5">
                                 <Label Content="Selezioni consigliate:" FontSize="{DynamicResource FontSize}" VerticalAlignment="Center" Margin="2"/>
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,2,0,0">
+                                <WrapPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,2,0,0">
                                     <Button Name="WPFstandard" Content=" Standard " Margin="2" Width="{DynamicResource ButtonWidth}" Height="{DynamicResource ButtonHeight}"/>
                                     <Button Name="WPFminimal" Content=" Minima " Margin="2" Width="{DynamicResource ButtonWidth}" Height="{DynamicResource ButtonHeight}"/>
+                                    <Button Name="WPFadvanced" Content=" Avanzata " Margin="2" Width="{DynamicResource ButtonWidth}" Height="{DynamicResource ButtonHeight}"
+                                            ToolTip="Le ottimizzazioni Standard (tranne Pulizia disco) e in pi&#xF9;: rimozione di OneDrive, dei widget e delle funzioni di intelligenza artificiale, niente app del Microsoft Store nella ricerca, menu Start e menu del tasto destro precedenti."/>
                                     <Button Name="WPFClearTweaksSelection" Content=" Azzera " Margin="2" Width="{DynamicResource ButtonWidth}" Height="{DynamicResource ButtonHeight}"/>
                                     <Button Name="WPFGetInstalledTweaks" Content=" Rileva ottimizzazioni attive " Margin="2" Width="{DynamicResource ButtonWidth}" Height="{DynamicResource ButtonHeight}"/>
-                                </StackPanel>
+                                    <Button Name="WPFOpenAppxTab" Content=" Rimuovi app di Windows " Margin="2" Width="{DynamicResource ButtonWidth}" Height="{DynamicResource ButtonHeight}"
+                                            ToolTip="Apre la scheda App di Windows, per rimuovere o reinstallare le app preinstallate (Copilot, Xbox, Notizie...)"/>
+                                </WrapPanel>
                             </StackPanel>
 
                             <Grid Name="tweakspanel" Grid.Row="1">
@@ -13640,11 +16224,11 @@ $inputXML = @'
                                              Foreground="{DynamicResource MainForegroundColor}">
                                         <Run FontWeight="Bold">Configurazione predefinita di Windows Update</Run>
                                         <LineBreak/>
-                                         - Nessuna modifica ai valori predefiniti di Windows
+                                         - Rimuove le impostazioni di aggiornamento applicate da WinRUtil
                                         <LineBreak/>
-                                         - Rimuove le impostazioni di aggiornamento personalizzate
+                                         - Riattiva i servizi e le attivit&#xE0; pianificate di Windows Update
                                         <LineBreak/><LineBreak/>
-                                        <Run FontStyle="Italic" FontSize="11">Nota: ripristina le impostazioni di Windows Update ai valori predefiniti di fabbrica. Rimuove QUALSIASI criterio o personalizzazione applicata a Windows Update.</Run>
+                                        <Run FontStyle="Italic" FontSize="11">Nota: gli altri criteri di Windows Update, ad esempio il server WSUS aziendale, restano invariati.</Run>
                                     </TextBlock>
                                 </StackPanel>
                             </Border>
@@ -13667,6 +16251,8 @@ $inputXML = @'
                                          - Aggiornamenti di sicurezza installati dopo 4 giorni
                                         <LineBreak/>
                                          - Impedisce a Windows Update di installare driver
+                                        <LineBreak/>
+                                         - Scarica gli aggiornamenti e chiede prima di installarli, senza riavvii improvvisi
                                         <LineBreak/><LineBreak/>
                                         <Run FontWeight="SemiBold">Aggiornamenti funzionalit&#xE0;:</Run> nuove funzionalit&#xE0; e possibili bug
                                         <LineBreak/>
@@ -14587,6 +17173,56 @@ $inputXML = @'
                     </Border>
                 </Grid>
             </TabItem>
+            <TabItem Header="AppX" Visibility="Collapsed" Name="WPFTab9">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Grid.Row="0" Margin="{DynamicResource TabContentMargin}">
+                        <Grid Background="Transparent">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <StackPanel Background="Transparent" Orientation="Vertical" Grid.Row="0" Margin="5">
+                                <Label Content="Selezione:" FontSize="{DynamicResource FontSize}" VerticalAlignment="Center" Margin="2"/>
+                                <WrapPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,2,0,0">
+                                    <Button Name="WPFDefaultAppxSelection" Content=" Consigliate " Margin="2" Width="{DynamicResource ButtonWidth}" Height="{DynamicResource ButtonHeight}"
+                                            ToolTip="Seleziona le app che di solito non servono: Hub di Feedback, Richiedi assistenza, Microsoft 365, Clipchamp, Notizie, Meteo, Copilot..."/>
+                                    <Button Name="WPFGetInstalledAppx" Content=" Seleziona installate " Margin="2" Width="{DynamicResource ButtonWidth}" Height="{DynamicResource ButtonHeight}"
+                                            ToolTip="Seleziona le app dell'elenco installate su questo PC"/>
+                                    <Button Name="WPFSelectAllAppx" Content=" Seleziona tutte " Margin="2" Width="{DynamicResource ButtonWidth}" Height="{DynamicResource ButtonHeight}"/>
+                                    <Button Name="WPFClearAppxSelection" Content=" Azzera " Margin="2" Width="{DynamicResource ButtonWidth}" Height="{DynamicResource ButtonHeight}"/>
+                                </WrapPanel>
+                            </StackPanel>
+
+                            <Grid Name="appxpanel" Grid.Row="1">
+                            </Grid>
+
+                            <Border Grid.Row="2" Style="{StaticResource BorderStyle}">
+                                <StackPanel Background="{DynamicResource MainBackgroundColor}" Orientation="Horizontal" HorizontalAlignment="Left">
+                                    <TextBlock Padding="10" TextWrapping="Wrap">
+                                        Nota: passa il mouse sopra le voci per una descrizione. "Rimuovi selezionate" toglie le app a tutti gli utenti e anche ai profili creati in seguito.
+                                        <LineBreak/>"Reinstalla selezionate" registra di nuovo l'app dalla copia rimasta sul PC oppure la scarica dal Microsoft Store.
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </ScrollViewer>
+                    <Border Grid.Row="1" Background="{DynamicResource MainBackgroundColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="5" HorizontalAlignment="Stretch" Padding="10">
+                        <DockPanel LastChildFill="True">
+                            <Button Name="WPFRemoveSelectedAppx" DockPanel.Dock="Left" Content="Rimuovi selezionate" Margin="5" Width="{DynamicResource ButtonWidth}" Height="{DynamicResource ButtonHeight}"/>
+                            <Button Name="WPFInstallSelectedAppx" DockPanel.Dock="Left" Content="Reinstalla selezionate" Margin="5" Width="{DynamicResource ButtonWidth}" Height="{DynamicResource ButtonHeight}"/>
+                            <TextBlock Name="WPFAppxStatus" Margin="12,0,5,0" VerticalAlignment="Center" TextWrapping="Wrap"
+                                       FontSize="12" Foreground="{DynamicResource MutedForegroundColor}"/>
+                        </DockPanel>
+                    </Border>
+                </Grid>
+            </TabItem>
         </TabControl>
     </Grid>
     </Border>
@@ -14662,14 +17298,25 @@ $sync.configs.applicationsHashtable = @{}
 $sync.configs.applications.PSObject.Properties | ForEach-Object {
     $sync.configs.applicationsHashtable[$_.Name] = $_.Value
 }
+$sync.configs.appxHashtable = @{}
+$sync.configs.appx.PSObject.Properties | ForEach-Object {
+    $sync.configs.appxHashtable[$_.Name] = $_.Value
+}
 
 Set-Preferences
 
 if ($PARAM_NOUI) {
     Show-WinRUtilLogo
-    if ($PARAM_CONFIG -and -not [string]::IsNullOrWhiteSpace($PARAM_CONFIG)) {
-        Write-Host "Running config file tasks..."
-        Invoke-WPFImpex -type "import" -Config $PARAM_CONFIG
+    if ($PARAM_PRESET -or ($PARAM_CONFIG -and -not [string]::IsNullOrWhiteSpace($PARAM_CONFIG))) {
+        if ($PARAM_PRESET) {
+            Write-Host "Selecting the $PARAM_PRESET preset..."
+            $null = Update-WinUtilSelections -flatJson $sync.configs.preset.$PARAM_PRESET
+        }
+        if ($PARAM_CONFIG) {
+            Write-Host "Running config file tasks..."
+            # A preset given together with the configuration is kept, the configuration adds to it
+            Invoke-WPFImpex -type "import" -Config $PARAM_CONFIG -Merge:([bool]$PARAM_PRESET)
+        }
         if ($PARAM_RUN) {
             Invoke-WinUtilAutoRun
         }
@@ -14683,7 +17330,7 @@ if ($PARAM_NOUI) {
         exit 1
     }
     else {
-        Write-Host "Cannot automatically run without a config file provided."
+        Write-Host "Cannot automatically run without a config file or a preset provided."
         $sync.runspace.Dispose()
         $sync.runspace.Close()
         [System.GC]::Collect()
@@ -14774,6 +17421,8 @@ Initialize-WPFUI -targetGridName "appspanel"
 Invoke-WPFUIElements -configVariable $sync.configs.tweaks -targetGridName "tweakspanel" -columncount 2
 
 Invoke-WPFUIElements -configVariable $sync.configs.feature -targetGridName "featurespanel" -columncount 2
+
+Invoke-WPFUIElements -configVariable $sync.configs.appx -targetGridName "appxpanel" -columncount 2
 
 # Future implementation: Add Windows Version to updates panel
 #Invoke-WPFUIElements -configVariable $sync.configs.updates -targetGridName "updatespanel" -columncount 1
@@ -14904,17 +17553,31 @@ $commonKeyEvents = {
             "S" { Invoke-WPFButton "WPFTab7BT"; $keyEventArgs.Handled = $true } # Navigate to System dashboard
             "F" { Invoke-WPFButton "WPFTab8BT"; $keyEventArgs.Handled = $true } # Navigate to Wi-Fi tab
             "R" { Invoke-WPFButton "WPFTab5BT"; $keyEventArgs.Handled = $true } # Navigate to Report tab
+            "A" { Invoke-WPFButton "WPFTab9BT"; $keyEventArgs.Handled = $true } # Navigate to Windows apps tab
         }
     }
     # Handle Ctrl key combinations for specific actions
     if ($_.KeyboardDevice.Modifiers -eq "Ctrl") {
+        $keyEventArgs = $_
         switch ($_.Key) {
             "F" { $sync.SearchBar.Focus() } # Focus on the search bar
             "Q" { $this.Close() } # Close the application
+            # Text size, in the steps of the slider: bigger, smaller, normal
+            { $_ -in "OemPlus", "Add" } { Set-WinUtilFontScaleStep -Step 0.25; $keyEventArgs.Handled = $true }
+            { $_ -in "OemMinus", "Subtract" } { Set-WinUtilFontScaleStep -Step -0.25; $keyEventArgs.Handled = $true }
+            { $_ -in "D0", "NumPad0" } { Set-WinUtilFontScaleStep -Step 0; $keyEventArgs.Handled = $true }
         }
     }
 }
 $sync["Form"].Add_PreViewKeyDown($commonKeyEvents)
+
+# Ctrl + mouse wheel changes the text size too
+$sync["Form"].Add_PreviewMouseWheel({
+    if ([System.Windows.Input.Keyboard]::Modifiers -eq [System.Windows.Input.ModifierKeys]::Control) {
+        Set-WinUtilFontScaleStep -Step $(if ($_.Delta -gt 0) { 0.25 } else { -0.25 })
+        $_.Handled = $true
+    }
+})
 
 $sync["Form"].Add_MouseLeftButtonDown({
     Invoke-WPFPopup -Action "Hide" -Popups @("Settings", "Theme", "FontScaling")
@@ -14991,12 +17654,18 @@ $sync["Form"].Add_ContentRendered({
 
     $sync["Form"].Focus()
 
-   if ($PARAM_CONFIG -and -not [string]::IsNullOrWhiteSpace($PARAM_CONFIG)) {
+    if ($PARAM_PRESET) {
+        Write-Host "Selecting the $PARAM_PRESET preset..."
+        Invoke-WPFPresets $PARAM_PRESET -checkboxfilterpattern "WPFTweak*"
+        Invoke-WPFTab "WPFTab2BT"
+    }
+    if ($PARAM_CONFIG -and -not [string]::IsNullOrWhiteSpace($PARAM_CONFIG)) {
         Write-Host "Running config file tasks..."
-        Invoke-WPFImpex -type "import" -Config $PARAM_CONFIG
-        if ($PARAM_RUN) {
-            Invoke-WinUtilAutoRun
-        }
+        # A preset given together with the configuration is kept, the configuration adds to it
+        Invoke-WPFImpex -type "import" -Config $PARAM_CONFIG -Merge:([bool]$PARAM_PRESET)
+    }
+    if ($PARAM_RUN -and ($PARAM_PRESET -or $PARAM_CONFIG)) {
+        Invoke-WinUtilAutoRun
     }
 
 })
@@ -15012,9 +17681,12 @@ $searchBarTimer.add_Tick({
     $searchBarTimer.Stop()
     switch ($sync.currentTab) {
         "Install" {
-            Find-AppsByNameOrDescription -SearchString $sync.SearchBar.Text
+            Find-AppsByNameOrDescription -SearchString $sync.SearchBar.Text -Categories @($sync.SelectedAppCategories)
         }
         "Tweaks" {
+            Find-TweaksByNameOrDescription -SearchString $sync.SearchBar.Text
+        }
+        "AppX" {
             Find-TweaksByNameOrDescription -SearchString $sync.SearchBar.Text
         }
     }

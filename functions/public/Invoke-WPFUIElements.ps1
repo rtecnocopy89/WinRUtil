@@ -76,6 +76,8 @@ function Invoke-WPFUIElements {
             Description = $entryInfo.description
             Type        = $entryInfo.type
             ComboItems  = $entryInfo.ComboItems
+            ComboDescriptions = $entryInfo.ComboDescriptions
+            Registry    = $entryInfo.registry
             Checked     = $entryInfo.Checked
             ButtonWidth = $entryInfo.ButtonWidth
             GroupName   = $entryInfo.GroupName  # Added for RadioButton groupings
@@ -246,6 +248,7 @@ function Invoke-WPFUIElements {
 
                         $label = New-Object Windows.Controls.Label
                         $label.Content = $entryInfo.Content
+                        $label.ToolTip = $entryInfo.Description
                         $label.HorizontalAlignment = "Left"
                         $label.VerticalAlignment = "Center"
                         $label.SetResourceReference([Windows.Controls.Control]::FontSizeProperty, "ButtonFontSize")
@@ -261,11 +264,21 @@ function Invoke-WPFUIElements {
                         $comboBox.SetResourceReference([Windows.Controls.Control]::MarginProperty, "ButtonMargin")
                         $comboBox.SetResourceReference([Windows.Controls.Control]::FontSizeProperty, "ButtonFontSize")
                         $comboBox.UseLayoutRounding = $true
+                        # A combo box with registry Values applies its choice as soon as it is selected
+                        $comboBox.Tag = [pscustomobject]@{
+                            Registry = $(if ($entryInfo.Registry -and @($entryInfo.Registry)[0].Values) { $entryInfo.Registry } else { $null })
+                            State = $null
+                        }
                         [System.Windows.Automation.AutomationProperties]::SetName($comboBox, $entryInfo.Content)
 
-                        foreach ($comboitem in ($entryInfo.ComboItems -split " ")) {
+                        # The choices are separated by "|" when they contain spaces
+                        $comboItems = if ($entryInfo.ComboItems.Contains("|")) { $entryInfo.ComboItems -split "\|" } else { $entryInfo.ComboItems -split " " }
+                        foreach ($comboitem in $comboItems) {
                             $comboBoxItem = New-Object Windows.Controls.ComboBoxItem
                             $comboBoxItem.Content = $comboitem
+                            if ($entryInfo.ComboDescriptions -and $entryInfo.ComboDescriptions.PSObject.Properties[$comboitem]) {
+                                $comboBoxItem.ToolTip = $entryInfo.ComboDescriptions.PSObject.Properties[$comboitem].Value
+                            }
                             $comboBoxItem.SetResourceReference([Windows.Controls.Control]::FontSizeProperty, "ButtonFontSize")
                             $comboBoxItem.UseLayoutRounding = $true
                             $comboBox.Items.Add($comboBoxItem) | Out-Null
@@ -274,18 +287,61 @@ function Invoke-WPFUIElements {
                         $horizontalStackPanel.Children.Add($comboBox) | Out-Null
                         $itemsControl.Items.Add($horizontalStackPanel) | Out-Null
 
-                        $comboBox.SelectedIndex = 0
+                        if ($comboBox.Tag.Registry) {
+                            try {
+                                $comboBox.Tag.State = Get-WinUtilRegistryComboState -Registry $comboBox.Tag.Registry
+                                $comboBox.SelectedIndex = [array]::IndexOf([string[]]$comboItems, [string]$comboBox.Tag.State)
+                            } catch {
+                                # Values written by hand or by another program: no choice is selected until one is chosen
+                                $unknownStateItem = New-Object Windows.Controls.ComboBoxItem
+                                $unknownStateItem.Content = "Personalizzato - scegli un'opzione"
+                                $unknownStateItem.IsEnabled = $false
+                                $unknownStateItem.ToolTip = $_.Exception.Message
+                                $comboBox.Items.Add($unknownStateItem) | Out-Null
+                                $comboBox.SelectedItem = $unknownStateItem
+                            }
+                        } else {
+                            $comboBox.SelectedIndex = 0
+                        }
 
                         # Set initial text
-                        if ($comboBox.Items.Count -gt 0) {
-                            $comboBox.Text = $comboBox.Items[0].Content
+                        if ($comboBox.SelectedItem) {
+                            $comboBox.Text = $comboBox.SelectedItem.Content
                         }
 
                         # Add SelectionChanged event handler to update the text property
                         $comboBox.Add_SelectionChanged({
                             $selectedItem = $this.SelectedItem
-                            if ($selectedItem) {
-                                $this.Text = $selectedItem.Content
+                            if (-not $selectedItem) {
+                                return
+                            }
+                            $this.Text = $selectedItem.Content
+                            $registry = $this.Tag.Registry
+                            if ($registry -and $selectedItem.IsEnabled -and $selectedItem.Content -ne $this.Tag.State) {
+                                try {
+                                    Set-WinUtilRegistryComboState -Registry $registry -State $selectedItem.Content
+                                    $this.Tag.State = $selectedItem.Content
+                                    $label = $this.Parent.Children[0].Content
+                                    Add-WinUtilSessionAction -Area "Ottimizzazione" -Text ("{0}: {1}" -f $label, $selectedItem.Content)
+                                    # The placeholder of an unknown state is no longer needed
+                                    foreach ($item in @($this.Items)) {
+                                        if (-not $item.IsEnabled) {
+                                            $this.Items.Remove($item)
+                                            break
+                                        }
+                                    }
+                                } catch {
+                                    $applyError = $_.Exception.Message
+                                    $previous = $null
+                                    foreach ($item in @($this.Items)) {
+                                        if ($item.Content -eq $this.Tag.State -or (-not $this.Tag.State -and -not $item.IsEnabled)) {
+                                            $previous = $item
+                                            break
+                                        }
+                                    }
+                                    $this.SelectedItem = $previous
+                                    [System.Windows.MessageBox]::Show($applyError, "WinRUtil", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning) | Out-Null
+                                }
                             }
                         })
 

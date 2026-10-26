@@ -21,7 +21,9 @@
         [string]$checkboxfilterpattern = "**"
     )
 
-    $CheckBoxesToCheck = $sync.selectedApps + $sync.selectedTweaks + $sync.selectedFeatures
+    $CheckBoxesToCheck = @($sync.selectedApps) + @($sync.selectedTweaks) + @($sync.selectedFeatures) + @($sync.selectedAppx)
+    # Imported keys can differ in case from the names of the checkboxes
+    $selectedSet = [System.Collections.Generic.HashSet[string]]::new([string[]]$CheckBoxesToCheck, [StringComparer]::OrdinalIgnoreCase)
     $CheckBoxes = ($sync.GetEnumerator()).where{ $_.Value -is [System.Windows.Controls.CheckBox] -and $_.Name -notlike "WPFToggle*" -and $_.Name -like "$checkboxfilterpattern"}
     Write-Debug "Getting checkboxes to set, number of checkboxes: $($CheckBoxes.Count)"
 
@@ -34,13 +36,13 @@
 
     foreach ($CheckBox in $CheckBoxes) {
         $checkboxName = $CheckBox.Key
-        if (-not $CheckBoxesToCheck) {
+        if ($selectedSet.Count -eq 0) {
             $sync.$checkBoxName.IsChecked = $false
             continue
         }
 
         # Check if the checkbox name exists in the flattened JSON hashtable
-        if ($CheckBoxesToCheck -contains $checkboxName) {
+        if ($selectedSet.Contains($checkboxName)) {
             # If it exists, set IsChecked to true
             $sync.$checkboxName.IsChecked = $true
             Write-Debug "$checkboxName is checked"

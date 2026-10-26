@@ -111,6 +111,7 @@ function Initialize-WPFUI {
         "appspanel" {
             $sync.ItemsControl = Initialize-InstallAppArea -TargetElement $TargetGridName
             Initialize-InstallCategoryAppList -TargetElement $sync.ItemsControl -Apps $sync.configs.applicationsHashtable
+            Initialize-WinUtilAppCategoryChips -Apps $sync.configs.applicationsHashtable
         }
         default {
             Write-Output "$TargetGridName not yet implemented"

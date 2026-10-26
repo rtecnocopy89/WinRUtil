@@ -24,36 +24,47 @@
     #>
 
     [CmdletBinding()]
+    [OutputType([System.IAsyncResult])]
     Param (
         $ScriptBlock,
         $ArgumentList,
         $ParameterList
     )
 
+    # Dispose the PowerShell instances of earlier calls that have finished. The runspace pool is
+    # shared by the whole session and stays open until the window is closed.
+    if ($null -eq $sync.RunspaceShells) {
+        $sync.RunspaceShells = [System.Collections.ArrayList]::Synchronized([System.Collections.ArrayList]::new())
+    }
+    foreach ($shell in $sync.RunspaceShells.ToArray()) {
+        if ($shell.Handle.IsCompleted) {
+            try {
+                $null = $shell.PowerShell.EndInvoke($shell.Handle)
+            } catch {
+                Write-Debug "Background task ended with an error: $($_.Exception.Message)"
+            }
+            $shell.PowerShell.Dispose()
+            $sync.RunspaceShells.Remove($shell)
+        }
+    }
+
     # Create a PowerShell instance
-    $script:powershell = [powershell]::Create()
+    $powershell = [powershell]::Create()
 
     # Add Scriptblock and Arguments to runspace
-    $script:powershell.AddScript($ScriptBlock)
-    $script:powershell.AddArgument($ArgumentList)
+    [void]$powershell.AddScript($ScriptBlock)
+    [void]$powershell.AddArgument($ArgumentList)
 
     foreach ($parameter in $ParameterList) {
-        $script:powershell.AddParameter($parameter[0], $parameter[1])
+        [void]$powershell.AddParameter($parameter[0], $parameter[1])
     }
 
-    $script:powershell.RunspacePool = $sync.runspace
+    $powershell.RunspacePool = $sync.runspace
 
     # Execute the RunspacePool
-    $script:handle = $script:powershell.BeginInvoke()
+    $handle = $powershell.BeginInvoke()
+    [void]$sync.RunspaceShells.Add([pscustomobject]@{ PowerShell = $powershell; Handle = $handle })
 
-    # Clean up the RunspacePool threads when they are complete, and invoke the garbage collector to clean up the memory
-    if ($script:handle.IsCompleted) {
-        $script:powershell.EndInvoke($script:handle)
-        $script:powershell.Dispose()
-        $sync.runspace.Dispose()
-        $sync.runspace.Close()
-        [System.GC]::Collect()
-    }
     # Return the handle
     return $handle
 }

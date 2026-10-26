@@ -35,9 +35,14 @@ function Invoke-WPFUnInstall {
     Invoke-WPFRunspace -ParameterList @(("PackagesToUninstall", $PackagesToUninstall),("ManagerPreference", $ManagerPreference)) -ScriptBlock {
         param($PackagesToUninstall, $ManagerPreference)
 
-        $packagesSorted = Get-WinUtilSelectedPackages -PackageList $PackagesToUninstall -Preference $ManagerPreference
+        $packagesSorted = Get-WinUtilSelectedPackages -PackageList $PackagesToUninstall -Preference $ManagerPreference -Action Uninstall
         $packagesWinget = $packagesSorted[[PackageManagers]::Winget]
         $packagesChoco = $packagesSorted[[PackageManagers]::Choco]
+
+        if ($packagesWinget -contains "Microsoft.Edge") {
+            # The Edge uninstaller refuses to run unless this file exists
+            New-Item -Path "$Env:SystemRoot\SystemApps\Microsoft.MicrosoftEdge_8wekyb3d8bbwe\MicrosoftEdge.exe" -Force | Out-Null
+        }
 
         try {
             $sync.ProcessRunning = $true

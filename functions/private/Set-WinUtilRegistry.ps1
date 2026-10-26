@@ -28,7 +28,27 @@
     )
 
     try {
-        if(!(Test-Path 'HKU:\')) {New-PSDrive -PSProvider Registry -Name HKU -Root HKEY_USERS}
+        if(!(Test-Path 'HKU:\')) {New-PSDrive -PSProvider Registry -Name HKU -Root HKEY_USERS | Out-Null}
+
+        if ($Value -eq "<RemoveEntry>") {
+            # A value that is not there is already in the requested state: undoing a tweak that was never
+            # applied must not fail, and the key must not be created just to remove nothing from it.
+            # Only a missing key or value counts as absent; access errors still reach the handlers below.
+            $valueExists = $true
+            try {
+                Get-ItemProperty -Path $Path -Name $Name -ErrorAction Stop | Out-Null
+            } catch [System.Management.Automation.PSArgumentException] {
+                # The registry provider throws PSArgumentException when a named value is missing
+                $valueExists = $false
+            } catch [System.Management.Automation.ItemNotFoundException] {
+                $valueExists = $false
+            }
+
+            if (-not $valueExists) {
+                Write-Host "$Path\$Name is already absent"
+                return
+            }
+        }
 
         If (!(Test-Path $Path)) {
             Write-Host "$Path was not found. Creating..."

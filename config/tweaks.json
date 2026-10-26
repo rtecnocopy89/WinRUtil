@@ -1,14 +1,14 @@
 ﻿{
   "WPFTweaksActivity": {
     "Content": "Cronologia attività - Disattiva",
-    "Description": "Cancella la cronologia dei documenti recenti, degli appunti e dei comandi eseguiti.",
+    "Description": "Impedisce a Windows di pubblicare o caricare le attività dell'utente, senza cancellare la cronologia degli appunti.",
     "category": "Ottimizzazioni essenziali",
     "panel": "1",
     "registry": [
       {
         "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\System",
         "Name": "EnableActivityFeed",
-        "Value": "0",
+        "Value": "1",
         "Type": "DWord",
         "OriginalValue": "<RemoveEntry>"
       },
@@ -75,50 +75,21 @@
       Write-Host \"Removed widgets\"
       "
     ],
-    "UndoScript": [
-      "
-      Write-Host \"Restoring widgets AppxPackages\"
-
-      Add-AppxPackage -Register \"C:\\Program Files\\WindowsApps\\Microsoft.WidgetsPlatformRuntime*\\AppxManifest.xml\" -DisableDevelopmentMode
-      Add-AppxPackage -Register \"C:\\Program Files\\WindowsApps\\MicrosoftWindows.Client.WebExperience*\\AppxManifest.xml\" -DisableDevelopmentMode
-
-      Invoke-WinUtilExplorerUpdate -action \"restart\"
-      "
-    ],
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
-  "WPFTweaksRevertStartMenu": {
+ "WPFTweaksRevertStartMenu": {
     "Content": "Menu Start precedente - Attiva",
-    "Description": "Ripristina il layout del menu Start in uso prima del nuovo menu introdotto gradualmente con la 25H2.",
+    "Description": "Ripristina il layout del menu Start in uso prima del nuovo menu introdotto gradualmente con la 25H2. Nelle versioni più recenti di Windows NON FUNZIONA.",
     "category": "Ottimizzazioni essenziali",
     "panel": "1",
-    "InvokeScript": [
-      "
-      Invoke-WebRequest https://github.com/thebookisclosed/ViVe/releases/download/v0.3.4/ViVeTool-v0.3.4-IntelAmd.zip -OutFile ViVeTool.zip
-
-      Expand-Archive ViVeTool.zip
-      Remove-Item ViVeTool.zip
-
-      Start-Process 'ViVeTool\\ViVeTool.exe' -ArgumentList '/disable /id:47205210' -Wait -NoNewWindow
-
-      Remove-Item ViVeTool -Recurse
-
-      Write-Host 'Old start menu reverted. Please restart your computer to take effect.'
-      "
-    ],
-    "UndoScript": [
-      "
-      Invoke-WebRequest https://github.com/thebookisclosed/ViVe/releases/download/v0.3.4/ViVeTool-v0.3.4-IntelAmd.zip -OutFile ViVeTool.zip
-
-      Expand-Archive ViVeTool.zip
-      Remove-Item ViVeTool.zip
-
-      Start-Process 'ViVeTool\\ViVeTool.exe' -ArgumentList '/enable /id:47205210' -Wait -NoNewWindow
-
-      Remove-Item ViVeTool -Recurse
-
-      Write-Host 'New start menu reverted. Please restart your computer to take effect.'
-      "
+    "registry": [
+      {
+        "Path": "HKLM:\\SYSTEM\\ControlSet001\\Control\\FeatureManagement\\Overrides\\8\\3036241548",
+        "Name": "EnabledState",
+        "Value": "1",
+        "Type": "DWord",
+        "OriginalValue": "<RemoveEntry>"
+      }
     ],
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
@@ -128,10 +99,10 @@
     "category": "Ottimizzazioni essenziali",
     "panel": "1",
     "InvokeScript": [
-      "icacls \"$Env:LocalAppData\\Packages\\Microsoft.WindowsStore_8wekyb3d8bbwe\\LocalState\\store.db\" /deny Everyone:F"
+      "icacls \"$Env:LocalAppData\\Packages\\Microsoft.WindowsStore_8wekyb3d8bbwe\\LocalState\\store.db\" /deny *S-1-1-0:F"
     ],
     "UndoScript": [
-      "icacls \"$Env:LocalAppData\\Packages\\Microsoft.WindowsStore_8wekyb3d8bbwe\\LocalState\\store.db\" /grant Everyone:F"
+      "icacls \"$Env:LocalAppData\\Packages\\Microsoft.WindowsStore_8wekyb3d8bbwe\\LocalState\\store.db\" /grant *S-1-1-0:F"
     ],
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
@@ -143,7 +114,7 @@
     "service": [
       {
         "Name": "lfsvc",
-        "StartupType": "Disable",
+        "StartupType": "Disabled",
         "OriginalType": "Manual"
       }
     ],
@@ -194,16 +165,6 @@
         "OriginalType": "Automatic"
       },
       {
-        "Name": "RemoteAccess",
-        "StartupType": "Disabled",
-        "OriginalType": "Disabled"
-      },
-      {
-        "Name": "RemoteRegistry",
-        "StartupType": "Disabled",
-        "OriginalType": "Disabled"
-      },
-      {
         "Name": "StorSvc",
         "StartupType": "Manual",
         "OriginalType": "Automatic"
@@ -212,32 +173,26 @@
         "Name": "SharedAccess",
         "StartupType": "Disabled",
         "OriginalType": "Automatic"
-      },
-      {
-        "Name": "TermService",
-        "StartupType": "Manual",
-        "OriginalType": "Manual"
-      },
-      {
-        "Name": "TroubleshootingSvc",
-        "StartupType": "Manual",
-        "OriginalType": "Manual"
-      },
-      {
-        "Name": "seclogon",
-        "StartupType": "Manual",
-        "OriginalType": "Manual"
-      },
-      {
-        "Name": "ssh-agent",
-        "StartupType": "Disabled",
-        "OriginalType": "Disabled"
       }
     ],
+    "link": "https://github.com/rtecnocopy89/WinRUtil"
+  },
+  "WPFTweaksSvcHostSplitting": {
+    "Content": "Suddivisione dei processi svchost.exe - Disattiva",
+    "Description": "Disattiva la suddivisione dei servizi in processi svchost.exe separati: i processi diminuiscono e si risparmia un po' di memoria. Consigliato sui PC poco potenti con 12 GB di RAM o meno. Può interferire con i servizi Xbox. Riavvia Windows dopo la modifica.",
+    "category": "z__Ottimizzazioni avanzate - ATTENZIONE",
+    "panel": "1",
     "InvokeScript": [
       "
+      # A threshold above the physical memory disables svchost service splitting
       $Memory = (Get-CimInstance Win32_PhysicalMemory | Measure-Object Capacity -Sum).Sum / 1KB
-      Set-ItemProperty -Path \"HKLM:\\SYSTEM\\CurrentControlSet\\Control\" -Name SvcHostSplitThresholdInKB -Value $Memory
+      Set-ItemProperty -Path \"HKLM:\\SYSTEM\\CurrentControlSet\\Control\" -Name SvcHostSplitThresholdInKB -Value $Memory -Type DWord
+      "
+    ],
+    "UndoScript": [
+      "
+      # Windows client default (0x380000): splitting back on
+      Set-ItemProperty -Path \"HKLM:\\SYSTEM\\CurrentControlSet\\Control\" -Name SvcHostSplitThresholdInKB -Value 3670016 -Type DWord -Force
       "
     ],
     "link": "https://github.com/rtecnocopy89/WinRUtil"
@@ -488,7 +443,7 @@
   },
   "WPFTweaksConsumerFeatures": {
     "Content": "Funzionalità consumer - Disattiva",
-    "Description": "Windows non installerà più da solo giochi, app di terze parti o collegamenti ad app del Microsoft Store per l'utente connesso. Alcune app predefinite non saranno disponibili (ad es. Collegamento al telefono).",
+    "Description": "Impedisce l'installazione automatica delle app promosse e riduce i suggerimenti di app dal Microsoft Store.",
     "category": "Ottimizzazioni essenziali",
     "panel": "1",
     "registry": [
@@ -504,9 +459,21 @@
   },
   "WPFTweaksTelemetry": {
     "Content": "Telemetria - Disattiva",
-    "Description": "Disattiva la telemetria di Microsoft.",
+    "Description": "Disattiva la telemetria di Microsoft, compresa quella di PowerShell 7.",
     "category": "Ottimizzazioni essenziali",
     "panel": "1",
+    "service": [
+      {
+        "Name": "diagtrack",
+        "StartupType": "Disabled",
+        "OriginalType": "Automatic"
+      },
+      {
+        "Name": "WerSvc",
+        "StartupType": "Disabled",
+        "OriginalType": "Manual"
+      }
+    ],
     "registry": [
       {
         "Path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\AdvertisingInfo",
@@ -591,6 +558,13 @@
         "Value": "0",
         "Type": "DWord",
         "OriginalValue": "<RemoveEntry>"
+      },
+      {
+        "Path": "HKCU:\\Software\\Microsoft\\Siuf\\Rules",
+        "Name": "PeriodInNanoSeconds",
+        "Value": "<RemoveEntry>",
+        "Type": "DWord",
+        "OriginalValue": "<RemoveEntry>"
       }
     ],
     "InvokeScript": [
@@ -598,13 +572,8 @@
       # Disable Defender Auto Sample Submission
       Set-MpPreference -SubmitSamplesConsent 2
 
-      # Disable (Connected User Experiences and Telemetry) Service
-      Set-Service -Name diagtrack -StartupType Disabled
-
-      # Disable (Windows Error Reporting Manager) Service
-      Set-Service -Name wermgr -StartupType Disabled
-
-      Remove-ItemProperty -Path \"HKCU:\\Software\\Microsoft\\Siuf\\Rules\" -Name PeriodInNanoSeconds
+      # Disable PowerShell 7 telemetry
+      [Environment]::SetEnvironmentVariable('POWERSHELL_TELEMETRY_OPTOUT', '1', 'Machine')
       "
     ],
     "UndoScript": [
@@ -612,28 +581,71 @@
       # Enable Defender Auto Sample Submission
       Set-MpPreference -SubmitSamplesConsent 1
 
-      # Enable (Connected User Experiences and Telemetry) Service
-      Set-Service -Name diagtrack -StartupType Automatic
-
-      # Enable (Windows Error Reporting Manager) Service
-      Set-Service -Name wermgr -StartupType Automatic
+      # Enable PowerShell 7 telemetry
+      [Environment]::SetEnvironmentVariable('POWERSHELL_TELEMETRY_OPTOUT', '', 'Machine')
       "
+    ],
+    "link": "https://github.com/rtecnocopy89/WinRUtil"
+  },
+  "WPFTweaksDeliveryOptimization": {
+    "Content": "Ottimizzazione recapito - Disattiva",
+    "Description": "Impedisce a Windows di usare la connessione del PC per inviare aggiornamenti ad altri computer su Internet o nella rete locale.",
+    "category": "Ottimizzazioni essenziali",
+    "panel": "1",
+    "registry": [
+      {
+        "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\DeliveryOptimization",
+        "Name": "DODownloadMode",
+        "Value": "0",
+        "Type": "DWord",
+        "OriginalValue": "<RemoveEntry>"
+      }
     ],
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
   "WPFTweaksRemoveEdge": {
     "Content": "Microsoft Edge - Rimuovi",
-    "Description": "Sblocca le restrizioni del programma di disinstallazione di Microsoft Edge e lo usa per rimuovere Edge.",
+    "Description": "Disinstalla Microsoft Edge creando un file MicrosoftEdge.exe fittizio nella cartella del vecchio Edge: così Windows sblocca il programma di disinstallazione ufficiale e Edge viene rimosso dal sistema.",
     "category": "z__Ottimizzazioni avanzate - ATTENZIONE",
     "panel": "1",
     "InvokeScript": [
-      "Invoke-WinUtilRemoveEdge"
+      "
+      $EdgeAppDir = \"$Env:ProgramFiles (x86)\\Microsoft\\Edge\\Application\"
+      $Path = $null
+      if (Test-Path -LiteralPath $EdgeAppDir -ErrorAction Stop) {
+          $InstallerPattern = Join-Path $EdgeAppDir \"*\\Installer\\setup.exe\"
+          if (Test-Path -Path $InstallerPattern -ErrorAction Stop) {
+              $Path = Resolve-Path -Path $InstallerPattern -ErrorAction Stop | Select-Object -Last 1
+          }
+      }
+
+      if ($Path) {
+          New-Item -Path \"$Env:SystemRoot\\SystemApps\\Microsoft.MicrosoftEdge_8wekyb3d8bbwe\\MicrosoftEdge.exe\" -Force
+          Start-Process -FilePath $Path -ArgumentList \"--uninstall --system-level --force-uninstall --delete-profile\" -Wait
+          Write-Host \"Microsoft Edge was removed\"
+      } else {
+          Write-Host \"Microsoft Edge is not installed\"
+      }
+      "
     ],
     "UndoScript": [
       "
-      Write-Host 'Installing Microsoft Edge...'
+      Write-Host \"Installing Microsoft Edge...\"
       winget install Microsoft.Edge --source winget
       "
+    ],
+    "link": "https://github.com/rtecnocopy89/WinRUtil"
+  },
+  "WPFTweaksDisableBitLocker": {
+    "Content": "BitLocker - Disattiva",
+    "Description": "Disattiva BitLocker e decrittografa l'unità di sistema.",
+    "category": "Ottimizzazioni essenziali",
+    "panel": "1",
+    "InvokeScript": [
+      "Disable-BitLocker -MountPoint $Env:SystemDrive"
+    ],
+    "UndoScript": [
+      "Enable-BitLocker -MountPoint $Env:SystemDrive"
     ],
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
@@ -660,23 +672,55 @@
     "panel": "1",
     "InvokeScript": [
       "
-      # Deny permission to remove OneDrive folder
-      icacls $Env:OneDrive /deny \"Administrators:(D,DC)\"
+      $OneDrivePath = $Env:OneDrive
+      $OneDriveFolderExists = -not [string]::IsNullOrWhiteSpace($OneDrivePath) -and (Test-Path -LiteralPath $OneDrivePath -PathType Container -ErrorAction Stop)
 
-      Write-Host \"Uninstalling OneDrive...\"
-      Start-Process 'C:\\Windows\\System32\\OneDriveSetup.exe' -ArgumentList '/uninstall' -Wait
+      if ($OneDriveFolderExists) {
+          $OneDriveAcl = Get-Acl -LiteralPath $OneDrivePath -ErrorAction Stop
+      } else {
+          Write-Host \"OneDrive folder is already absent; skipping folder permissions and cleanup.\"
+      }
 
-      # Some of OneDrive files use explorer, and OneDrive uses FileCoAuth
-      Write-Host \"Removing leftover OneDrive Files...\"
-      Stop-Process -Name FileCoAuth,Explorer
-      Remove-Item \"$Env:LocalAppData\\Microsoft\\OneDrive\" -Recurse -Force
-      Remove-Item \"C:\\ProgramData\\Microsoft OneDrive\" -Recurse -Force
+      try {
+          if ($OneDriveFolderExists) {
+              # Protect user files while the uninstaller runs.
+              icacls $OneDrivePath /deny \"*S-1-5-32-544:(D,DC)\"
+              if ($LASTEXITCODE -ne 0) { throw \"Unable to protect the OneDrive folder (icacls exit code $LASTEXITCODE).\" }
+          }
 
-      # Grant back permission to access OneDrive folder
-      icacls $Env:OneDrive /grant \"Administrators:(D,DC)\"
+          Write-Host \"Uninstalling OneDrive...\"
+          Start-Process -FilePath (Join-Path $Env:SystemRoot \"System32\\OneDriveSetup.exe\") -ArgumentList '/uninstall' -Wait -ErrorAction Stop
 
-      # Disable OneSyncSvc
-      Set-Service -Name OneSyncSvc -StartupType Disabled
+          # Some of OneDrive files use explorer, and OneDrive uses FileCoAuth
+          Write-Host \"Removing leftover OneDrive Files...\"
+
+          Get-Process -ErrorAction Stop | Where-Object ProcessName -eq 'FileCoAuth' | Stop-Process -ErrorAction Stop
+          Get-Process -ErrorAction Stop | Where-Object ProcessName -eq 'Explorer' | Stop-Process -ErrorAction Stop
+
+          $OneDriveLeftovers = @(\"$Env:LocalAppData\\Microsoft\\OneDrive\", \"$Env:ProgramData\\Microsoft OneDrive\")
+          foreach ($LeftoverPath in $OneDriveLeftovers) {
+              if (Test-Path -LiteralPath $LeftoverPath -ErrorAction Stop) {
+                  Remove-Item -LiteralPath $LeftoverPath -Recurse -Force -ErrorAction Stop
+              }
+          }
+      } finally {
+          if ($OneDriveFolderExists) {
+              # Restore access even when uninstall or leftover cleanup fails.
+              Set-Acl -LiteralPath $OneDrivePath -AclObject $OneDriveAcl -ErrorAction Stop
+          }
+      }
+
+      if ($OneDriveFolderExists -and -not (Get-ChildItem -LiteralPath $OneDrivePath -Force -ErrorAction Stop)) {
+          # Refuse to delete if files appeared after the emptiness check.
+          [System.IO.Directory]::Delete($OneDrivePath, $false)
+          [Environment]::SetEnvironmentVariable('OneDrive', $null, 'User')
+      }
+
+      # OneSyncSvc is a per-user template; Get-Service only exposes user instances.
+      # Skip the operation if this Windows installation has no template.
+      if (Test-Path -LiteralPath 'HKLM:\\SYSTEM\\CurrentControlSet\\Services\\OneSyncSvc') {
+          Set-Service -Name OneSyncSvc -StartupType Disabled
+      }
       "
     ],
     "UndoScript": [
@@ -684,45 +728,41 @@
       Write-Host \"Installing OneDrive\"
       winget install Microsoft.Onedrive --source winget
 
-      # Enabled OneSyncSvc
-      Set-Service -Name OneSyncSvc -StartupType Automatic
+      # Enable OneSyncSvc when the per-user service template exists
+      if (Test-Path -LiteralPath 'HKLM:\\SYSTEM\\CurrentControlSet\\Services\\OneSyncSvc') {
+          Set-Service -Name OneSyncSvc -StartupType Automatic
+      }
       "
     ],
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
-  "WPFTweaksRemoveHome": {
-    "Content": "Home di Esplora file - Disattiva",
-    "Description": "Rimuove Home da Esplora file e imposta Questo PC come cartella predefinita.",
+  "WPFTweaksRemoveHomeAndGallery": {
+    "Content": "Home e Raccolta di Esplora file - Disattiva",
+    "Description": "Rimuove Home e Raccolta da Esplora file e imposta Questo PC come cartella predefinita.",
     "category": "z__Ottimizzazioni avanzate - ATTENZIONE",
     "panel": "1",
-    "InvokeScript": [
-      "
-      Remove-Item \"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Desktop\\NameSpace\\{f874310e-b6b7-47dc-bc84-b9e6b38f5903}\"
-      Set-ItemProperty -Path \"HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced\" -Name LaunchTo -Value 1
-      "
-    ],
-    "UndoScript": [
-      "
-      New-Item \"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Desktop\\NameSpace\\{f874310e-b6b7-47dc-bc84-b9e6b38f5903}\"
-      Set-ItemProperty -Path \"HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced\" -Name LaunchTo -Value 0
-      "
-    ],
-    "link": "https://github.com/rtecnocopy89/WinRUtil"
-  },
-  "WPFTweaksRemoveGallery": {
-    "Content": "Raccolta di Esplora file - Disattiva",
-    "Description": "Rimuove Raccolta da Esplora file e imposta Questo PC come cartella predefinita.",
-    "category": "z__Ottimizzazioni avanzate - ATTENZIONE",
-    "panel": "1",
-    "InvokeScript": [
-      "
-      Remove-Item \"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Desktop\\NameSpace\\{e88865ea-0e1c-4e20-9aa6-edcd0212c87c}\"
-      "
-    ],
-    "UndoScript": [
-      "
-      New-Item \"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Desktop\\NameSpace\\{e88865ea-0e1c-4e20-9aa6-edcd0212c87c}\"
-      "
+    "registry": [
+      {
+        "Path": "HKCU:\\Software\\Classes\\CLSID\\{f874310e-b6b7-47dc-bc84-b9e6b38f5903}",
+        "Name": "System.IsPinnedToNameSpaceTree",
+        "Value": "0",
+        "Type": "DWord",
+        "OriginalValue": "<RemoveEntry>"
+      },
+      {
+        "Path": "HKCU:\\Software\\Classes\\CLSID\\{e88865ea-0e1c-4e20-9aa6-edcd0212c87c}",
+        "Name": "System.IsPinnedToNameSpaceTree",
+        "Value": "0",
+        "Type": "DWord",
+        "OriginalValue": "<RemoveEntry>"
+      },
+      {
+        "Path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+        "Name": "LaunchTo",
+        "Value": "1",
+        "Type": "DWord",
+        "OriginalValue": "<RemoveEntry>"
+      }
     ],
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
@@ -757,7 +797,7 @@
         "Path": "HKCU:\\Control Panel\\Keyboard",
         "Name": "KeyboardDelay",
         "Value": "0",
-        "Type": "DWord",
+        "Type": "String",
         "OriginalValue": "1"
       },
       {
@@ -801,20 +841,6 @@
         "Value": "0",
         "Type": "DWord",
         "OriginalValue": "1"
-      },
-      {
-        "Path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
-        "Name": "ShowTaskViewButton",
-        "Value": "0",
-        "Type": "DWord",
-        "OriginalValue": "1"
-      },
-      {
-        "Path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Search",
-        "Name": "SearchboxTaskbarMode",
-        "Value": "0",
-        "Type": "DWord",
-        "OriginalValue": "1"
       }
     ],
     "InvokeScript": [
@@ -825,67 +851,16 @@
     ],
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
-  "WPFTweaksXboxRemoval": {
-    "Content": "Componenti Xbox e gaming - Rimuovi",
-    "Description": "Rimuove i servizi Xbox, l'app Xbox, la Game Bar e i relativi componenti di autenticazione.",
+  "WPFTweaksReservedStorage": {
+    "Content": "Archiviazione riservata - Disattiva",
+    "Description": "Disattiva l'archiviazione riservata di Windows (7-10 GB tenuti da parte per aggiornamenti e file temporanei). Consigliato solo sui dischi piccoli: riattivala prima dei grandi aggiornamenti di Windows, per evitare errori di installazione.",
     "category": "z__Ottimizzazioni avanzate - ATTENZIONE",
     "panel": "1",
-    "registry": [
-      {
-        "Path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\GameDVR",
-        "Name": "AppCaptureEnabled",
-        "Value": "0",
-        "Type": "DWord",
-        "OriginalValue": "1"
-      }
-    ],
-    "appx": [
-      "Microsoft.XboxIdentityProvider",
-      "Microsoft.XboxSpeechToTextOverlay",
-      "Microsoft.GamingApp",
-      "Microsoft.Xbox.TCUI",
-      "Microsoft.XboxGamingOverlay"
-    ],
-    "link": "https://github.com/rtecnocopy89/WinRUtil"
-  },
-  "WPFTweaksDeBloat": {
-    "Content": "App preinstallate superflue - Rimuovi",
-    "Description": "Rimuove molte app preinstallate di Windows che la maggior parte degli utenti non usa.",
-    "category": "Ottimizzazioni essenziali",
-    "panel": "1",
-    "appx": [
-      "Microsoft.WindowsFeedbackHub",
-      "Microsoft.BingNews",
-      "Microsoft.BingSearch",
-      "Microsoft.BingWeather",
-      "Clipchamp.Clipchamp",
-      "Microsoft.Todos",
-      "Microsoft.PowerAutomateDesktop",
-      "Microsoft.MicrosoftSolitaireCollection",
-      "Microsoft.WindowsSoundRecorder",
-      "Microsoft.MicrosoftStickyNotes",
-      "Microsoft.Windows.DevHome",
-      "Microsoft.Paint",
-      "Microsoft.OutlookForWindows",
-      "Microsoft.WindowsAlarms",
-      "Microsoft.StartExperiencesApp",
-      "Microsoft.GetHelp",
-      "Microsoft.ZuneMusic",
-      "MicrosoftCorporationII.QuickAssist",
-      "MSTeams"
-    ],
     "InvokeScript": [
-      "
-      $TeamsPath = \"$Env:LocalAppData\\Microsoft\\Teams\\Update.exe\"
-
-      if (Test-Path $TeamsPath) {
-        Write-Host \"Uninstalling Teams\"
-        Start-Process $TeamsPath -ArgumentList -uninstall -wait
-
-        Write-Host \"Deleting Teams directory\"
-        Remove-Item $TeamsPath -Recurse -Force
-      }
-      "
+      "DISM /Online /Set-ReservedStorageState /State:Disabled"
+    ],
+    "UndoScript": [
+      "DISM /Online /Set-ReservedStorageState /State:Enabled"
     ],
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
@@ -932,19 +907,6 @@
     ],
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
-  "WPFTweaksPowershell7Tele": {
-    "Content": "Telemetria di PowerShell 7 - Disattiva",
-    "Description": "Crea la variabile di ambiente 'POWERSHELL_TELEMETRY_OPTOUT' con valore '1', così PowerShell 7 non invia dati di telemetria.",
-    "category": "Ottimizzazioni essenziali",
-    "panel": "1",
-    "InvokeScript": [
-      "[Environment]::SetEnvironmentVariable('POWERSHELL_TELEMETRY_OPTOUT', '1', 'Machine')"
-    ],
-    "UndoScript": [
-      "[Environment]::SetEnvironmentVariable('POWERSHELL_TELEMETRY_OPTOUT', '', 'Machine')"
-    ],
-    "link": "https://github.com/rtecnocopy89/WinRUtil"
-  },
   "WPFTweaksStorage": {
     "Content": "Sensore memoria - Disattiva",
     "Description": "Sensore memoria elimina automaticamente i file temporanei.",
@@ -961,29 +923,58 @@
     ],
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
-  "WPFTweaksRemoveCopilot": {
-    "Content": "Microsoft Copilot - Disattiva",
-    "Description": "Rimuove i pacchetti AppX di Copilot e i relativi pacchetti di intelligenza artificiale.",
+  "WPFTweaksWindowsAI": {
+    "Content": "Funzioni di intelligenza artificiale (Copilot, Recall) - Disattiva e rimuovi",
+    "Description": "Rimuove e disattiva tutte le funzioni e i pacchetti di intelligenza artificiale di Windows, tra cui Copilot e Recall.",
     "category": "z__Ottimizzazioni avanzate - ATTENZIONE",
     "panel": "1",
+    "registry": [
+      {
+        "Path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer",
+        "Name": "SettingsPageVisibility",
+        "Value": "hide:aicomponents",
+        "Type": "String",
+        "OriginalValue": "<RemoveEntry>"
+      },
+      {
+        "Path": "HKLM:\\SOFTWARE\\Policies\\WindowsNotepad",
+        "Name": "DisableAIFeatures",
+        "Value": "1",
+        "Type": "DWord",
+        "OriginalValue": "<RemoveEntry>"
+      }
+    ],
     "InvokeScript": [
       "
-      Get-AppxPackage -AllUsers *Copilot* | Remove-AppxPackage -AllUsers
-      Get-AppxPackage -AllUsers Microsoft.MicrosoftOfficeHub | Remove-AppxPackage -AllUsers
-
       $Appx = (Get-AppxPackage MicrosoftWindows.Client.CoreAI).PackageFullName
       $Sid = (Get-LocalUser $Env:UserName).Sid.Value
 
       New-Item \"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Appx\\AppxAllUserStore\\EndOfLife\\$Sid\\$Appx\" -Force
-      Remove-AppxPackage $Appx
 
-      Write-Host \"Copilot Removed\"
-      "
-    ],
-    "UndoScript": [
-      "
-      Write-Host \"Installing Copilot...\"
-      winget install --name Copilot --source msstore --accept-package-agreements --accept-source-agreements --silent
+      Get-AppxPackage -AllUsers \"*Copilot*\" | Remove-AppxPackage -AllUsers
+      winget uninstall -e --name \"Copilot\" --silent --force --accept-source-agreements 2>$null
+      Get-AppxPackage -AllUsers Microsoft.MicrosoftOfficeHub | Remove-AppxPackage -AllUsers
+
+      if ($Appx) {
+          Remove-AppxPackage $Appx
+      }
+
+      # WSAIFabricSvc only exists on some Windows 11 builds; without the guard a
+      # missing service aborts the rest of this script block and Recall stays enabled
+      if (Get-Service -Name WSAIFabricSvc -ErrorAction SilentlyContinue) {
+          Set-Service -Name WSAIFabricSvc -StartupType Disabled
+      }
+      # Store/MSIX PowerShell 7 can hang or fail COM activation in DISM.
+      $RecallCommand = {
+          Disable-WindowsOptionalFeature -FeatureName Recall -Online -NoRestart -ErrorAction Stop | Out-Null
+      }
+      $RecallOutput = powershell.exe -NoProfile -NonInteractive -Command $RecallCommand 2>&1
+      if ($LASTEXITCODE -ne 0) {
+          throw \"Failed to disable Recall (exit code $LASTEXITCODE): $(($RecallOutput | Out-String).Trim())\"
+      }
+      $RecallOutput | ForEach-Object { Write-Host $_ }
+
+      Write-Host \"Windows AI Disabled\"
       "
     ],
     "link": "https://github.com/rtecnocopy89/WinRUtil"
@@ -997,6 +988,22 @@
       {
         "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Session Manager",
         "Name": "DisableWpbtExecution",
+        "Value": "1",
+        "Type": "DWord",
+        "OriginalValue": "<RemoveEntry>"
+      }
+    ],
+    "link": "https://github.com/rtecnocopy89/WinRUtil"
+  },
+  "WPFTweaksPreventDeviceMetadataFromNetwork": {
+    "Content": "App complementari dei dispositivi - Blocca",
+    "Description": "Impedisce l'installazione di software aggiuntivo quando si collega un dispositivo (ad es. pubblicità quando si collega un monitor), che può essere un rischio per la sicurezza.",
+    "category": "Ottimizzazioni essenziali",
+    "panel": "1",
+    "registry": [
+      {
+        "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Device Metadata",
+        "Name": "PreventDeviceMetadataFromNetwork",
         "Value": "1",
         "Type": "DWord",
         "OriginalValue": "<RemoveEntry>"
@@ -1027,7 +1034,7 @@
     ],
     "InvokeScript": [
       "
-      $RazerPath = \"C:\\Windows\\Installer\\Razer\"
+      $RazerPath = \"$Env:SystemRoot\\Installer\\Razer\"
 
       if (Test-Path $RazerPath) {
         Remove-Item $RazerPath\\* -Recurse -Force
@@ -1035,12 +1042,47 @@
         New-Item -Path $RazerPath -ItemType Directory
       }
 
-      icacls $RazerPath /deny \"Everyone:(W)\"
+      icacls $RazerPath /deny \"*S-1-1-0:(W)\"
       "
     ],
     "UndoScript": [
       "
-      icacls \"C:\\Windows\\Installer\\Razer\" /remove:d Everyone
+      icacls \"$Env:SystemRoot\\Installer\\Razer\" /remove:d *S-1-1-0
+      "
+    ],
+    "link": "https://github.com/rtecnocopy89/WinRUtil"
+  },
+  "WPFTweaksLogiBlock": {
+    "Content": "Installazione automatica di Logi Download Assistant - Disattiva",
+    "Description": "Blocca Logi Download Assistant, che Windows Update reinstalla insieme ai driver dei dispositivi Logitech. Le periferiche Logitech funzionano anche senza.",
+    "category": "z__Ottimizzazioni avanzate - ATTENZIONE",
+    "panel": "1",
+    "InvokeScript": [
+      "
+      Stop-Process -Name \"logi_download_assistant\" -Force -ErrorAction SilentlyContinue
+
+      $ProgramFiles64 = if ($Env:ProgramW6432) { $Env:ProgramW6432 } else { $Env:ProgramFiles }
+      $LogiPath = \"$ProgramFiles64\\LogiDownloadAssistant\"
+
+      if (Test-Path $LogiPath) {
+        Remove-Item $LogiPath\\* -Recurse -Force
+      } else {
+        New-Item -Path $LogiPath -ItemType Directory
+      }
+
+      icacls $LogiPath /deny \"*S-1-1-0:(W)\"
+      if ($LASTEXITCODE -ne 0) { throw \"icacls failed to deny write access on $LogiPath (exit code $LASTEXITCODE)\" }
+      "
+    ],
+    "UndoScript": [
+      "
+      $ProgramFiles64 = if ($Env:ProgramW6432) { $Env:ProgramW6432 } else { $Env:ProgramFiles }
+      $LogiPath = \"$ProgramFiles64\\LogiDownloadAssistant\"
+
+      if (Test-Path $LogiPath) {
+        icacls $LogiPath /remove:d \"*S-1-1-0\"
+        if ($LASTEXITCODE -ne 0) { throw \"icacls failed to remove the write-deny rule on $LogiPath (exit code $LASTEXITCODE)\" }
+      }
       "
     ],
     "link": "https://github.com/rtecnocopy89/WinRUtil"
@@ -1075,25 +1117,21 @@
     "panel": "1",
     "InvokeScript": [
       "
-      $hostsUrl = \"https://github.com/Ruddernation-Designs/Adobe-URL-Block-List/raw/refs/heads/master/hosts\"
-      $hosts = \"$Env:SystemRoot\\System32\\drivers\\etc\\hosts\"
+      $hostsUrl = Invoke-RestMethod -Uri https://github.com/Ruddernation-Designs/Adobe-URL-Block-List/raw/refs/heads/master/hosts
+      Add-Content -Path \"$Env:SystemRoot\\System32\\drivers\\etc\\hosts\" -Value $hostsUrl
 
-      Move-Item $hosts \"$hosts.bak\"
-      Invoke-WebRequest $hostsUrl -OutFile $hosts
       ipconfig /flushdns
-
-      Write-Host \"Added Adobe url block list from host file\"
+      Write-Host 'Added Adobe url block list from host file'
       "
     ],
     "UndoScript": [
       "
-      $hosts = \"$Env:SystemRoot\\System32\\drivers\\etc\\hosts\"
+      Set-Content \"$Env:SystemRoot\\System32\\drivers\\etc\\hosts\" (
+          (Get-Content \"$Env:SystemRoot\\System32\\drivers\\etc\\hosts\") -join \"`n\" -replace '(?s)#New Ver.*', ''
+      )
 
-      Remove-Item $hosts
-      Move-Item \"$hosts.bak\" $hosts
       ipconfig /flushdns
-
-      Write-Host \"Removed Adobe url block list from host file\"
+      Write-Host 'Removed Adobe url block list from host file'
       "
     ],
     "link": "https://github.com/rtecnocopy89/WinRUtil"
@@ -1105,18 +1143,12 @@
     "panel": "1",
     "InvokeScript": [
       "
-      New-Item -Path \"HKCU:\\Software\\Classes\\CLSID\\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\" -Name \"InprocServer32\" -force -value \"\"
-      Write-Host Restarting explorer.exe ...
-      Stop-Process -Name \"explorer\" -Force
+      New-Item -Path \"HKCU:\\Software\\Classes\\CLSID\\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\" -Name InprocServer32 -Value \"\" -Force
+      Stop-Process -Name explorer
       "
     ],
     "UndoScript": [
-      "
-      Remove-Item -Path \"HKCU:\\Software\\Classes\\CLSID\\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\" -Recurse -Confirm:$false -Force
-      # Restarting Explorer in the Undo Script might not be necessary, as the Registry change without restarting Explorer does work, but just to make sure.
-      Write-Host Restarting explorer.exe ...
-      Stop-Process -Name \"explorer\" -Force
-      "
+      "Remove-Item -Path \"HKCU:\\Software\\Classes\\CLSID\\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\" -Recurse"
     ],
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
@@ -1140,8 +1172,10 @@
     "panel": "1",
     "InvokeScript": [
       "
-      Remove-Item -Path \"$Env:Temp\\*\" -Recurse -Force
-      Remove-Item -Path \"$Env:SystemRoot\\Temp\\*\" -Recurse -Force
+      # A temp folder always holds files something has open, including this run's own, and
+      # the job layer counts a logged error as a failed step
+      Remove-Item -Path \"$Env:Temp\\*\" -Recurse -Force -ErrorAction SilentlyContinue
+      Remove-Item -Path \"$Env:SystemRoot\\Temp\\*\" -Recurse -Force -ErrorAction SilentlyContinue
       "
     ],
     "link": "https://github.com/rtecnocopy89/WinRUtil"
@@ -1222,37 +1256,58 @@
     ],
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
-  "WPFTweaksDisableFSO": {
-    "Content": "Ottimizzazioni a schermo intero - Disattiva",
-    "Description": "Disattiva le ottimizzazioni a schermo intero (FSO) in tutte le applicazioni. NOTA: disattiva anche la gestione del colore nello schermo intero esclusivo.",
-    "category": "z__Ottimizzazioni avanzate - ATTENZIONE",
+  "WPFTweaksDisableExplorerAutoDiscovery": {
+    "Content": "Rilevamento automatico del tipo di cartella - Disattiva",
+    "Description": "Esplora file cerca di indovinare il tipo di cartella in base al contenuto e questo rallenta la navigazione. ATTENZIONE: disattiva il raggruppamento in Esplora file.",
+    "category": "Ottimizzazioni essenziali",
     "panel": "1",
-    "registry": [
-      {
-        "Path": "HKCU:\\System\\GameConfigStore",
-        "Name": "GameDVR_DXGIHonorFSEWindowsCompatible",
-        "Value": "1",
-        "Type": "DWord",
-        "OriginalValue": "0"
+    "InvokeScript": [
+      "
+      # Previously detected folders
+      $bags = \"HKCU:\\Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\Shell\\Bags\"
+
+      # Folder types lookup table
+      $bagMRU = \"HKCU:\\Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\Shell\\BagMRU\"
+
+      # Flush Explorer view database
+      Remove-Item -Path $bags -Recurse -Force
+      Write-Host \"Removed $bags\"
+
+      Remove-Item -Path $bagMRU -Recurse -Force
+      Write-Host \"Removed $bagMRU\"
+
+      # Every folder
+      $allFolders = \"HKCU:\\Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\Shell\\Bags\\AllFolders\\Shell\"
+
+      if (!(Test-Path $allFolders)) {
+        New-Item -Path $allFolders -Force
+        Write-Host \"Created $allFolders\"
       }
+
+      # Generic view
+      New-ItemProperty -Path $allFolders -Name \"FolderType\" -Value \"NotSpecified\" -PropertyType String -Force
+      Write-Host \"Set FolderType to NotSpecified\"
+
+      Write-Host Please sign out and back in, or restart your computer to apply the changes!
+      "
     ],
-    "link": "https://github.com/rtecnocopy89/WinRUtil"
-  },
-  "WPFToggleDisableCrossDeviceResume": {
-    "Content": "Ripresa tra dispositivi",
-    "Description": "Controlla la funzione Riprendi di Windows 11 24H2 e successive, che permette di riprendere un'attività dal telefono al PC e viceversa.",
-    "category": "Preferenze",
-    "panel": "2",
-    "Type": "Toggle",
-    "registry": [
-      {
-        "Path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\CrossDeviceResume\\Configuration",
-        "Name": "IsResumeAllowed",
-        "Value": "1",
-        "Type": "DWord",
-        "OriginalValue": "0",
-        "DefaultState": "true"
-      }
+    "UndoScript": [
+      "
+      # Previously detected folders
+      $bags = \"HKCU:\\Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\Shell\\Bags\"
+
+      # Folder types lookup table
+      $bagMRU = \"HKCU:\\Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\Shell\\BagMRU\"
+
+      # Flush Explorer view database
+      Remove-Item -Path $bags -Recurse -Force
+      Write-Host \"Removed $bags\"
+
+      Remove-Item -Path $bagMRU -Recurse -Force
+      Write-Host \"Removed $bagMRU\"
+
+      Write-Host Please sign out and back in, or restart your computer to apply the changes!
+      "
     ],
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
@@ -1471,26 +1526,45 @@
         "Value": "0",
         "Type": "DWord",
         "OriginalValue": "1",
-        "DefaultState": "false",
-      "link": "https://github.com/rtecnocopy89/WinRUtil"
+        "DefaultState": "false"
       }
     ],
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
-  "WPFToggleMultiplaneOverlay": {
+  "WPFMultiplaneOverlay": {
     "Content": "Multiplane Overlay",
-    "Description": "Attiva o disattiva il Multiplane Overlay, che a volte causa problemi con alcune schede video.",
+    "Description": "Il Multiplane Overlay compone più livelli di immagine e con alcune schede video può causare problemi. La modifica viene applicata subito.",
     "category": "Preferenze",
     "panel": "2",
-    "Type": "Toggle",
+    "Type": "Combobox",
+    "ComboItems": "Attivo|Disattivato (compatibilità)|Disattivato completamente",
+    "ComboDescriptions": {
+      "Attivo": "Usa il comportamento predefinito di Windows.",
+      "Disattivato (compatibilità)": "Disattiva l'MPO con OverlayTestMode=5, il metodo meno aggressivo.",
+      "Disattivato completamente": "Disattiva l'MPO con OverlayTestMode=5 e DisableOverlays=1, il metodo più aggressivo."
+    },
     "registry": [
       {
         "Path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\Dwm",
         "Name": "OverlayTestMode",
-        "Value": "0",
         "Type": "DWord",
-        "OriginalValue": "5",
-        "DefaultState": "true"
+        "DefaultValue": "0",
+        "Values": {
+          "Attivo": "<RemoveEntry>",
+          "Disattivato (compatibilità)": "5",
+          "Disattivato completamente": "5"
+        }
+      },
+      {
+        "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\GraphicsDrivers",
+        "Name": "DisableOverlays",
+        "Type": "DWord",
+        "DefaultValue": "0",
+        "Values": {
+          "Attivo": "<RemoveEntry>",
+          "Disattivato (compatibilità)": "<RemoveEntry>",
+          "Disattivato completamente": "1"
+        }
       }
     ],
     "link": "https://github.com/rtecnocopy89/WinRUtil"
@@ -1506,7 +1580,7 @@
         "Path": "HKCU:\\Control Panel\\Mouse",
         "Name": "MouseSpeed",
         "Value": "1",
-        "Type": "DWord",
+        "Type": "String",
         "OriginalValue": "0",
         "DefaultState": "true"
       },
@@ -1514,7 +1588,7 @@
         "Path": "HKCU:\\Control Panel\\Mouse",
         "Name": "MouseThreshold1",
         "Value": "6",
-        "Type": "DWord",
+        "Type": "String",
         "OriginalValue": "0",
         "DefaultState": "true"
       },
@@ -1522,7 +1596,7 @@
         "Path": "HKCU:\\Control Panel\\Mouse",
         "Name": "MouseThreshold2",
         "Value": "10",
-        "Type": "DWord",
+        "Type": "String",
         "OriginalValue": "0",
         "DefaultState": "true"
       }
@@ -1551,6 +1625,24 @@
         "Type": "String",
         "OriginalValue": "0",
         "DefaultState": "false"
+      }
+    ],
+    "link": "https://github.com/rtecnocopy89/WinRUtil"
+  },
+  "WPFToggleWindowSnapping": {
+    "Content": "Ancoraggio delle finestre",
+    "Description": "Attiva o disattiva l'ancoraggio delle finestre quando vengono trascinate verso i bordi dello schermo.",
+    "category": "Preferenze",
+    "panel": "2",
+    "Type": "Toggle",
+    "registry": [
+      {
+        "Path": "HKCU:\\Control Panel\\Desktop",
+        "Name": "WindowArrangementActive",
+        "Value": "1",
+        "Type": "String",
+        "OriginalValue": "0",
+        "DefaultState": "true"
       }
     ],
     "link": "https://github.com/rtecnocopy89/WinRUtil"
@@ -1641,6 +1733,23 @@
         "Type": "DWord",
         "OriginalValue": "1",
         "DefaultState": "true"
+      }
+    ],
+    "link": "https://github.com/rtecnocopy89/WinRUtil"
+  },
+  "WPFToggleDisableLockscreen": {
+    "Content": "Salta la schermata di blocco",
+    "Description": "Salta del tutto la schermata di blocco: all'avvio e alla riattivazione compare subito la schermata di accesso.",
+    "category": "Preferenze",
+    "panel": "2",
+    "Type": "Toggle",
+    "registry": [
+      {
+        "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Personalization",
+        "Name": "NoLockScreen",
+        "Value": "1",
+        "Type": "DWord",
+        "OriginalValue": "<RemoveEntry>"
       }
     ],
     "link": "https://github.com/rtecnocopy89/WinRUtil"
@@ -1771,8 +1880,53 @@
     ],
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
+  "WPFToggleGameMode": {
+    "Content": "Modalità gioco",
+    "Description": "Attiva o disattiva la Modalità gioco, con cui Windows dà la priorità ai giochi nell'uso delle risorse del sistema.",
+    "category": "Preferenze",
+    "panel": "2",
+    "Type": "Toggle",
+    "registry": [
+      {
+        "Path": "HKCU:\\Software\\Microsoft\\GameBar",
+        "Name": "AllowAutoGameMode",
+        "Value": "1",
+        "Type": "DWord",
+        "OriginalValue": "0",
+        "DefaultState": "true"
+      },
+      {
+        "Path": "HKCU:\\Software\\Microsoft\\GameBar",
+        "Name": "AutoGameModeEnabled",
+        "Value": "1",
+        "Type": "DWord",
+        "OriginalValue": "0",
+        "DefaultState": "true"
+      }
+    ],
+    "link": "https://github.com/rtecnocopy89/WinRUtil"
+  },
+  "WPFToggleLongPaths": {
+    "Content": "Percorsi lunghi",
+    "Description": "Attiva o disattiva il supporto ai percorsi dei file più lunghi di 260 caratteri.",
+    "category": "Preferenze",
+    "panel": "2",
+    "Type": "Toggle",
+    "registry": [
+      {
+        "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\FileSystem",
+        "Name": "LongPathsEnabled",
+        "Value": "1",
+        "Type": "DWord",
+        "OriginalValue": "0",
+        "DefaultState": "false"
+      }
+    ],
+    "link": "https://github.com/rtecnocopy89/WinRUtil"
+  },
   "WPFOOSUbutton": {
     "Content": "O&O ShutUp10++ - Esegui",
+    "Description": "Scarica O&O ShutUp10++ da oo-software.com e lo avvia, senza installarlo.",
     "category": "z__Ottimizzazioni avanzate - ATTENZIONE",
     "panel": "1",
     "Type": "Button",
@@ -1783,12 +1937,12 @@
     "category": "z__Ottimizzazioni avanzate - ATTENZIONE",
     "panel": "1",
     "Type": "Combobox",
-    "ComboItems": "Default DHCP Google Cloudflare Cloudflare_Malware Cloudflare_Malware_Adult Open_DNS Quad9 AdGuard_Ads_Trackers AdGuard_Ads_Trackers_Malware_Adult",
+    "ComboItems": "Default DHCP Fastest Google Cloudflare Cloudflare_Malware Cloudflare_Malware_Adult Open_DNS Quad9 AdGuard_Ads_Trackers AdGuard_Ads_Trackers_Malware_Adult",
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
   "WPFAddUltPerf": {
     "Content": "Profilo Prestazioni eccellenti - Attiva",
-    "category": "z__Piani di alimentazione",
+    "category": "z__Piani di alimentazione - NON PER I PORTATILI",
     "panel": "2",
     "Type": "Button",
     "ButtonWidth": "300",
@@ -1796,65 +1950,10 @@
   },
   "WPFRemoveUltPerf": {
     "Content": "Profilo Prestazioni eccellenti - Disattiva",
-    "category": "z__Piani di alimentazione",
+    "category": "z__Piani di alimentazione - NON PER I PORTATILI",
     "panel": "2",
     "Type": "Button",
     "ButtonWidth": "300",
-    "link": "https://github.com/rtecnocopy89/WinRUtil"
-  },
-  "WPFTweaksDisableExplorerAutoDiscovery": {
-    "Content": "Rilevamento automatico del tipo di cartella - Disattiva",
-    "Description": "Esplora file cerca di indovinare il tipo di cartella in base al contenuto e questo rallenta la navigazione. ATTENZIONE: disattiva il raggruppamento in Esplora file.",
-    "category": "Ottimizzazioni essenziali",
-    "panel": "1",
-    "InvokeScript": [
-      "
-      # Previously detected folders
-      $bags = \"HKCU:\\Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\Shell\\Bags\"
-
-      # Folder types lookup table
-      $bagMRU = \"HKCU:\\Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\Shell\\BagMRU\"
-
-      # Flush Explorer view database
-      Remove-Item -Path $bags -Recurse -Force
-      Write-Host \"Removed $bags\"
-
-      Remove-Item -Path $bagMRU -Recurse -Force
-      Write-Host \"Removed $bagMRU\"
-
-      # Every folder
-      $allFolders = \"HKCU:\\Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\Shell\\Bags\\AllFolders\\Shell\"
-
-      if (!(Test-Path $allFolders)) {
-        New-Item -Path $allFolders -Force
-        Write-Host \"Created $allFolders\"
-      }
-
-      # Generic view
-      New-ItemProperty -Path $allFolders -Name \"FolderType\" -Value \"NotSpecified\" -PropertyType String -Force
-      Write-Host \"Set FolderType to NotSpecified\"
-
-      Write-Host Please sign out and back in, or restart your computer to apply the changes!
-      "
-    ],
-    "UndoScript": [
-      "
-      # Previously detected folders
-      $bags = \"HKCU:\\Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\Shell\\Bags\"
-
-      # Folder types lookup table
-      $bagMRU = \"HKCU:\\Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\Shell\\BagMRU\"
-
-      # Flush Explorer view database
-      Remove-Item -Path $bags -Recurse -Force
-      Write-Host \"Removed $bags\"
-
-      Remove-Item -Path $bagMRU -Recurse -Force
-      Write-Host \"Removed $bagMRU\"
-
-      Write-Host Please sign out and back in, or restart your computer to apply the changes!
-      "
-    ],
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   }
 }

@@ -1,0 +1,271 @@
+﻿{
+  "WPFAppxMicrosoft_WindowsFeedbackHub": {
+    "Category": "App Microsoft",
+    "Content": "Hub di Feedback",
+    "Description": "Permette di inviare a Microsoft segnalazioni di problemi, suggerimenti e dati di diagnostica.",
+    "Panel": "1",
+    "PackageId": "Microsoft.WindowsFeedbackHub",
+    "StoreId": "9NBLGGH4R32N"
+  },
+  "WPFAppxMicrosoft_GetHelp": {
+    "Category": "App Microsoft",
+    "Content": "Richiedi assistenza",
+    "Description": "Offre guide di risoluzione dei problemi, documentazione di supporto e il contatto con l'assistenza Microsoft.",
+    "Panel": "1",
+    "PackageId": "Microsoft.GetHelp",
+    "StoreId": "9PKDZBMV1H3T"
+  },
+  "WPFAppxMicrosoft_OutlookForWindows": {
+    "Category": "App Microsoft",
+    "Content": "Outlook per Windows",
+    "Description": "Il nuovo Outlook: posta elettronica, calendario e contatti.",
+    "Panel": "1",
+    "PackageId": "Microsoft.OutlookForWindows",
+    "StoreId": "9NRX63209R7B"
+  },
+  "WPFAppxMSTeams": {
+    "Category": "App Microsoft",
+    "Content": "Microsoft Teams",
+    "Description": "Messaggistica, videochiamate, condivisione di file e collaborazione.",
+    "Panel": "1",
+    "PackageId": "MSTeams",
+    "StoreId": "XP8BT8DW290MPQ"
+  },
+  "WPFAppxClipchamp_Clipchamp": {
+    "Category": "Utilità e produttività",
+    "Content": "Clipchamp",
+    "Description": "Editor video semplice da usare, con modelli, effetti e linea temporale.",
+    "Panel": "0",
+    "PackageId": "Clipchamp.Clipchamp",
+    "StoreId": "9P1J8S7CCWWT"
+  },
+  "WPFAppxMicrosoft_MicrosoftOfficeHub": {
+    "Category": "App Microsoft",
+    "Content": "Microsoft 365",
+    "Description": "Avvio rapido delle app di Microsoft 365 nel cloud e dei documenti recenti.",
+    "Panel": "1",
+    "PackageId": "Microsoft.MicrosoftOfficeHub",
+    "StoreId": "9WZDNCRD29V9"
+  },
+  "WPFAppxMicrosoft_ZuneMusic": {
+    "Category": "Utilità e produttività",
+    "Content": "Lettore multimediale",
+    "Description": "Riproduce file audio e video locali, con playlist e trasmissione ad altri dispositivi.",
+    "Panel": "0",
+    "PackageId": "Microsoft.ZuneMusic",
+    "StoreId": "9WZDNCRFJ3PT"
+  },
+  "WPFAppxMicrosoft_BingSearch": {
+    "Category": "Bing e servizi web",
+    "Content": "Ricerca Bing",
+    "Description": "Integra la ricerca e i servizi web di Bing nel sistema operativo.",
+    "Panel": "1",
+    "PackageId": "Microsoft.BingSearch",
+    "StoreId": "9NZBF4GT040C"
+  },
+  "WPFAppxMicrosoftCorporationII_QuickAssist": {
+    "Category": "Utilità e produttività",
+    "Content": "Assistenza rapida",
+    "Description": "Permette di ricevere o dare assistenza tecnica remota condividendo lo schermo via Internet.",
+    "Panel": "0",
+    "PackageId": "MicrosoftCorporationII.QuickAssist",
+    "StoreId": "9P7BP5VNWKX5"
+  },
+  "WPFAppxMicrosoft_WindowsDevHome": {
+    "Category": "Strumenti per sviluppatori",
+    "Content": "Dev Home",
+    "Description": "Dashboard per gli sviluppatori: configurazione dell'ambiente, sincronizzazione dei repository e widget di sistema.",
+    "Panel": "0",
+    "PackageId": "Microsoft.Windows.DevHome",
+    "StoreId": "9N8MHTPHNGVV"
+  },
+  "WPFAppxMicrosoft_WindowsCrossDevice": {
+    "Category": "Ecosistema Microsoft",
+    "Content": "Dispositivi mobili",
+    "Description": "Gestisce il collegamento in background con i telefoni associati. Rimuoverla può disattivare le funzioni tra dispositivi delle Impostazioni, come lo schermo del telefono, il trasferimento dei file e l'hotspot.",
+    "Panel": "1",
+    "PackageId": "MicrosoftWindows.CrossDevice",
+    "StoreId": "9NTXGKQ8P7N0"
+  },
+  "WPFAppxMicrosoft_Todos": {
+    "Category": "Utilità e produttività",
+    "Content": "Microsoft To Do",
+    "Description": "Crea e sincronizza attività, elenchi e promemoria.",
+    "Panel": "0",
+    "PackageId": "Microsoft.Todos",
+    "StoreId": "9NBLGGH5R558"
+  },
+  "WPFAppxMicrosoft_PowerAutomateDesktop": {
+    "Category": "Strumenti per sviluppatori",
+    "Content": "Power Automate",
+    "Description": "Automatizza attività ripetitive del desktop con flussi visuali senza codice.",
+    "Panel": "0",
+    "PackageId": "Microsoft.PowerAutomateDesktop",
+    "StoreId": "9NFTCH6J7FHV"
+  },
+  "WPFAppxMicrosoft_YourPhone": {
+    "Category": "Ecosistema Microsoft",
+    "Content": "Collegamento al telefono",
+    "Description": "Porta sul PC messaggi, notifiche, foto e chiamate del telefono.",
+    "Panel": "1",
+    "PackageId": "Microsoft.YourPhone",
+    "StoreId": "9NMPJ99VJBWV"
+  },
+  "WPFAppxMicrosoft_MicrosoftStickyNotes": {
+    "Category": "Utilità e produttività",
+    "Content": "Sticky Notes",
+    "Description": "Note rapide sul desktop, sincronizzate tra i dispositivi.",
+    "Panel": "0",
+    "PackageId": "Microsoft.MicrosoftStickyNotes",
+    "StoreId": "9NBLGGH4QGHW"
+  },
+  "WPFAppxMicrosoft_WindowsSoundRecorder": {
+    "Category": "Utilità e produttività",
+    "Content": "Registratore di suoni",
+    "Description": "Registra e taglia l'audio del microfono.",
+    "Panel": "0",
+    "PackageId": "Microsoft.WindowsSoundRecorder",
+    "StoreId": "9WZDNCRFHWKN"
+  },
+  "WPFAppxMicrosoft_WindowsAlarms": {
+    "Category": "Utilità e produttività",
+    "Content": "Orologio",
+    "Description": "Orologi del mondo, sveglie, timer, cronometro e sessioni di concentrazione.",
+    "Panel": "0",
+    "PackageId": "Microsoft.WindowsAlarms",
+    "StoreId": "9WZDNCRFJ3PR"
+  },
+  "WPFAppxMicrosoft_Paint": {
+    "Category": "Utilità e produttività",
+    "Content": "Paint",
+    "Description": "Disegno e modifica di base delle immagini.",
+    "Panel": "0",
+    "PackageId": "Microsoft.Paint",
+    "StoreId": "9PCFS5B6T72H"
+  },
+  "WPFAppxMicrosoft_WindowsNotepad": {
+    "Category": "Utilità e produttività",
+    "Content": "Blocco note",
+    "Description": "Editor di testo leggero con le schede, per file di testo e frammenti di codice.",
+    "Panel": "0",
+    "PackageId": "Microsoft.WindowsNotepad",
+    "StoreId": "9MSMLRH6LZF3"
+  },
+  "WPFAppxMicrosoft_ScreenSketch": {
+    "Category": "Utilità e produttività",
+    "Content": "Strumento di cattura",
+    "Description": "Cattura schermate e registrazioni dello schermo, con annotazioni, ritaglio e riconoscimento del testo (OCR).",
+    "Panel": "0",
+    "PackageId": "Microsoft.ScreenSketch",
+    "StoreId": "9MZ95KL8MR0L"
+  },
+  "WPFAppxMicrosoft_Copilot": {
+    "Category": "Bing e servizi web",
+    "Content": "Copilot",
+    "Description": "L'assistente di intelligenza artificiale di Microsoft per risposte, scrittura e ricerca sul web.",
+    "Panel": "1",
+    "PackageId": "Microsoft.Copilot",
+    "StoreId": "9NHT9RB2F4HD"
+  },
+  "WPFAppxMicrosoft_WindowsCalculator": {
+    "Category": "Utilità e produttività",
+    "Content": "Calcolatrice",
+    "Description": "Calcoli standard, scientifici, da programmatore e conversioni di unità.",
+    "Panel": "0",
+    "PackageId": "Microsoft.WindowsCalculator",
+    "StoreId": "9WZDNCRFHVN5"
+  },
+  "WPFAppxMicrosoft_WindowsCamera": {
+    "Category": "Utilità e produttività",
+    "Content": "Fotocamera",
+    "Description": "Scatta foto e registra video con la webcam o altre fotocamere collegate.",
+    "Panel": "0",
+    "PackageId": "Microsoft.WindowsCamera",
+    "StoreId": "9WZDNCRFJBBG"
+  },
+  "WPFAppxMicrosoft_WindowsPhotos": {
+    "Category": "Utilità e produttività",
+    "Content": "Foto",
+    "Description": "Organizza, visualizza e ritaglia le immagini, con regolazioni di base e album.",
+    "Panel": "0",
+    "PackageId": "Microsoft.Windows.Photos",
+    "StoreId": "9WZDNCRFJBH4"
+  },
+  "WPFAppxMicrosoft_BingNews": {
+    "Category": "Bing e servizi web",
+    "Content": "Notizie",
+    "Description": "Notizie del giorno e articoli personalizzati.",
+    "Panel": "1",
+    "PackageId": "Microsoft.BingNews",
+    "StoreId": "9WZDNCRFHVFW"
+  },
+  "WPFAppxMicrosoft_BingWeather": {
+    "Category": "Bing e servizi web",
+    "Content": "Meteo",
+    "Description": "Meteo locale in tempo reale, mappe radar e previsioni.",
+    "Panel": "1",
+    "PackageId": "Microsoft.BingWeather",
+    "StoreId": "9WZDNCRFJ3Q2"
+  },
+  "WPFAppxMicrosoft_GamingApp": {
+    "Category": "Xbox e giochi",
+    "Content": "App Xbox",
+    "Description": "Raccolta dei giochi, community e PC Game Pass.",
+    "Panel": "1",
+    "PackageId": "Microsoft.GamingApp",
+    "StoreId": "9MV0B5HZVK9Z"
+  },
+  "WPFAppxMicrosoft_XboxGamingOverlay": {
+    "Category": "Xbox e giochi",
+    "Content": "Xbox Game Bar",
+    "Description": "Widget durante il gioco, volumi, monitoraggio del sistema e registrazione delle partite.",
+    "Panel": "1",
+    "PackageId": "Microsoft.XboxGamingOverlay",
+    "StoreId": "9NZKPSTSNW4P"
+  },
+  "WPFAppxMicrosoft_XboxIdentityProvider": {
+    "Category": "Xbox e giochi",
+    "Content": "Provider di identità Xbox",
+    "Description": "Gestisce l'accesso alla rete Xbox per i giochi collegati. Attenzione: rimuoverlo può impedire l'accesso con l'account Microsoft anche in giochi e app non Xbox che lo usano.",
+    "Panel": "1",
+    "PackageId": "Microsoft.XboxIdentityProvider",
+    "StoreId": "9WZDNCRD1HKW"
+  },
+  "WPFAppxMicrosoft_XboxSpeechToTextOverlay": {
+    "Category": "Xbox e giochi",
+    "Content": "Xbox Speech To Text Overlay",
+    "Description": "Sottotitoli in tempo reale e trascrizione vocale per le chat di gioco.",
+    "Panel": "1",
+    "PackageId": "Microsoft.XboxSpeechToTextOverlay"
+  },
+  "WPFAppxMicrosoft_Xbox_TCUI": {
+    "Category": "Xbox e giochi",
+    "Content": "Xbox TCUI",
+    "Description": "Finestre di accesso all'account usate dai giochi. Attenzione: rimuoverlo può impedire l'accesso con l'account Microsoft in giochi e app che non richiedono l'app Xbox.",
+    "Panel": "1",
+    "PackageId": "Microsoft.Xbox.TCUI"
+  },
+  "WPFAppxMicrosoft_StartExperiencesApp": {
+    "Category": "Bing e servizi web",
+    "Content": "Start Experiences App (Widget)",
+    "Description": "Fornisce la bacheca dei widget di Windows, con notizie, meteo, sport e finanza.",
+    "Panel": "1",
+    "PackageId": "Microsoft.StartExperiencesApp",
+    "StoreId": "9PC1H9VN18CM"
+  },
+  "WPFAppxMicrosoft_MicrosoftSolitaireCollection": {
+    "Category": "Xbox e giochi",
+    "Content": "Microsoft Solitaire Collection",
+    "Description": "Giochi di carte Klondike, Spider, FreeCell, Pyramid e TriPeaks, con sfide giornaliere.",
+    "Panel": "1",
+    "PackageId": "Microsoft.MicrosoftSolitaireCollection"
+  },
+  "WPFAppxMicrosoft_ZuneVideo": {
+    "Category": "Utilità e produttività",
+    "Content": "Film e TV",
+    "Description": "Il lettore video predefinito, con il negozio per acquistare o noleggiare film.",
+    "Panel": "0",
+    "PackageId": "Microsoft.ZuneVideo",
+    "StoreId": "9WZDNCRFJ3P2"
+  }
+}

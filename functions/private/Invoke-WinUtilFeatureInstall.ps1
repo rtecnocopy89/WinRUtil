@@ -15,7 +15,9 @@
         Foreach( $feature in $sync.configs.feature.$CheckBox.feature ) {
             try {
                 Write-Host "Installing $feature"
-                Enable-WindowsOptionalFeature -Online -FeatureName $feature -All -NoRestart
+                # Without Stop a missing feature (e.g. Windows Sandbox on Home) is only a warning
+                # and the operation would be reported as done
+                Enable-WindowsOptionalFeature -Online -FeatureName $feature -All -NoRestart -ErrorAction Stop
             } catch {
                 $failed = $true
                 if ($_.Exception.Message -like "*requires elevation*") {
@@ -29,7 +31,8 @@
             }
         }
     }
-    if($sync.configs.feature.$CheckBox.InvokeScript) {
+    # The scripts configure the features, so they are skipped when a feature could not be enabled
+    if($sync.configs.feature.$CheckBox.InvokeScript -and -not $failed) {
         Foreach( $script in $sync.configs.feature.$CheckBox.InvokeScript ) {
             try {
                 $Scriptblock = [scriptblock]::Create($script)

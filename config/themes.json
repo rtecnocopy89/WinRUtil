@@ -1,7 +1,8 @@
 ﻿{
   "shared": {
-    "AppEntryWidth": "200",
+    "AppEntryWidth": "220",
     "AppEntryFontSize": "11",
+    "AppEntryIconSize": "18",
     "AppEntryMargin": "1,0,1,0",
     "AppEntryBorderThickness": "0",
     "CustomDialogFontSize": "12",
@@ -25,6 +26,7 @@
     "IconButtonSize": "35",
     "SettingsIconFontSize": "18",
     "CloseIconFontSize": "18",
+    "WindowButtonFontSize": "11",
     "ButtonFontSize": "12",
     "ButtonFontFamily": "Inter, Segoe UI Variable, Segoe UI",
     "ButtonWidth": "200",

@@ -29,9 +29,6 @@
     "feature": [
       "Microsoft-Hyper-V-All"
     ],
-    "InvokeScript": [
-      "bcdedit /set hypervisorschedulertype classic"
-    ],
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
   "WPFFeatureslegacymedia": {
@@ -182,6 +179,17 @@
     "function": "Invoke-WPFFixesWinget",
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
+  "WPFPanelComputer": {
+    "Content": "Gestione computer",
+    "category": "Pannelli classici di Windows",
+    "panel": "2",
+    "Type": "Button",
+    "ButtonWidth": "300",
+    "InvokeScript": [
+      "compmgmt.msc"
+    ],
+    "link": "https://github.com/rtecnocopy89/WinRUtil"
+  },
   "WPFPanelControl": {
     "Content": "Pannello di controllo",
     "category": "Pannelli classici di Windows",
@@ -193,14 +201,14 @@
     ],
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
-  "WPFPanelComputer": {
-    "Content": "Gestione computer",
+  "WPFPanelMouse": {
+    "Content": "Proprietà del mouse",
     "category": "Pannelli classici di Windows",
     "panel": "2",
     "Type": "Button",
     "ButtonWidth": "300",
     "InvokeScript": [
-      "compmgmt.msc"
+      "main.cpl"
     ],
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
@@ -237,6 +245,17 @@
     ],
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
+  "WPFPanelPrograms": {
+    "Content": "Programmi e funzionalità",
+    "category": "Pannelli classici di Windows",
+    "panel": "2",
+    "Type": "Button",
+    "ButtonWidth": "300",
+    "InvokeScript": [
+      "appwiz.cpl"
+    ],
+    "link": "https://github.com/rtecnocopy89/WinRUtil"
+  },
   "WPFPanelRegion": {
     "Content": "Area geografica",
     "category": "Pannelli classici di Windows",
@@ -248,14 +267,14 @@
     ],
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
-  "WPFPanelRestore": {
-    "Content": "Ripristino configurazione di sistema",
+  "WPFPanelSecurity": {
+    "Content": "Sicurezza e manutenzione",
     "category": "Pannelli classici di Windows",
     "panel": "2",
     "Type": "Button",
     "ButtonWidth": "300",
     "InvokeScript": [
-      "rstrui.exe"
+      "wscui.cpl"
     ],
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
@@ -289,6 +308,28 @@
     "ButtonWidth": "300",
     "InvokeScript": [
       "timedate.cpl"
+    ],
+    "link": "https://github.com/rtecnocopy89/WinRUtil"
+  },
+  "WPFPanelFirewall": {
+    "Content": "Windows Defender Firewall",
+    "category": "Pannelli classici di Windows",
+    "panel": "2",
+    "Type": "Button",
+    "ButtonWidth": "300",
+    "InvokeScript": [
+      "firewall.cpl"
+    ],
+    "link": "https://github.com/rtecnocopy89/WinRUtil"
+  },
+  "WPFPanelRestore": {
+    "Content": "Ripristino configurazione di sistema",
+    "category": "Pannelli classici di Windows",
+    "panel": "2",
+    "Type": "Button",
+    "ButtonWidth": "300",
+    "InvokeScript": [
+      "rstrui.exe"
     ],
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },

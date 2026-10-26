@@ -67,14 +67,25 @@ $sync.configs.applicationsHashtable = @{}
 $sync.configs.applications.PSObject.Properties | ForEach-Object {
     $sync.configs.applicationsHashtable[$_.Name] = $_.Value
 }
+$sync.configs.appxHashtable = @{}
+$sync.configs.appx.PSObject.Properties | ForEach-Object {
+    $sync.configs.appxHashtable[$_.Name] = $_.Value
+}
 
 Set-Preferences
 
 if ($PARAM_NOUI) {
     Show-WinRUtilLogo
-    if ($PARAM_CONFIG -and -not [string]::IsNullOrWhiteSpace($PARAM_CONFIG)) {
-        Write-Host "Running config file tasks..."
-        Invoke-WPFImpex -type "import" -Config $PARAM_CONFIG
+    if ($PARAM_PRESET -or ($PARAM_CONFIG -and -not [string]::IsNullOrWhiteSpace($PARAM_CONFIG))) {
+        if ($PARAM_PRESET) {
+            Write-Host "Selecting the $PARAM_PRESET preset..."
+            $null = Update-WinUtilSelections -flatJson $sync.configs.preset.$PARAM_PRESET
+        }
+        if ($PARAM_CONFIG) {
+            Write-Host "Running config file tasks..."
+            # A preset given together with the configuration is kept, the configuration adds to it
+            Invoke-WPFImpex -type "import" -Config $PARAM_CONFIG -Merge:([bool]$PARAM_PRESET)
+        }
         if ($PARAM_RUN) {
             Invoke-WinUtilAutoRun
         }
@@ -88,7 +99,7 @@ if ($PARAM_NOUI) {
         exit 1
     }
     else {
-        Write-Host "Cannot automatically run without a config file provided."
+        Write-Host "Cannot automatically run without a config file or a preset provided."
         $sync.runspace.Dispose()
         $sync.runspace.Close()
         [System.GC]::Collect()
@@ -179,6 +190,8 @@ Initialize-WPFUI -targetGridName "appspanel"
 Invoke-WPFUIElements -configVariable $sync.configs.tweaks -targetGridName "tweakspanel" -columncount 2
 
 Invoke-WPFUIElements -configVariable $sync.configs.feature -targetGridName "featurespanel" -columncount 2
+
+Invoke-WPFUIElements -configVariable $sync.configs.appx -targetGridName "appxpanel" -columncount 2
 
 # Future implementation: Add Windows Version to updates panel
 #Invoke-WPFUIElements -configVariable $sync.configs.updates -targetGridName "updatespanel" -columncount 1
@@ -309,17 +322,31 @@ $commonKeyEvents = {
             "S" { Invoke-WPFButton "WPFTab7BT"; $keyEventArgs.Handled = $true } # Navigate to System dashboard
             "F" { Invoke-WPFButton "WPFTab8BT"; $keyEventArgs.Handled = $true } # Navigate to Wi-Fi tab
             "R" { Invoke-WPFButton "WPFTab5BT"; $keyEventArgs.Handled = $true } # Navigate to Report tab
+            "A" { Invoke-WPFButton "WPFTab9BT"; $keyEventArgs.Handled = $true } # Navigate to Windows apps tab
         }
     }
     # Handle Ctrl key combinations for specific actions
     if ($_.KeyboardDevice.Modifiers -eq "Ctrl") {
+        $keyEventArgs = $_
         switch ($_.Key) {
             "F" { $sync.SearchBar.Focus() } # Focus on the search bar
             "Q" { $this.Close() } # Close the application
+            # Text size, in the steps of the slider: bigger, smaller, normal
+            { $_ -in "OemPlus", "Add" } { Set-WinUtilFontScaleStep -Step 0.25; $keyEventArgs.Handled = $true }
+            { $_ -in "OemMinus", "Subtract" } { Set-WinUtilFontScaleStep -Step -0.25; $keyEventArgs.Handled = $true }
+            { $_ -in "D0", "NumPad0" } { Set-WinUtilFontScaleStep -Step 0; $keyEventArgs.Handled = $true }
         }
     }
 }
 $sync["Form"].Add_PreViewKeyDown($commonKeyEvents)
+
+# Ctrl + mouse wheel changes the text size too
+$sync["Form"].Add_PreviewMouseWheel({
+    if ([System.Windows.Input.Keyboard]::Modifiers -eq [System.Windows.Input.ModifierKeys]::Control) {
+        Set-WinUtilFontScaleStep -Step $(if ($_.Delta -gt 0) { 0.25 } else { -0.25 })
+        $_.Handled = $true
+    }
+})
 
 $sync["Form"].Add_MouseLeftButtonDown({
     Invoke-WPFPopup -Action "Hide" -Popups @("Settings", "Theme", "FontScaling")
@@ -396,12 +423,18 @@ $sync["Form"].Add_ContentRendered({
 
     $sync["Form"].Focus()
 
-   if ($PARAM_CONFIG -and -not [string]::IsNullOrWhiteSpace($PARAM_CONFIG)) {
+    if ($PARAM_PRESET) {
+        Write-Host "Selecting the $PARAM_PRESET preset..."
+        Invoke-WPFPresets $PARAM_PRESET -checkboxfilterpattern "WPFTweak*"
+        Invoke-WPFTab "WPFTab2BT"
+    }
+    if ($PARAM_CONFIG -and -not [string]::IsNullOrWhiteSpace($PARAM_CONFIG)) {
         Write-Host "Running config file tasks..."
-        Invoke-WPFImpex -type "import" -Config $PARAM_CONFIG
-        if ($PARAM_RUN) {
-            Invoke-WinUtilAutoRun
-        }
+        # A preset given together with the configuration is kept, the configuration adds to it
+        Invoke-WPFImpex -type "import" -Config $PARAM_CONFIG -Merge:([bool]$PARAM_PRESET)
+    }
+    if ($PARAM_RUN -and ($PARAM_PRESET -or $PARAM_CONFIG)) {
+        Invoke-WinUtilAutoRun
     }
 
 })
@@ -417,9 +450,12 @@ $searchBarTimer.add_Tick({
     $searchBarTimer.Stop()
     switch ($sync.currentTab) {
         "Install" {
-            Find-AppsByNameOrDescription -SearchString $sync.SearchBar.Text
+            Find-AppsByNameOrDescription -SearchString $sync.SearchBar.Text -Categories @($sync.SelectedAppCategories)
         }
         "Tweaks" {
+            Find-TweaksByNameOrDescription -SearchString $sync.SearchBar.Text
+        }
+        "AppX" {
             Find-TweaksByNameOrDescription -SearchString $sync.SearchBar.Text
         }
     }

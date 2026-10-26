@@ -16,22 +16,24 @@
             $Apps
         )
 
-        # Pre-group apps by category
+        # Pre-group apps by category. Lists, because appending to an array copies it.
         $appsByCategory = @{}
         foreach ($appKey in $Apps.Keys) {
-            $category = $Apps.$appKey.Category
+            $category = $Apps[$appKey].Category
             if (-not $appsByCategory.ContainsKey($category)) {
-                $appsByCategory[$category] = @()
+                $appsByCategory[$category] = [System.Collections.Generic.List[string]]::new()
             }
-            $appsByCategory[$category] += $appKey
+            $appsByCategory[$category].Add($appKey)
         }
-        foreach ($category in $($appsByCategory.Keys | Sort-Object)) {
+        # The categories are shown with their Italian names, in alphabetical order
+        foreach ($category in $($appsByCategory.Keys | Sort-Object { Get-WinUtilAppCategoryName $_ })) {
+            $categoryName = Get-WinUtilAppCategoryName $category
             # Create a container for category label + apps
             $categoryContainer = New-Object Windows.Controls.StackPanel
             $categoryContainer.Orientation = "Vertical"
             $categoryContainer.Margin = New-Object Windows.Thickness(0, 0, 0, 0)
             $categoryContainer.HorizontalAlignment = [Windows.HorizontalAlignment]::Stretch
-            [System.Windows.Automation.AutomationProperties]::SetName($categoryContainer, $Category)
+            [System.Windows.Automation.AutomationProperties]::SetName($categoryContainer, $categoryName)
 
             # Bind Width to the ItemsControl's ActualWidth to force full-row layout in WrapPanel
             $binding = New-Object Windows.Data.Binding
@@ -41,7 +43,7 @@
 
             # Add category label to container
             $toggleButton = New-Object Windows.Controls.Label
-            $toggleButton.Content = "- $Category"
+            $toggleButton.Content = "- $categoryName"
             $toggleButton.Tag = "CategoryToggleButton"
             $toggleButton.SetResourceReference([Windows.Controls.Control]::FontSizeProperty, "HeaderFontSize")
             $toggleButton.SetResourceReference([Windows.Controls.Control]::FontFamilyProperty, "HeaderFontFamily")
@@ -59,6 +61,11 @@
                 if ($categoryContainer -and $categoryContainer.Children.Count -ge 2) {
                     # The WrapPanel is the second child
                     $wrapPanel = $categoryContainer.Children[1]
+
+                    # A click wins over a category that the filters expanded by themselves
+                    if ($sync.AppCategoryAutoExpanded) {
+                        $sync.AppCategoryAutoExpanded.Remove(($sender.Content -replace '^[+-] ', ''))
+                    }
 
                     # Toggle visibility
                     if ($wrapPanel.Visibility -eq [Windows.Visibility]::Visible) {
