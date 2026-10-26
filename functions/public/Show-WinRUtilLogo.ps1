@@ -11,18 +11,27 @@ Function Show-WinRUtilLogo {
             Show-WinRUtilLogo
     #>
 
+    # The box-drawing characters are mapped at runtime so the source stays ASCII-only:
+    # '#' full block, '|' and '=' double lines, '[' ']' '{' '}' double-line corners
+    $glyphs = @{
+        '#' = [char]0x2588; '|' = [char]0x2551; '=' = [char]0x2550
+        '[' = [char]0x2554; ']' = [char]0x2557; '{' = [char]0x255A; '}' = [char]0x255D
+    }
     $logo = @(
-        '██╗    ██╗██╗███╗   ██╗██████╗ ██╗   ██╗████████╗██╗██╗'
-        '██║    ██║██║████╗  ██║██╔══██╗██║   ██║╚══██╔══╝██║██║'
-        '██║ █╗ ██║██║██╔██╗ ██║██████╔╝██║   ██║   ██║   ██║██║'
-        '██║███╗██║██║██║╚██╗██║██╔══██╗██║   ██║   ██║   ██║██║'
-        '╚███╔███╔╝██║██║ ╚████║██║  ██║╚██████╔╝   ██║   ██║███████╗'
-        ' ╚══╝╚══╝ ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝ ╚═════╝    ╚═╝   ╚═╝╚══════╝'
-    )
+        '##]    ##]##]###]   ##]######] ##]   ##]########]##]##]'
+        '##|    ##|##|####]  ##|##[==##]##|   ##|{==##[==}##|##|'
+        '##| #] ##|##|##[##] ##|######[}##|   ##|   ##|   ##|##|'
+        '##|###]##|##|##|{##]##|##[==##]##|   ##|   ##|   ##|##|'
+        '{###[###[}##|##| {####|##|  ##|{######[}   ##|   ##|#######]'
+        ' {==}{==} {=}{=}  {===}{=}  {=} {=====}    {=}   {=}{======}'
+    ) | ForEach-Object {
+        -join ($_.ToCharArray() | ForEach-Object { if ($glyphs.ContainsKey([string]$_)) { $glyphs[[string]$_] } else { $_ } })
+    }
 
     $width = 60
-    $tagline = 'WinRUtil  •  Windows Toolkit'
-    if ($sync.version) { $tagline += "  •  v$($sync.version)" }
+    $bullet = [char]0x2022
+    $tagline = "WinRUtil  $bullet  Windows Toolkit"
+    if ($sync.version) { $tagline += "  $bullet  v$($sync.version)" }
     $rule = [string][char]0x2500 * $width
     $centered = (' ' * [math]::Max(0, [math]::Floor(($width - $tagline.Length) / 2))) + $tagline
 

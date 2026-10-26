@@ -76,35 +76,36 @@
         $progressbar = New-Object Windows.Controls.ProgressBar
         $progressbar.Name = "ProgressBar"
         $progressbar.Width = 250
-        $progressbar.Height = 50
+        $progressbar.Height = 8
         $sync.ProgressBar = $progressbar
 
-        # Add a TextBlock overlay for the progress bar text
+        # Add a TextBlock below the progress bar for the progress text, so it stays readable on any fill level
         $progressBarTextBlock = New-Object Windows.Controls.TextBlock
         $progressBarTextBlock.Name = "progressBarTextBlock"
-        $progressBarTextBlock.FontWeight = [Windows.FontWeights]::Bold
-        $progressBarTextBlock.FontSize = 16
+        $progressBarTextBlock.FontWeight = [Windows.FontWeights]::SemiBold
+        $progressBarTextBlock.FontSize = 13
         $progressBarTextBlock.Width = $progressbar.Width
-        $progressBarTextBlock.Height = $progressbar.Height
+        $progressBarTextBlock.Margin = "0,8,0,0"
+        $progressBarTextBlock.TextAlignment = "Center"
         $progressBarTextBlock.SetResourceReference([Windows.Controls.TextBlock]::ForegroundProperty, "ProgressBarTextColor")
         $progressBarTextBlock.TextTrimming = "CharacterEllipsis"
         $progressBarTextBlock.Background = "Transparent"
         $sync.progressBarTextBlock = $progressBarTextBlock
 
-        # Create a Grid to overlay the text on the progress bar
-        $progressGrid = New-Object Windows.Controls.Grid
-        $progressGrid.Width = $progressbar.Width
-        $progressGrid.Height = $progressbar.Height
-        $progressGrid.Margin = "0,10,0,10"
-        $progressGrid.Children.Add($progressbar) | Out-Null
-        $progressGrid.Children.Add($progressBarTextBlock) | Out-Null
+        # Stack the progress bar and its text
+        $progressPanel = New-Object Windows.Controls.StackPanel
+        $progressPanel.Orientation = "Vertical"
+        $progressPanel.Width = $progressbar.Width
+        $progressPanel.Margin = "0,10,0,10"
+        $progressPanel.Children.Add($progressbar) | Out-Null
+        $progressPanel.Children.Add($progressBarTextBlock) | Out-Null
 
         $overlayStackPanel = New-Object Windows.Controls.StackPanel
         $overlayStackPanel.Orientation = "Vertical"
         $overlayStackPanel.HorizontalAlignment = 'Center'
         $overlayStackPanel.VerticalAlignment = 'Center'
         $overlayStackPanel.Children.Add($overlayText) | Out-Null
-        $overlayStackPanel.Children.Add($progressGrid) | Out-Null
+        $overlayStackPanel.Children.Add($progressPanel) | Out-Null
 
         $overlay.Child = $overlayStackPanel
 

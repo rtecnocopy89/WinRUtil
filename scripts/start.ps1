@@ -1,9 +1,9 @@
 <#
 .NOTES
-    WinRUtil — Windows toolkit
+    WinRUtil - Windows toolkit
     Maintainer     : @rtecnocopy89
     GitHub         : https://github.com/rtecnocopy89/WinRUtil
-    Copyright       : (c) 2026 rtecnocopy89 — (c) 2022 CT Tech Group LLC
+    Copyright      : (c) 2026 rtecnocopy89 - (c) 2022 CT Tech Group LLC
     Based on       : ChrisTitusTech/winutil (MIT)
     Version        : #{replaceme}
 #>
@@ -103,5 +103,5 @@ New-Item $logdir -ItemType Directory -Force | Out-Null
 Start-Transcript -Path "$logdir\winutil_$dateTime.log" -Append -NoClobber | Out-Null
 
 # Set PowerShell window title
-$Host.UI.RawUI.WindowTitle = "WinUtil (Admin)"
+$Host.UI.RawUI.WindowTitle = "WinRUtil (Admin)"
 clear-host

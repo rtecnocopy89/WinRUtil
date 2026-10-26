@@ -59,6 +59,13 @@
         Invoke-WPFSystemInfoRefresh
     }
 
+    # Live CPU / memory values only while the System dashboard is visible
+    if ($sync.currentTab -eq "System") {
+        Start-WinUtilSystemLiveUpdate
+    } else {
+        Stop-WinUtilSystemLiveUpdate
+    }
+
     # Show search bar in Install and Tweaks tabs
     if ($tabNumber -eq 0 -or $tabNumber -eq 1) {
         $sync.SearchBar.Visibility = "Visible"

@@ -255,6 +255,7 @@ Set-WinUtilTaskbaritem -state "None"
 $sync["Form"].title = $sync["Form"].title + " " + $sync.version
 # Set the commands that will run when the form is closed
 $sync["Form"].Add_Closing({
+    Stop-WinUtilSystemLiveUpdate
     $sync.runspace.Dispose()
     $sync.runspace.Close()
     [System.GC]::Collect()
@@ -290,7 +291,9 @@ $commonKeyEvents = {
             "C" { Invoke-WPFButton "WPFTab3BT"; $keyEventArgs.Handled = $true } # Navigate to Config tab
             "U" { Invoke-WPFButton "WPFTab4BT"; $keyEventArgs.Handled = $true } # Navigate to Updates tab
             "W" { Invoke-WPFButton "WPFTab5BT"; $keyEventArgs.Handled = $true } # Navigate to Win11ISO tab
+            "P" { Invoke-WPFButton "WPFTab6BT"; $keyEventArgs.Handled = $true } # Navigate to Printers tab
             "S" { Invoke-WPFButton "WPFTab7BT"; $keyEventArgs.Handled = $true } # Navigate to System dashboard
+            "F" { Invoke-WPFButton "WPFTab8BT"; $keyEventArgs.Handled = $true } # Navigate to Wi-Fi tab
         }
     }
     # Handle Ctrl key combinations for specific actions
@@ -487,11 +490,13 @@ $sync["AboutMenuItem"].Add_Click({
     Write-Debug "About clicked"
     Invoke-WPFPopup -Action "Hide" -Popups @("Settings")
 
+    $dash = [char]0x2014
+    $copyright = [char]0x00A9
     $authorInfo = @"
-WinRUtil — Windows toolkit
+WinRUtil $dash Windows toolkit
 Maintainer : <a href="https://github.com/rtecnocopy89">@rtecnocopy89</a>
 GitHub     : <a href="https://github.com/rtecnocopy89/WinRUtil">rtecnocopy89/WinRUtil</a>
-Copyright  : © 2026 rtecnocopy89 — © 2022 CT Tech Group LLC
+Copyright  : $copyright 2026 rtecnocopy89 $dash $copyright 2022 CT Tech Group LLC
 Based on   : <a href="https://github.com/ChrisTitusTech/winutil">ChrisTitusTech/winutil</a> (MIT)
 Version    : $($sync.version)
 "@
@@ -528,7 +533,7 @@ $sync["FontScalingApplyButton"].Add_Click({
     Invoke-WPFPopup -Action "Hide" -Popups @("FontScaling")
 })
 
-# ── Win11ISO Tab button handlers ──────────────────────────────────────────────
+# -- Win11ISO Tab button handlers ----------------------------------------------
 
 $sync["WPFTab5BT"].Add_Click({
     $sync["Form"].Dispatcher.BeginInvoke([System.Windows.Threading.DispatcherPriority]::Background, [action]{ Invoke-WinUtilISOCheckExistingWork }) | Out-Null
@@ -581,7 +586,7 @@ $sync["WPFWin11ISOCleanResetButton"].Add_Click({
     Invoke-WinUtilISOCleanAndReset
 })
 
-# ──────────────────────────────────────────────────────────────────────────────
+# ------------------------------------------------------------------------------
 
 $sync["Form"].ShowDialog() | out-null
 Stop-Transcript

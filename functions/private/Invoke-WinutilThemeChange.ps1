@@ -59,22 +59,8 @@ function Invoke-WinutilThemeChange {
                 # Set the resource property based on its type
                 $sync.Form.Resources[$Name] = switch ($Type) {
                     "ColorBrush" { [Windows.Media.SolidColorBrush]::new($Value) }
-                    "Color" {
-                        # Convert hex string to a Color, supporting both #RRGGBB and #AARRGGBB
-                        $hexColor = $Value.TrimStart("#")
-                        if ($hexColor.Length -eq 8) {
-                            $a = [Convert]::ToInt32($hexColor.Substring(0,2), 16)
-                            $r = [Convert]::ToInt32($hexColor.Substring(2,2), 16)
-                            $g = [Convert]::ToInt32($hexColor.Substring(4,2), 16)
-                            $b = [Convert]::ToInt32($hexColor.Substring(6,2), 16)
-                            [Windows.Media.Color]::FromArgb($a, $r, $g, $b)
-                        } else {
-                            $r = [Convert]::ToInt32($hexColor.Substring(0,2), 16)
-                            $g = [Convert]::ToInt32($hexColor.Substring(2,2), 16)
-                            $b = [Convert]::ToInt32($hexColor.Substring(4,2), 16)
-                            [Windows.Media.Color]::FromRgb($r, $g, $b)
-                        }
-                    }
+                    # Supports #RRGGBB, #AARRGGBB and named colors such as "Transparent"
+                    "Color" { [Windows.Media.ColorConverter]::ConvertFromString($Value) }
                     "CornerRadius" { [System.Windows.CornerRadius]::new($Value) }
                     "GridLength" { [System.Windows.GridLength]::new($Value) }
                     "Thickness" {
@@ -103,10 +89,9 @@ function Invoke-WinutilThemeChange {
             # Apply properties that deal with colors
             if ($_.Name -like "*color*") {
                 Set-ThemeResourceProperty -Name $_.Name -Value $_.Value -Type "ColorBrush"
-                # For certain color properties, also set complementary values (e.g., BorderColor -> CBorderColor) This is required because e.g DropShadowEffect requires a <Color> and not a <SolidColorBrush> object
-                if ($_.Name -in @("BorderColor", "ButtonBackgroundMouseoverColor")) {
-                    Set-ThemeResourceProperty -Name "C$($_.Name)" -Value $_.Value -Type "Color"
-                }
+                # Also expose every color as a <Color> prefixed with "C" (e.g. BorderColor -> CBorderColor), because
+                # GradientStop and DropShadowEffect require a <Color> and not a <SolidColorBrush> object
+                Set-ThemeResourceProperty -Name "C$($_.Name)" -Value $_.Value -Type "Color"
             }
             # Apply corner radius properties
             elseif ($_.Name -like "*Radius*") {
@@ -137,8 +122,10 @@ function Invoke-WinutilThemeChange {
 
     switch ($sync.preferences.theme) {
         "Auto" {
-            $systemUsesDarkMode = Get-WinUtilToggleStatus WPFToggleDarkMode
-            if ($systemUsesDarkMode) {
+            # Follow the Windows app mode (Settings > Personalization > Colors), Light when the value is missing
+            $personalizeKey = "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize"
+            $appsUseLightTheme = (Get-ItemProperty -Path $personalizeKey -Name "AppsUseLightTheme" -ErrorAction SilentlyContinue).AppsUseLightTheme
+            if ($appsUseLightTheme -eq 0) {
                 $theme = "Dark"
             }
             else{
@@ -165,7 +152,7 @@ function Invoke-WinutilThemeChange {
     }
 
     if ($fossEnabled) {
-         $sync.Form.Resources["FOSSColor"] = [Windows.Media.SolidColorBrush]::new([Windows.Media.Color]::FromRgb(76, 175, 80)) # #4CAF50
+         $sync.Form.Resources["FOSSColor"] = $sync.Form.Resources["FOSSHighlightColor"]
     } else {
          $sync.Form.Resources["FOSSColor"] = $sync.Form.Resources["MainForegroundColor"]
     }

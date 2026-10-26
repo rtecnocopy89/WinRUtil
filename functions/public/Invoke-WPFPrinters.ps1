@@ -142,7 +142,7 @@ function Invoke-WPFPrinterDriver {
                 if ($LASTEXITCODE -eq 0) {
                     Write-WinUtilPrinterLog "Driver installato correttamente." -Level Success
                 } else {
-                    Write-WinUtilPrinterLog "pnputil e' terminato con codice $LASTEXITCODE." -Level Warning
+                    Write-WinUtilPrinterLog "pnputil ha restituito il codice $LASTEXITCODE." -Level Warning
                 }
             } catch {
                 Write-WinUtilPrinterLog "Installazione del driver non riuscita: $($_.Exception.Message)" -Level Error

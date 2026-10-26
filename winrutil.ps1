@@ -1,11 +1,11 @@
 <#
 .NOTES
-    WinRUtil — Windows toolkit
+    WinRUtil - Windows toolkit
     Maintainer     : @rtecnocopy89
     GitHub         : https://github.com/rtecnocopy89/WinRUtil
-    Copyright       : (c) 2026 rtecnocopy89 — (c) 2022 CT Tech Group LLC
+    Copyright      : (c) 2026 rtecnocopy89 - (c) 2022 CT Tech Group LLC
     Based on       : ChrisTitusTech/winutil (MIT)
-    Version        : 26.07.02
+    Version        : 26.10.26
 #>
 
 param (
@@ -79,7 +79,7 @@ Add-Type -AssemblyName System.Windows.Forms
 # Variable to sync between runspaces
 $sync = [Hashtable]::Synchronized(@{})
 $sync.PSScriptRoot = $PSScriptRoot
-$sync.version = "26.07.02"
+$sync.version = "26.10.26"
 $sync.configs = @{}
 $sync.Buttons = [System.Collections.Generic.List[PSObject]]::new()
 $sync.preferences = @{}
@@ -103,7 +103,7 @@ New-Item $logdir -ItemType Directory -Force | Out-Null
 Start-Transcript -Path "$logdir\winutil_$dateTime.log" -Append -NoClobber | Out-Null
 
 # Set PowerShell window title
-$Host.UI.RawUI.WindowTitle = "WinUtil (Admin)"
+$Host.UI.RawUI.WindowTitle = "WinRUtil (Admin)"
 clear-host
     function Add-SelectedAppsMenuItem {
         <#
@@ -145,7 +145,7 @@ clear-host
         $selectedAppRemoveButton.SetResourceReference([Windows.Controls.Control]::StyleProperty, "HoverButtonStyle")
 
         # Highlight the Remove icon on Hover
-        $selectedAppRemoveButton.Add_MouseEnter({ $this.Foreground = "Red" })
+        $selectedAppRemoveButton.Add_MouseEnter({ $this.SetResourceReference([Windows.Controls.Control]::ForegroundProperty, "DangerColor") })
         $selectedAppRemoveButton.Add_MouseLeave({ $this.SetResourceReference([Windows.Controls.Control]::ForegroundProperty, "MainForegroundColor") })
         $selectedAppRemoveButton.Add_Click({
             $sync.($this.Tag).isChecked = $false # On click of the remove button, we only have to uncheck the corresponding checkbox. This will kick of all necessary changes to update the UI
@@ -656,35 +656,36 @@ function Hide-WPFInstallAppBusy {
         $progressbar = New-Object Windows.Controls.ProgressBar
         $progressbar.Name = "ProgressBar"
         $progressbar.Width = 250
-        $progressbar.Height = 50
+        $progressbar.Height = 8
         $sync.ProgressBar = $progressbar
 
-        # Add a TextBlock overlay for the progress bar text
+        # Add a TextBlock below the progress bar for the progress text, so it stays readable on any fill level
         $progressBarTextBlock = New-Object Windows.Controls.TextBlock
         $progressBarTextBlock.Name = "progressBarTextBlock"
-        $progressBarTextBlock.FontWeight = [Windows.FontWeights]::Bold
-        $progressBarTextBlock.FontSize = 16
+        $progressBarTextBlock.FontWeight = [Windows.FontWeights]::SemiBold
+        $progressBarTextBlock.FontSize = 13
         $progressBarTextBlock.Width = $progressbar.Width
-        $progressBarTextBlock.Height = $progressbar.Height
+        $progressBarTextBlock.Margin = "0,8,0,0"
+        $progressBarTextBlock.TextAlignment = "Center"
         $progressBarTextBlock.SetResourceReference([Windows.Controls.TextBlock]::ForegroundProperty, "ProgressBarTextColor")
         $progressBarTextBlock.TextTrimming = "CharacterEllipsis"
         $progressBarTextBlock.Background = "Transparent"
         $sync.progressBarTextBlock = $progressBarTextBlock
 
-        # Create a Grid to overlay the text on the progress bar
-        $progressGrid = New-Object Windows.Controls.Grid
-        $progressGrid.Width = $progressbar.Width
-        $progressGrid.Height = $progressbar.Height
-        $progressGrid.Margin = "0,10,0,10"
-        $progressGrid.Children.Add($progressbar) | Out-Null
-        $progressGrid.Children.Add($progressBarTextBlock) | Out-Null
+        # Stack the progress bar and its text
+        $progressPanel = New-Object Windows.Controls.StackPanel
+        $progressPanel.Orientation = "Vertical"
+        $progressPanel.Width = $progressbar.Width
+        $progressPanel.Margin = "0,10,0,10"
+        $progressPanel.Children.Add($progressbar) | Out-Null
+        $progressPanel.Children.Add($progressBarTextBlock) | Out-Null
 
         $overlayStackPanel = New-Object Windows.Controls.StackPanel
         $overlayStackPanel.Orientation = "Vertical"
         $overlayStackPanel.HorizontalAlignment = 'Center'
         $overlayStackPanel.VerticalAlignment = 'Center'
         $overlayStackPanel.Children.Add($overlayText) | Out-Null
-        $overlayStackPanel.Children.Add($progressGrid) | Out-Null
+        $overlayStackPanel.Children.Add($progressPanel) | Out-Null
 
         $overlay.Child = $overlayStackPanel
 
@@ -1829,7 +1830,7 @@ function Invoke-WinUtilISOMountAndVerify {
 
         if (-not (Test-Path $wimPath) -and -not (Test-Path $esdPath)) {
             Dismount-DiskImage -ImagePath $isoPath
-            Write-Win11ISOLog "ERROR: install.wim/install.esd not found — not a valid Windows ISO."
+            Write-Win11ISOLog "ERROR: install.wim/install.esd not found - not a valid Windows ISO."
             [System.Windows.MessageBox]::Show(
                 "This does not appear to be a valid Windows ISO.`n`ninstall.wim / install.esd was not found.",
                 "Invalid ISO", "OK", "Error")
@@ -2224,7 +2225,7 @@ function Invoke-WinUtilISOCleanAndReset {
                     Log "Temp directory deleted successfully."
                 }
             } else {
-                Log "No temp directory found — resetting UI."
+                Log "No temp directory found - resetting UI."
             }
 
             SetProgress "Resetting UI..." 95
@@ -2471,7 +2472,7 @@ function Invoke-WinUtilISOScript {
             -Log             { param($m) Write-Host $m }
 
     .NOTES
-        WinRUtil — https://github.com/rtecnocopy89/WinRUtil
+        WinRUtil - https://github.com/rtecnocopy89/WinRUtil
         Based on ChrisTitusTech/winutil (MIT)
     #>
     param (
@@ -2531,7 +2532,7 @@ function Invoke-WinUtilISOScript {
         }
     }
 
-    # ── 1. Remove provisioned AppX packages ──────────────────────────────────
+    # -- 1. Remove provisioned AppX packages ----------------------------------
     & $Log "Removing provisioned AppX packages..."
 
     $packages = & dism /English "/image:$ScratchDir" /Get-ProvisionedAppxPackages |
@@ -2562,7 +2563,7 @@ function Invoke-WinUtilISOScript {
     $packages | Where-Object { $pkg = $_; $packagePrefixes | Where-Object { $pkg -like "*$_*" } } |
         ForEach-Object { & dism /English "/image:$ScratchDir" /Remove-ProvisionedAppxPackage "/PackageName:$_" }
 
-    # ── 2. Inject current system drivers (optional) ───────────────────────────
+    # -- 2. Inject current system drivers (optional) ---------------------------
     if ($InjectCurrentSystemDrivers) {
         & $Log "Exporting all drivers from running system..."
         $driverExportRoot = Join-Path $env:TEMP "WinUtil_DriverExport_$(Get-Random)"
@@ -2580,7 +2581,7 @@ function Invoke-WinUtilISOScript {
                     & $Log "Injecting current system drivers into boot.wim..."
                     Invoke-BootWimInject -BootWimPath $bootWim -DriverDir $driverExportRoot -Logger $Log
                 } else {
-                    & $Log "Warning: boot.wim not found — skipping boot.wim driver injection."
+                    & $Log "Warning: boot.wim not found - skipping boot.wim driver injection."
                 }
             }
         } catch {
@@ -2592,7 +2593,7 @@ function Invoke-WinUtilISOScript {
         & $Log "Driver injection skipped."
     }
 
-    # ── 3. Registry tweaks ────────────────────────────────────────────────────
+    # -- 3. Registry tweaks ----------------------------------------------------
     & $Log "Loading offline registry hives..."
     reg load HKLM\zCOMPONENTS "$ScratchDir\Windows\System32\config\COMPONENTS"
     reg load HKLM\zDEFAULT    "$ScratchDir\Windows\System32\config\default"
@@ -2666,7 +2667,7 @@ function Invoke-WinUtilISOScript {
                     & $Log "Pre-staged setup script: $relPath"
                 }
             } else {
-                & $Log "Warning: no <Extensions><File> nodes found in autounattend.xml — setup scripts not pre-staged."
+                & $Log "Warning: no <Extensions><File> nodes found in autounattend.xml - setup scripts not pre-staged."
             }
         } catch {
             & $Log "Warning: could not pre-stage setup scripts from autounattend.xml: $_"
@@ -2678,7 +2679,7 @@ function Invoke-WinUtilISOScript {
             & $Log "Written autounattend.xml to ISO root ($isoDest)."
         }
     } else {
-        & $Log "Warning: autounattend.xml content is empty — skipping OOBE bypass file."
+        & $Log "Warning: autounattend.xml content is empty - skipping OOBE bypass file."
     }
 
     & $Log "Disabling reserved storage..."
@@ -2746,7 +2747,7 @@ function Invoke-WinUtilISOScript {
     reg unload HKLM\zSOFTWARE
     reg unload HKLM\zSYSTEM
 
-    # ── 4. Delete scheduled task definition files ─────────────────────────────
+    # -- 4. Delete scheduled task definition files -----------------------------
     & $Log "Deleting scheduled task definition files..."
     $tasksPath = "$ScratchDir\Windows\System32\Tasks"
     Remove-Item "$tasksPath\Microsoft\Windows\Application Experience\Microsoft Compatibility Appraiser" -Force
@@ -2762,7 +2763,7 @@ function Invoke-WinUtilISOScript {
     Remove-Item "$tasksPath\Microsoft\WindowsUpdate"                                                   -Recurse -Force
     & $Log "Scheduled task files deleted."
 
-    # ── 5. Remove ISO support folder ─────────────────────────────────────────
+    # -- 5. Remove ISO support folder -----------------------------------------
     if ($ISOContentsDir -and (Test-Path $ISOContentsDir)) {
         & $Log "Removing ISO support\ folder..."
         Remove-Item -Path (Join-Path $ISOContentsDir "support") -Recurse -Force
@@ -3202,22 +3203,8 @@ function Invoke-WinutilThemeChange {
                 # Set the resource property based on its type
                 $sync.Form.Resources[$Name] = switch ($Type) {
                     "ColorBrush" { [Windows.Media.SolidColorBrush]::new($Value) }
-                    "Color" {
-                        # Convert hex string to a Color, supporting both #RRGGBB and #AARRGGBB
-                        $hexColor = $Value.TrimStart("#")
-                        if ($hexColor.Length -eq 8) {
-                            $a = [Convert]::ToInt32($hexColor.Substring(0,2), 16)
-                            $r = [Convert]::ToInt32($hexColor.Substring(2,2), 16)
-                            $g = [Convert]::ToInt32($hexColor.Substring(4,2), 16)
-                            $b = [Convert]::ToInt32($hexColor.Substring(6,2), 16)
-                            [Windows.Media.Color]::FromArgb($a, $r, $g, $b)
-                        } else {
-                            $r = [Convert]::ToInt32($hexColor.Substring(0,2), 16)
-                            $g = [Convert]::ToInt32($hexColor.Substring(2,2), 16)
-                            $b = [Convert]::ToInt32($hexColor.Substring(4,2), 16)
-                            [Windows.Media.Color]::FromRgb($r, $g, $b)
-                        }
-                    }
+                    # Supports #RRGGBB, #AARRGGBB and named colors such as "Transparent"
+                    "Color" { [Windows.Media.ColorConverter]::ConvertFromString($Value) }
                     "CornerRadius" { [System.Windows.CornerRadius]::new($Value) }
                     "GridLength" { [System.Windows.GridLength]::new($Value) }
                     "Thickness" {
@@ -3246,10 +3233,9 @@ function Invoke-WinutilThemeChange {
             # Apply properties that deal with colors
             if ($_.Name -like "*color*") {
                 Set-ThemeResourceProperty -Name $_.Name -Value $_.Value -Type "ColorBrush"
-                # For certain color properties, also set complementary values (e.g., BorderColor -> CBorderColor) This is required because e.g DropShadowEffect requires a <Color> and not a <SolidColorBrush> object
-                if ($_.Name -in @("BorderColor", "ButtonBackgroundMouseoverColor")) {
-                    Set-ThemeResourceProperty -Name "C$($_.Name)" -Value $_.Value -Type "Color"
-                }
+                # Also expose every color as a <Color> prefixed with "C" (e.g. BorderColor -> CBorderColor), because
+                # GradientStop and DropShadowEffect require a <Color> and not a <SolidColorBrush> object
+                Set-ThemeResourceProperty -Name "C$($_.Name)" -Value $_.Value -Type "Color"
             }
             # Apply corner radius properties
             elseif ($_.Name -like "*Radius*") {
@@ -3280,8 +3266,10 @@ function Invoke-WinutilThemeChange {
 
     switch ($sync.preferences.theme) {
         "Auto" {
-            $systemUsesDarkMode = Get-WinUtilToggleStatus WPFToggleDarkMode
-            if ($systemUsesDarkMode) {
+            # Follow the Windows app mode (Settings > Personalization > Colors), Light when the value is missing
+            $personalizeKey = "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize"
+            $appsUseLightTheme = (Get-ItemProperty -Path $personalizeKey -Name "AppsUseLightTheme" -ErrorAction SilentlyContinue).AppsUseLightTheme
+            if ($appsUseLightTheme -eq 0) {
                 $theme = "Dark"
             }
             else{
@@ -3308,7 +3296,7 @@ function Invoke-WinutilThemeChange {
     }
 
     if ($fossEnabled) {
-         $sync.Form.Resources["FOSSColor"] = [Windows.Media.SolidColorBrush]::new([Windows.Media.Color]::FromRgb(76, 175, 80)) # #4CAF50
+         $sync.Form.Resources["FOSSColor"] = $sync.Form.Resources["FOSSHighlightColor"]
     } else {
          $sync.Form.Resources["FOSSColor"] = $sync.Form.Resources["MainForegroundColor"]
     }
@@ -3502,7 +3490,7 @@ function Reset-WPFCheckBoxes {
 
     if($doToggles) {
         # Restore toggle switch states from imported config.
-        # Only act on toggles that are explicitly listed in the import — toggles absent
+        # Only act on toggles that are explicitly listed in the import - toggles absent
         # from the export file were not part of the saved config and should keep whatever
         # state the live system already has (set during UI initialisation via Get-WinUtilToggleStatus).
         $importedToggles = $sync.selectedToggles
@@ -4512,13 +4500,15 @@ function Invoke-WPFButton {
         "WPFPrinterRemoveDriver" {Invoke-WPFPrinterDriver -Action "Remove"}
         "WPFWifiRefresh" {Invoke-WPFWifiRefresh}
         "WPFWifiCopyAll" {Invoke-WPFWifiCopyAll}
+        "WPFWifiExport" {Invoke-WPFWifiExport}
+        "WPFWifiImport" {Invoke-WPFWifiImport}
         "WPFSystemInfoRefresh" {Invoke-WPFSystemInfoRefresh}
         "WPFSystemInfoExport" {Invoke-WPFSystemInfoExport}
         "WPFCloseButton" {$sync.Form.Close(); Write-Host "Bye bye!"}
         "WPFselectedAppsButton" {$sync.selectedAppsPopup.IsOpen = -not $sync.selectedAppsPopup.IsOpen}
         "WPFToggleFOSSHighlight" {
             if ($sync.WPFToggleFOSSHighlight.IsChecked) {
-                 $sync.Form.Resources["FOSSColor"] = [Windows.Media.SolidColorBrush]::new([Windows.Media.Color]::FromRgb(76, 175, 80)) # #4CAF50
+                 $sync.Form.Resources["FOSSColor"] = $sync.Form.Resources["FOSSHighlightColor"]
             } else {
                  $sync.Form.Resources["FOSSColor"] = $sync.Form.Resources["MainForegroundColor"]
             }
@@ -5391,7 +5381,7 @@ function Invoke-WPFPrinterDriver {
                 if ($LASTEXITCODE -eq 0) {
                     Write-WinUtilPrinterLog "Driver installato correttamente." -Level Success
                 } else {
-                    Write-WinUtilPrinterLog "pnputil e' terminato con codice $LASTEXITCODE." -Level Warning
+                    Write-WinUtilPrinterLog "pnputil ha restituito il codice $LASTEXITCODE." -Level Warning
                 }
             } catch {
                 Write-WinUtilPrinterLog "Installazione del driver non riuscita: $($_.Exception.Message)" -Level Error
@@ -5623,12 +5613,38 @@ function Write-WinUtilSystemLog {
     }
 }
 
+function Format-WinUtilUptime {
+    <#
+        .SYNOPSIS
+            Formats the time elapsed since the given boot time, e.g. "2g 4h 11m".
+    #>
+    param([datetime]$BootTime)
+
+    $up = (Get-Date) - $BootTime
+    if ($up.Days -gt 0) { "{0}g {1}h {2}m" -f $up.Days, $up.Hours, $up.Minutes } else { "{0}h {1}m" -f $up.Hours, $up.Minutes }
+}
+
+function Set-WinUtilSystemMemory {
+    <#
+        .SYNOPSIS
+            Fills the memory fields of a system report from the total and the free memory in GB.
+    #>
+    param($Report, [double]$TotalGB, [double]$FreeGB)
+
+    $free = [math]::Round($FreeGB, 1)
+    $used = [math]::Round($TotalGB - $free, 1)
+    $Report.RamTotalGB = $TotalGB
+    $Report.RamText = "{0:N1} / {1:N1} GB" -f $used, $TotalGB
+    $Report.RamUsedPct = if ($TotalGB -gt 0) { [math]::Round(($used / $TotalGB) * 100) } else { 0 }
+    $Report.RamFree = "{0:N1} GB" -f $free
+}
+
 function Get-WinUtilSystemReport {
     <#
         .SYNOPSIS
-            Gathers OS, activation, hardware, CPU, RAM, storage (with SMART health),
-            GPU, network and battery information via CIM/WMI. Returns a hashtable of
-            preformatted strings (plus numeric percentages for the progress bars).
+            Gathers OS, activation, hardware, BitLocker, CPU, RAM, storage (with SMART health),
+            GPU, network, battery and Windows Update information via CIM/WMI and COM. Returns a
+            hashtable of preformatted strings (plus numeric percentages for the progress bars).
             Every section is isolated so a single failing query never aborts the report.
     #>
 
@@ -5637,6 +5653,7 @@ function Get-WinUtilSystemReport {
     # Helpers (local) ----------------------------------------------------------
     $toGB = { param($bytes) try { [math]::Round([double]$bytes / 1GB, 1) } catch { 0 } }
     $nd   = "Non disponibile"
+    $dot  = [char]0x00B7
 
     # OS / build ---------------------------------------------------------------
     try {
@@ -5648,12 +5665,11 @@ function Get-WinUtilSystemReport {
         $buildStr = "$($os.Version)"
         if ($ubr) { $buildStr = "$($os.Version).$ubr" }
         $verPart = if ($display) { "versione $display" } else { "" }
-        $r.OSBuild = ("{0}  ·  build {1}  ·  {2}" -f $verPart, $buildStr, $os.OSArchitecture).TrimStart(' ·').Trim()
+        $r.OSBuild = ("{0}  {3}  build {1}  {3}  {2}" -f $verPart, $buildStr, $os.OSArchitecture, $dot).TrimStart(" $dot").Trim()
         $r.Hostname = $env:COMPUTERNAME
         $r.InstallDate = try { (Get-Date $os.InstallDate -Format 'dd/MM/yyyy') } catch { $nd }
-        $boot = $os.LastBootUpTime
-        $up = (Get-Date) - $boot
-        $r.Uptime = if ($up.Days -gt 0) { "{0}g {1}h {2}m" -f $up.Days, $up.Hours, $up.Minutes } else { "{0}h {1}m" -f $up.Hours, $up.Minutes }
+        $r.BootTime = $os.LastBootUpTime
+        $r.Uptime = Format-WinUtilUptime $os.LastBootUpTime
     } catch {
         $r.OSCaption = "Windows"; $r.OSBuild = $nd; $r.Hostname = $env:COMPUTERNAME
         $r.InstallDate = $nd; $r.Uptime = $nd
@@ -5665,16 +5681,16 @@ function Get-WinUtilSystemReport {
             -Filter "ApplicationID='55c92734-d682-4d71-983e-d6ec3f16059f' AND PartialProductKey IS NOT NULL" `
             -ErrorAction Stop | Select-Object -First 1
         switch ([int]$lic.LicenseStatus) {
-            1       { $r.ActivationText = "Windows attivato";        $r.ActivationColor = "#3DF5A0" }
-            2       { $r.ActivationText = "Periodo di prova (OOB)";  $r.ActivationColor = "#F5A623" }
-            3       { $r.ActivationText = "Periodo di prova (OOT)";  $r.ActivationColor = "#F5A623" }
-            4       { $r.ActivationText = "Copia non genuina";       $r.ActivationColor = "#EF4444" }
-            5       { $r.ActivationText = "Non attivato";            $r.ActivationColor = "#EF4444" }
-            6       { $r.ActivationText = "Tolleranza estesa";       $r.ActivationColor = "#F5A623" }
-            default { $r.ActivationText = "Non attivato";            $r.ActivationColor = "#EF4444" }
+            1       { $r.ActivationText = "Windows attivato";        $r.ActivationColorKey = "SuccessColor" }
+            2       { $r.ActivationText = "Periodo di prova (OOB)";  $r.ActivationColorKey = "WarningColor" }
+            3       { $r.ActivationText = "Periodo di prova (OOT)";  $r.ActivationColorKey = "WarningColor" }
+            4       { $r.ActivationText = "Copia non genuina";       $r.ActivationColorKey = "DangerColor" }
+            5       { $r.ActivationText = "Non attivato";            $r.ActivationColorKey = "DangerColor" }
+            6       { $r.ActivationText = "Tolleranza estesa";       $r.ActivationColorKey = "WarningColor" }
+            default { $r.ActivationText = "Non attivato";            $r.ActivationColorKey = "DangerColor" }
         }
     } catch {
-        $r.ActivationText = "Stato sconosciuto"; $r.ActivationColor = "#8A93A6"
+        $r.ActivationText = "Stato sconosciuto"; $r.ActivationColorKey = "MutedForegroundColor"
     }
 
     # Hardware -----------------------------------------------------------------
@@ -5707,6 +5723,32 @@ function Get-WinUtilSystemReport {
         } catch { $nd }
     }
 
+    # BitLocker on the system drive (requires administrator rights)
+    $r.BitLocker = $nd
+    try {
+        $vol = Get-CimInstance -Namespace 'root/cimv2/security/microsoftvolumeencryption' -ClassName Win32_EncryptableVolume `
+            -Filter "DriveLetter='$env:SystemDrive'" -ErrorAction Stop | Select-Object -First 1
+        if ($vol) {
+            $protected = ([int]$vol.ProtectionStatus -eq 1)
+            $conv = $null
+            try { $conv = Invoke-CimMethod -InputObject $vol -MethodName GetConversionStatus -ErrorAction Stop } catch { }
+            if ($conv -and $conv.ReturnValue -eq 0) {
+                $pct = [int]$conv.EncryptionPercentage
+                $r.BitLocker = switch ([int]$conv.ConversionStatus) {
+                    0 { "Disattivato" }
+                    1 { if ($protected) { "Attivo" } else { "Protezione sospesa" } }
+                    2 { "Cifratura in corso ($pct%)" }
+                    3 { "Decifratura in corso ($pct%)" }
+                    4 { "Cifratura in pausa ($pct%)" }
+                    5 { "Decifratura in pausa ($pct%)" }
+                    default { if ($protected) { "Attivo" } else { "Disattivato" } }
+                }
+            } else {
+                $r.BitLocker = if ($protected) { "Attivo" } else { "Disattivato" }
+            }
+        }
+    } catch { }
+
     # CPU ----------------------------------------------------------------------
     try {
         $cpus = @(Get-CimInstance Win32_Processor -ErrorAction Stop)
@@ -5727,12 +5769,7 @@ function Get-WinUtilSystemReport {
     try {
         if (-not $os) { $os = Get-CimInstance Win32_OperatingSystem -ErrorAction Stop }
         if (-not $cs) { $cs = Get-CimInstance Win32_ComputerSystem -ErrorAction Stop }
-        $totalGB = & $toGB $cs.TotalPhysicalMemory
-        $freeGB  = [math]::Round(([double]$os.FreePhysicalMemory * 1KB) / 1GB, 1)
-        $usedGB  = [math]::Round($totalGB - $freeGB, 1)
-        $r.RamText = "{0:N1} / {1:N1} GB" -f $usedGB, $totalGB
-        $r.RamUsedPct = if ($totalGB -gt 0) { [math]::Round(($usedGB / $totalGB) * 100) } else { 0 }
-        $r.RamFree = "{0:N1} GB" -f $freeGB
+        Set-WinUtilSystemMemory -Report $r -TotalGB (& $toGB $cs.TotalPhysicalMemory) -FreeGB (([double]$os.FreePhysicalMemory * 1KB) / 1GB)
         $mods = @(Get-CimInstance Win32_PhysicalMemory -ErrorAction SilentlyContinue)
         if ($mods.Count -gt 0) {
             $speed = ($mods | Select-Object -First 1).Speed
@@ -5766,12 +5803,12 @@ function Get-WinUtilSystemReport {
     # SMART / physical-disk health
     try {
         $health = @(Get-PhysicalDisk -ErrorAction Stop | Select-Object -ExpandProperty HealthStatus -Unique)
-        if ($health -contains 'Unhealthy') { $r.DiskHealthText = "Salute: Critico";    $r.DiskHealthColor = "#EF4444" }
-        elseif ($health -contains 'Warning') { $r.DiskHealthText = "Salute: Attenzione"; $r.DiskHealthColor = "#F5A623" }
-        elseif ($health -contains 'Healthy') { $r.DiskHealthText = "Salute: OK";         $r.DiskHealthColor = "#3DF5A0" }
-        else                                 { $r.DiskHealthText = "Salute: n/d";        $r.DiskHealthColor = "#8A93A6" }
+        if ($health -contains 'Unhealthy') { $r.DiskHealthText = "Salute: Critico";    $r.DiskHealthColorKey = "DangerColor" }
+        elseif ($health -contains 'Warning') { $r.DiskHealthText = "Salute: Attenzione"; $r.DiskHealthColorKey = "WarningColor" }
+        elseif ($health -contains 'Healthy') { $r.DiskHealthText = "Salute: OK";         $r.DiskHealthColorKey = "SuccessColor" }
+        else                                 { $r.DiskHealthText = "Salute: n/d";        $r.DiskHealthColorKey = "MutedForegroundColor" }
     } catch {
-        $r.DiskHealthText = "Salute: n/d"; $r.DiskHealthColor = "#8A93A6"
+        $r.DiskHealthText = "Salute: n/d"; $r.DiskHealthColorKey = "MutedForegroundColor"
     }
 
     # GPU ----------------------------------------------------------------------
@@ -5783,7 +5820,7 @@ function Get-WinUtilSystemReport {
         $gpus = if ($real.Count -gt 0) { $real } else { $allGpus }
 
         $names = @($gpus | ForEach-Object { $_.Name } | Where-Object { $_ })
-        if ($names.Count -gt 0) { $r.GpuName = ($names -join "  ·  ") }
+        if ($names.Count -gt 0) { $r.GpuName = ($names -join "  $dot  ") }
 
         $g0 = $gpus | Select-Object -First 1
         if ($g0) {
@@ -5813,9 +5850,10 @@ function Get-WinUtilSystemReport {
 
     # Network ------------------------------------------------------------------
     try {
-        $cfg = Get-NetIPConfiguration -ErrorAction Stop |
-            Where-Object { $_.IPv4Address -and $_.NetAdapter -and $_.NetAdapter.Status -eq 'Up' } |
-            Select-Object -First 1
+        $configs = @(Get-NetIPConfiguration -ErrorAction Stop |
+            Where-Object { $_.IPv4Address -and $_.NetAdapter -and $_.NetAdapter.Status -eq 'Up' })
+        # Prefer the adapter with a default gateway, so virtual switches and VPNs do not hide the real connection
+        $cfg = @($configs | Where-Object { $_.IPv4DefaultGateway }) + $configs | Select-Object -First 1
         if ($cfg) {
             $r.NetAdapter = $cfg.InterfaceAlias
             $r.NetIp = ($cfg.IPv4Address | Select-Object -First 1).IPAddress
@@ -5866,7 +5904,55 @@ function Get-WinUtilSystemReport {
         } else { $r.HasBattery = $false }
     } catch { $r.HasBattery = $false }
 
+    # Windows Update -----------------------------------------------------------
+    # The Windows Update Agent reports dates in UTC
+    $toLocalDate = {
+        param($value)
+        $date = [datetime]$value
+        if ($date.Year -lt 2000) { return $nd }
+        [datetime]::SpecifyKind($date, [System.DateTimeKind]::Utc).ToLocalTime().ToString('dd/MM/yyyy')
+    }
+    $r.UpdatesLastInstall = $nd; $r.UpdatesLastSearch = $nd; $r.UpdatesRecent = @()
+    try {
+        $results = (New-Object -ComObject Microsoft.Update.AutoUpdate).Results
+        if ($results.LastInstallationSuccessDate) { $r.UpdatesLastInstall = & $toLocalDate $results.LastInstallationSuccessDate }
+        if ($results.LastSearchSuccessDate) { $r.UpdatesLastSearch = & $toLocalDate $results.LastSearchSuccessDate }
+    } catch { }
+    try {
+        $searcher = (New-Object -ComObject Microsoft.Update.Session).CreateUpdateSearcher()
+        $total = $searcher.GetTotalHistoryCount()
+        if ($total -gt 0) {
+            $recent = New-Object System.Collections.Generic.List[object]
+            foreach ($entry in $searcher.QueryHistory(0, [math]::Min($total, 100))) {
+                # Successful installations only (Operation 1, ResultCode 2/3), without the daily
+                # Defender definition updates (KB2267602 / KB915597) and the Microsoft Store app updates
+                if ($entry.Operation -ne 1 -or $entry.ResultCode -notin @(2, 3) -or -not $entry.Title) { continue }
+                if ($entry.Title -match '2267602|915597' -or $entry.Title -match '^9[0-9A-Z]{11}-') { continue }
+                if ($recent | Where-Object { $_.Title -eq $entry.Title }) { continue }
+                $recent.Add([pscustomobject]@{ Date = (& $toLocalDate $entry.Date); Title = $entry.Title })
+                if ($recent.Count -ge 4) { break }
+            }
+            $r.UpdatesRecent = $recent.ToArray()
+        }
+    } catch { }
+
     return $r
+}
+
+function Set-WinUtilSystemBar {
+    <#
+        .SYNOPSIS
+            Fills one of the System dashboard progress bars (a two-column star grid).
+            Colors are theme resource references, so they follow a later theme change.
+    #>
+    param($Grid, [double]$Percent, [bool]$Warn)
+
+    if (-not $Grid) { return }
+    $p = [math]::Max(0, [math]::Min(100, $Percent))
+    $Grid.ColumnDefinitions[0].Width = [System.Windows.GridLength]::new($p, [System.Windows.GridUnitType]::Star)
+    $Grid.ColumnDefinitions[1].Width = [System.Windows.GridLength]::new((100 - $p), [System.Windows.GridUnitType]::Star)
+    $colorKey = if ($Warn) { "DangerColor" } else { "AccentColor" }
+    $Grid.Children[0].SetResourceReference([System.Windows.Controls.Border]::BackgroundProperty, $colorKey)
 }
 
 function Invoke-WPFSystemInfoRefresh {
@@ -5889,21 +5975,6 @@ function Invoke-WPFSystemInfoRefresh {
             Invoke-WPFUIThread -ScriptBlock {
                 $r = $sync.SystemReport
 
-                # Local helper: paint one of the star-grid progress bars.
-                function Set-SysBar($grid, $pct, $warn) {
-                    if (-not $grid) { return }
-                    $p = [double][math]::Max(0, [math]::Min(100, $pct))
-                    $grid.ColumnDefinitions[0].Width = [System.Windows.GridLength]::new($p, [System.Windows.GridUnitType]::Star)
-                    $grid.ColumnDefinitions[1].Width = [System.Windows.GridLength]::new((100 - $p), [System.Windows.GridUnitType]::Star)
-                    $hex = if ($warn) { "#EF4444" } else { "#3DF5A0" }
-                    $col = [System.Windows.Media.Color]([System.Windows.Media.ColorConverter]::ConvertFromString($hex))
-                    $grid.Children[0].Background = [System.Windows.Media.SolidColorBrush]::new($col)
-                }
-                function New-SysBrush($hex) {
-                    $col = [System.Windows.Media.Color]([System.Windows.Media.ColorConverter]::ConvertFromString($hex))
-                    [System.Windows.Media.SolidColorBrush]::new($col)
-                }
-
                 # Hero
                 $sync.WPFSysOSCaption.Text   = $r.OSCaption
                 $sync.WPFSysOSBuild.Text      = $r.OSBuild
@@ -5911,8 +5982,8 @@ function Invoke-WPFSystemInfoRefresh {
                 $sync.WPFSysUptime.Text       = $r.Uptime
                 $sync.WPFSysInstallDate.Text  = $r.InstallDate
                 $sync.WPFSysActivation.Text   = $r.ActivationText
-                $sync.WPFSysActivation.Foreground = New-SysBrush $r.ActivationColor
-                $sync.WPFSysActivationDot.Fill    = New-SysBrush $r.ActivationColor
+                $sync.WPFSysActivation.SetResourceReference([System.Windows.Controls.TextBlock]::ForegroundProperty, $r.ActivationColorKey)
+                $sync.WPFSysActivationDot.SetResourceReference([System.Windows.Shapes.Shape]::FillProperty, $r.ActivationColorKey)
 
                 # Hardware
                 $sync.WPFSysManufacturer.Text = $r.Manufacturer
@@ -5921,23 +5992,24 @@ function Invoke-WPFSystemInfoRefresh {
                 $sync.WPFSysBios.Text         = $r.Bios
                 $sync.WPFSysSecureBoot.Text   = $r.SecureBoot
                 $sync.WPFSysTpm.Text          = $r.Tpm
+                $sync.WPFSysBitLocker.Text    = $r.BitLocker
 
                 # CPU
                 $sync.WPFSysCpuName.Text  = $r.CpuName
                 $sync.WPFSysCpuCores.Text = $r.CpuCores
                 $sync.WPFSysCpuClock.Text = $r.CpuClock
                 $sync.WPFSysCpuLoad.Text  = $r.CpuLoad
-                Set-SysBar $sync.WPFSysCpuLoadBar $r.CpuLoadPct ($r.CpuLoadPct -ge 90)
+                Set-WinUtilSystemBar $sync.WPFSysCpuLoadBar $r.CpuLoadPct ($r.CpuLoadPct -ge 90)
 
                 # RAM
                 $sync.WPFSysRamText.Text    = $r.RamText
                 $sync.WPFSysRamFree.Text    = $r.RamFree
                 $sync.WPFSysRamModules.Text = $r.RamModules
-                Set-SysBar $sync.WPFSysRamBar $r.RamUsedPct ($r.RamUsedPct -ge 90)
+                Set-WinUtilSystemBar $sync.WPFSysRamBar $r.RamUsedPct ($r.RamUsedPct -ge 90)
 
                 # Storage
                 $sync.WPFSysDiskHealth.Text       = $r.DiskHealthText
-                $sync.WPFSysDiskHealth.Foreground = New-SysBrush $r.DiskHealthColor
+                $sync.WPFSysDiskHealth.SetResourceReference([System.Windows.Controls.TextBlock]::ForegroundProperty, $r.DiskHealthColorKey)
                 for ($i = 0; $i -lt 4; $i++) {
                     $panel = $sync["WPFSysDisk$i"]
                     if (-not $panel) { continue }
@@ -5945,7 +6017,7 @@ function Invoke-WPFSystemInfoRefresh {
                         $d = $r.Disks[$i]
                         $sync["WPFSysDisk${i}Label"].Text = $d.Label
                         $sync["WPFSysDisk${i}Text"].Text  = $d.Text
-                        Set-SysBar $sync["WPFSysDisk${i}Bar"] $d.UsedPct $d.Warn
+                        Set-WinUtilSystemBar $sync["WPFSysDisk${i}Bar"] $d.UsedPct $d.Warn
                         $panel.Visibility = "Visible"
                     } else {
                         $panel.Visibility = "Collapsed"
@@ -5964,13 +6036,19 @@ function Invoke-WPFSystemInfoRefresh {
                 $sync.WPFSysNetMac.Text     = $r.NetMac
                 $sync.WPFSysNetStatus.Text  = $r.NetStatus
 
+                # Windows Update
+                $sync.WPFSysUpdLastInstall.Text = $r.UpdatesLastInstall
+                $sync.WPFSysUpdLastSearch.Text  = $r.UpdatesLastSearch
+                $sync.WPFSysUpdList.ItemsSource = @($r.UpdatesRecent)
+                $sync.WPFSysUpdEmpty.Visibility = if (@($r.UpdatesRecent).Count -gt 0) { "Collapsed" } else { "Visible" }
+
                 # Battery
                 if ($r.HasBattery) {
                     $sync.WPFSysBatteryCard.Visibility = "Visible"
                     $sync.WPFSysBatteryCharge.Text = $r.BatteryCharge
                     $sync.WPFSysBatteryStatus.Text = $r.BatteryStatus
                     $sync.WPFSysBatteryHealth.Text = $r.BatteryHealth
-                    Set-SysBar $sync.WPFSysBatteryBar $r.BatteryPct ($r.BatteryPct -le 15)
+                    Set-WinUtilSystemBar $sync.WPFSysBatteryBar $r.BatteryPct ($r.BatteryPct -le 15)
                 } else {
                     $sync.WPFSysBatteryCard.Visibility = "Collapsed"
                 }
@@ -5985,78 +6063,333 @@ function Invoke-WPFSystemInfoRefresh {
     }
 }
 
+function Start-WinUtilSystemLiveUpdate {
+    <#
+        .SYNOPSIS
+            Refreshes CPU load, memory usage and uptime of the System dashboard every two seconds
+            while the dashboard is open. The values are read on the runspace pool, so the UI never waits.
+    #>
+
+    if (-not $sync.SystemLiveTimer) {
+        $timer = New-Object System.Windows.Threading.DispatcherTimer
+        $timer.Interval = [TimeSpan]::FromSeconds(2)
+        $timer.Add_Tick({ Update-WinUtilSystemLiveData })
+        $sync.SystemLiveTimer = $timer
+    }
+    $sync.SystemLiveTimer.Start()
+}
+
+function Stop-WinUtilSystemLiveUpdate {
+    <#
+        .SYNOPSIS
+            Stops the live refresh of the System dashboard.
+    #>
+
+    if ($sync.SystemLiveTimer) { $sync.SystemLiveTimer.Stop() }
+}
+
+function Update-WinUtilSystemLiveData {
+    <#
+        .SYNOPSIS
+            Timer tick of the live System dashboard (UI thread): shows the result of the previous
+            query and starts the next one. Reading the CPU load takes about one second.
+    #>
+
+    $job = $sync.SystemLiveJob
+    if ($job) {
+        if (-not $job.Handle.IsCompleted) { return }
+        try {
+            $data = @($job.PowerShell.EndInvoke($job.Handle)) | Select-Object -Last 1
+            $r = $sync.SystemReport
+            if ($data -and $r) {
+                $r.CpuLoadPct = [double]$data.CpuLoadPct
+                $r.CpuLoad = "$($data.CpuLoadPct)%"
+                $sync.WPFSysCpuLoad.Text = $r.CpuLoad
+                Set-WinUtilSystemBar $sync.WPFSysCpuLoadBar $r.CpuLoadPct ($r.CpuLoadPct -ge 90)
+
+                if ($r.RamTotalGB -gt 0) {
+                    Set-WinUtilSystemMemory -Report $r -TotalGB $r.RamTotalGB -FreeGB $data.FreeGB
+                    $sync.WPFSysRamText.Text = $r.RamText
+                    $sync.WPFSysRamFree.Text = $r.RamFree
+                    Set-WinUtilSystemBar $sync.WPFSysRamBar $r.RamUsedPct ($r.RamUsedPct -ge 90)
+                }
+
+                if ($r.BootTime) {
+                    $r.Uptime = Format-WinUtilUptime $r.BootTime
+                    $sync.WPFSysUptime.Text = $r.Uptime
+                }
+            }
+        } catch {
+            Write-Debug "Live system update failed: $($_.Exception.Message)"
+        } finally {
+            $job.PowerShell.Dispose()
+            $sync.SystemLiveJob = $null
+        }
+    }
+
+    if (-not $sync.runspace -or $sync.Form.WindowState -eq [System.Windows.WindowState]::Minimized) { return }
+
+    $ps = [powershell]::Create()
+    $ps.RunspacePool = $sync.runspace
+    [void]$ps.AddScript({
+        $load = (Get-CimInstance -ClassName Win32_Processor -Property LoadPercentage | Measure-Object -Property LoadPercentage -Average).Average
+        $os = Get-CimInstance -ClassName Win32_OperatingSystem -Property FreePhysicalMemory
+        [pscustomobject]@{
+            CpuLoadPct = [math]::Round([double]$load)
+            FreeGB     = ([double]$os.FreePhysicalMemory * 1KB) / 1GB
+        }
+    }.ToString())
+    $sync.SystemLiveJob = [pscustomobject]@{ PowerShell = $ps; Handle = $ps.BeginInvoke() }
+}
+
+function ConvertTo-WinUtilSystemReportText {
+    <#
+        .SYNOPSIS
+            Formats a system report (see Get-WinUtilSystemReport) as plain text.
+    #>
+    param([Parameter(Mandatory)][hashtable]$Report)
+
+    $r = $Report
+    $sb = New-Object System.Text.StringBuilder
+    $null = $sb.AppendLine("WinRUtil - Report di sistema")
+    $null = $sb.AppendLine("Generato il $(Get-Date -Format 'dd/MM/yyyy HH:mm:ss')")
+    $null = $sb.AppendLine(("=" * 56))
+    $null = $sb.AppendLine("")
+    $null = $sb.AppendLine("[ WINDOWS ]")
+    $null = $sb.AppendLine("  Edizione        : $($r.OSCaption)")
+    $null = $sb.AppendLine("  Build           : $($r.OSBuild)")
+    $null = $sb.AppendLine("  Attivazione     : $($r.ActivationText)")
+    $null = $sb.AppendLine("  Nome PC         : $($r.Hostname)")
+    $null = $sb.AppendLine("  Installato il   : $($r.InstallDate)")
+    $null = $sb.AppendLine("  Acceso da       : $($r.Uptime)")
+    $null = $sb.AppendLine("")
+    $null = $sb.AppendLine("[ HARDWARE ]")
+    $null = $sb.AppendLine("  Produttore      : $($r.Manufacturer)")
+    $null = $sb.AppendLine("  Modello         : $($r.Model)")
+    $null = $sb.AppendLine("  N. di serie     : $($r.Serial)")
+    $null = $sb.AppendLine("  BIOS / UEFI     : $($r.Bios)")
+    $null = $sb.AppendLine("  Secure Boot     : $($r.SecureBoot)")
+    $null = $sb.AppendLine("  TPM             : $($r.Tpm)")
+    $null = $sb.AppendLine("  BitLocker ($env:SystemDrive)  : $($r.BitLocker)")
+    $null = $sb.AppendLine("")
+    $null = $sb.AppendLine("[ PROCESSORE ]")
+    $null = $sb.AppendLine("  Modello         : $($r.CpuName)")
+    $null = $sb.AppendLine("  Core / Thread   : $($r.CpuCores)")
+    $null = $sb.AppendLine("  Frequenza base  : $($r.CpuClock)")
+    $null = $sb.AppendLine("  Carico attuale  : $($r.CpuLoad)")
+    $null = $sb.AppendLine("")
+    $null = $sb.AppendLine("[ MEMORIA ]")
+    $null = $sb.AppendLine("  Utilizzo        : $($r.RamText)")
+    $null = $sb.AppendLine("  Disponibile     : $($r.RamFree)")
+    $null = $sb.AppendLine("  Moduli          : $($r.RamModules)")
+    $null = $sb.AppendLine("")
+    $null = $sb.AppendLine(("[ ARCHIVIAZIONE ]  {0}" -f $r.DiskHealthText))
+    foreach ($d in $r.Disks) {
+        $null = $sb.AppendLine("  $($d.Label)  -  $($d.Text)  ($($d.UsedPct)% usato)")
+    }
+    $null = $sb.AppendLine("")
+    $null = $sb.AppendLine("[ GRAFICA ]")
+    $null = $sb.AppendLine("  Scheda          : $($r.GpuName)")
+    $null = $sb.AppendLine("  Memoria video   : $($r.GpuVram)")
+    $null = $sb.AppendLine("  Risoluzione     : $($r.GpuResolution)")
+    $null = $sb.AppendLine("  Driver          : $($r.GpuDriver)")
+    $null = $sb.AppendLine("")
+    $null = $sb.AppendLine("[ RETE ]")
+    $null = $sb.AppendLine("  Scheda          : $($r.NetAdapter)")
+    $null = $sb.AppendLine("  Indirizzo IPv4  : $($r.NetIp)")
+    $null = $sb.AppendLine("  Indirizzo MAC   : $($r.NetMac)")
+    $null = $sb.AppendLine("  Stato           : $($r.NetStatus)")
+    if ($r.HasBattery) {
+        $null = $sb.AppendLine("")
+        $null = $sb.AppendLine("[ BATTERIA ]")
+        $null = $sb.AppendLine("  Carica          : $($r.BatteryCharge)")
+        $null = $sb.AppendLine("  Stato           : $($r.BatteryStatus)")
+        $null = $sb.AppendLine("  Salute          : $($r.BatteryHealth)")
+    }
+    $null = $sb.AppendLine("")
+    $null = $sb.AppendLine("[ AGGIORNAMENTI WINDOWS ]")
+    $null = $sb.AppendLine("  Ultima installazione : $($r.UpdatesLastInstall)")
+    $null = $sb.AppendLine("  Ultima ricerca       : $($r.UpdatesLastSearch)")
+    if (@($r.UpdatesRecent).Count -gt 0) {
+        $null = $sb.AppendLine("  Installati di recente:")
+        foreach ($u in $r.UpdatesRecent) {
+            $null = $sb.AppendLine("    $($u.Date)  $($u.Title)")
+        }
+    }
+    $sb.ToString()
+}
+
+function ConvertTo-WinUtilSystemReportHtml {
+    <#
+        .SYNOPSIS
+            Formats a system report (see Get-WinUtilSystemReport) as a standalone, printable HTML page.
+    #>
+    param([Parameter(Mandatory)][hashtable]$Report)
+
+    $r = $Report
+    $enc = { param($value) [System.Net.WebUtility]::HtmlEncode([string]$value) }
+    $row = { param($label, $value, $class) "<tr><td class=""k"">$label</td><td class=""v $class"">$(& $enc $value)</td></tr>" }
+    $bar = {
+        param($pct, $warn)
+        $width = [math]::Max(0, [math]::Min(100, [double]$pct)).ToString([System.Globalization.CultureInfo]::InvariantCulture)
+        $class = if ($warn) { ' class="danger"' } else { '' }
+        "<div class=""bar""><i$class style=""width:$width%""></i></div>"
+    }
+    $card = { param($title, $body) "<section class=""card""><h3>$title</h3>$body</section>" }
+    $state = @{ SuccessColor = 'ok'; WarningColor = 'warn'; DangerColor = 'danger' }
+
+    $css = @'
+:root{--bg:#f1f4f8;--card:#fff;--border:#d6dce4;--fg:#0f172a;--muted:#556275;--accent:#047857;--warn:#b45309;--danger:#dc2626;--track:#e2e8f0}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 "Segoe UI",system-ui,sans-serif}
+main{max-width:1000px;margin:0 auto;padding:32px 16px}
+header{margin-bottom:20px}
+.brand{margin:0;color:var(--accent);font-weight:700}
+h1{margin:2px 0 0;font-size:26px;line-height:1.2}
+.meta{margin:4px 0 0;color:var(--muted)}
+.hero{display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;align-items:flex-start;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:16px;padding:20px 22px;margin-bottom:16px}
+.hero h2{margin:0;font-size:22px}
+.facts{display:flex;flex-wrap:wrap;gap:28px;margin-top:12px}
+.facts span{display:block;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.facts b{font-size:14px}
+.pill{border-radius:999px;padding:6px 14px;font-weight:600;background:#fff;border:1px solid var(--border)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:16px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px}
+h3{margin:0 0 10px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+table{width:100%;border-collapse:collapse}
+td{padding:3px 0;vertical-align:top}
+td.k{color:var(--muted);padding-right:12px;white-space:nowrap}
+td.v{text-align:right;overflow-wrap:anywhere}
+.big{font-size:20px;font-weight:700;margin:0}
+.bar{height:6px;border-radius:3px;background:var(--track);overflow:hidden;margin:4px 0 10px}
+.bar i{display:block;height:100%;background:var(--accent)}
+.bar i.danger{background:var(--danger)}
+.disk{display:flex;justify-content:space-between;gap:12px;font-weight:600}
+.disk span{font-weight:400;color:var(--muted);font-size:12px}
+.ok{color:var(--accent)}
+.warn{color:var(--warn)}
+.danger{color:var(--danger)}
+ul{list-style:none;margin:8px 0 0;padding:0}
+li{display:flex;gap:10px;padding:3px 0}
+li span{color:var(--muted);white-space:nowrap}
+footer{margin-top:24px;color:var(--muted);font-size:12px}
+@media print{body{background:#fff}main{padding:0}.hero,.card{break-inside:avoid}}
+'@
+
+    $sb = New-Object System.Text.StringBuilder
+    $null = $sb.AppendLine('<!DOCTYPE html>')
+    $null = $sb.AppendLine('<html lang="it">')
+    $null = $sb.AppendLine('<head>')
+    $null = $sb.AppendLine('<meta charset="utf-8">')
+    $null = $sb.AppendLine('<meta name="viewport" content="width=device-width, initial-scale=1">')
+    $null = $sb.AppendLine("<title>Report di sistema - $(& $enc $r.Hostname)</title>")
+    $null = $sb.AppendLine("<style>`r`n$css</style>")
+    $null = $sb.AppendLine('</head>')
+    $null = $sb.AppendLine('<body>')
+    $null = $sb.AppendLine('<main>')
+    $null = $sb.AppendLine('<header><p class="brand">WinRUtil</p><h1>Report di sistema</h1>')
+    $null = $sb.AppendLine("<p class=""meta"">$(& $enc $r.Hostname) &middot; generato il $(Get-Date -Format 'dd/MM/yyyy HH:mm')</p></header>")
+
+    $null = $sb.AppendLine('<section class="hero"><div>')
+    $null = $sb.AppendLine("<h2>$(& $enc $r.OSCaption)</h2><p class=""meta"">$(& $enc $r.OSBuild)</p>")
+    $null = $sb.AppendLine("<div class=""facts""><div><span>Nome PC</span><b>$(& $enc $r.Hostname)</b></div><div><span>Acceso da</span><b>$(& $enc $r.Uptime)</b></div><div><span>Installato il</span><b>$(& $enc $r.InstallDate)</b></div></div>")
+    $null = $sb.AppendLine("</div><span class=""pill $($state[[string]$r.ActivationColorKey])"">$(& $enc $r.ActivationText)</span></section>")
+
+    $null = $sb.AppendLine('<div class="grid">')
+
+    $body = '<table>' +
+        (& $row 'Produttore' $r.Manufacturer) +
+        (& $row 'Modello' $r.Model) +
+        (& $row 'N. di serie' $r.Serial) +
+        (& $row 'BIOS / UEFI' $r.Bios) +
+        (& $row 'Secure Boot' $r.SecureBoot) +
+        (& $row 'TPM' $r.Tpm) +
+        (& $row "BitLocker ($env:SystemDrive)" $r.BitLocker) + '</table>'
+    $null = $sb.AppendLine((& $card 'Hardware' $body))
+
+    $body = "<p><b>$(& $enc $r.CpuName)</b></p><table>" +
+        (& $row 'Core / Thread' $r.CpuCores) +
+        (& $row 'Frequenza base' $r.CpuClock) +
+        (& $row 'Carico' $r.CpuLoad) + '</table>' + (& $bar $r.CpuLoadPct ($r.CpuLoadPct -ge 90))
+    $null = $sb.AppendLine((& $card 'Processore' $body))
+
+    $body = "<p class=""big"">$(& $enc $r.RamText)</p>" + (& $bar $r.RamUsedPct ($r.RamUsedPct -ge 90)) + '<table>' +
+        (& $row 'Disponibile' $r.RamFree) +
+        (& $row 'Moduli' $r.RamModules) + '</table>'
+    $null = $sb.AppendLine((& $card 'Memoria' $body))
+
+    $body = "<p class=""$($state[[string]$r.DiskHealthColorKey])"">$(& $enc $r.DiskHealthText)</p>"
+    foreach ($d in $r.Disks) {
+        $body += "<div class=""disk"">$(& $enc $d.Label)<span>$(& $enc $d.Text)</span></div>" + (& $bar $d.UsedPct $d.Warn)
+    }
+    $null = $sb.AppendLine((& $card 'Archiviazione' $body))
+
+    $body = "<p><b>$(& $enc $r.GpuName)</b></p><table>" +
+        (& $row 'Memoria video' $r.GpuVram) +
+        (& $row 'Risoluzione' $r.GpuResolution) +
+        (& $row 'Driver' $r.GpuDriver) + '</table>'
+    $null = $sb.AppendLine((& $card 'Grafica' $body))
+
+    $body = '<table>' +
+        (& $row 'Scheda' $r.NetAdapter) +
+        (& $row 'Indirizzo IPv4' $r.NetIp) +
+        (& $row 'Indirizzo MAC' $r.NetMac) +
+        (& $row 'Stato' $r.NetStatus) + '</table>'
+    $null = $sb.AppendLine((& $card 'Rete' $body))
+
+    if ($r.HasBattery) {
+        $body = "<p class=""big"">$(& $enc $r.BatteryCharge)</p>" + (& $bar $r.BatteryPct ($r.BatteryPct -le 15)) + '<table>' +
+            (& $row 'Stato' $r.BatteryStatus) +
+            (& $row 'Salute' $r.BatteryHealth) + '</table>'
+        $null = $sb.AppendLine((& $card 'Batteria' $body))
+    }
+
+    $body = '<table>' +
+        (& $row 'Ultima installazione' $r.UpdatesLastInstall) +
+        (& $row 'Ultima ricerca' $r.UpdatesLastSearch) + '</table>'
+    if (@($r.UpdatesRecent).Count -gt 0) {
+        $body += '<ul>' + (-join (@($r.UpdatesRecent) | ForEach-Object { "<li><span>$(& $enc $_.Date)</span>$(& $enc $_.Title)</li>" })) + '</ul>'
+    }
+    $null = $sb.AppendLine((& $card 'Aggiornamenti Windows' $body))
+
+    $null = $sb.AppendLine('</div>')
+    $null = $sb.AppendLine("<footer>Generato con WinRUtil $(& $enc $sync.version) &middot; https://github.com/rtecnocopy89/WinRUtil</footer>")
+    $null = $sb.AppendLine('</main>')
+    $null = $sb.AppendLine('</body>')
+    $null = $sb.AppendLine('</html>')
+    $sb.ToString()
+}
+
 function Invoke-WPFSystemInfoExport {
     <#
         .SYNOPSIS
-            Writes the current system report to a timestamped .txt file on the Desktop.
+            Asks where to save the system report and writes it as an HTML page (opened in the
+            default browser, ready to print or save as PDF) or as plain text.
     #>
+
+    $dialog = New-Object System.Windows.Forms.SaveFileDialog
+    $dialog.Title = "Esporta il report di sistema"
+    $dialog.Filter = "Report HTML (*.html)|*.html|Testo semplice (*.txt)|*.txt"
+    $dialog.FileName = "WinRUtil-Sistema_{0}_{1}" -f $env:COMPUTERNAME, (Get-Date -Format 'yyyyMMdd-HHmmss')
+    $dialog.InitialDirectory = [Environment]::GetFolderPath('Desktop')
+    if ($dialog.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) {
+        Write-WinUtilSystemLog "Esportazione del report annullata." -Level Warning
+        return
+    }
+    $sync.SystemReportExportPath = $dialog.FileName
 
     Write-WinUtilSystemLog "Creazione del report di sistema..."
     Invoke-WPFRunspace -ScriptBlock {
         try {
+            $path = $sync.SystemReportExportPath
             $r = $sync.SystemReport
             if (-not $r) { $r = Get-WinUtilSystemReport; $sync.SystemReport = $r }
 
-            $sb = New-Object System.Text.StringBuilder
-            $null = $sb.AppendLine("WinRUtil - Report di sistema")
-            $null = $sb.AppendLine("Generato il $(Get-Date -Format 'dd/MM/yyyy HH:mm:ss')")
-            $null = $sb.AppendLine(("=" * 56))
-            $null = $sb.AppendLine("")
-            $null = $sb.AppendLine("[ WINDOWS ]")
-            $null = $sb.AppendLine("  Edizione        : $($r.OSCaption)")
-            $null = $sb.AppendLine("  Build           : $($r.OSBuild)")
-            $null = $sb.AppendLine("  Attivazione     : $($r.ActivationText)")
-            $null = $sb.AppendLine("  Nome PC         : $($r.Hostname)")
-            $null = $sb.AppendLine("  Installato il   : $($r.InstallDate)")
-            $null = $sb.AppendLine("  Acceso da       : $($r.Uptime)")
-            $null = $sb.AppendLine("")
-            $null = $sb.AppendLine("[ HARDWARE ]")
-            $null = $sb.AppendLine("  Produttore      : $($r.Manufacturer)")
-            $null = $sb.AppendLine("  Modello         : $($r.Model)")
-            $null = $sb.AppendLine("  N. di serie     : $($r.Serial)")
-            $null = $sb.AppendLine("  BIOS / UEFI     : $($r.Bios)")
-            $null = $sb.AppendLine("  Secure Boot     : $($r.SecureBoot)")
-            $null = $sb.AppendLine("  TPM             : $($r.Tpm)")
-            $null = $sb.AppendLine("")
-            $null = $sb.AppendLine("[ PROCESSORE ]")
-            $null = $sb.AppendLine("  Modello         : $($r.CpuName)")
-            $null = $sb.AppendLine("  Core / Thread   : $($r.CpuCores)")
-            $null = $sb.AppendLine("  Frequenza base  : $($r.CpuClock)")
-            $null = $sb.AppendLine("  Carico attuale  : $($r.CpuLoad)")
-            $null = $sb.AppendLine("")
-            $null = $sb.AppendLine("[ MEMORIA ]")
-            $null = $sb.AppendLine("  Utilizzo        : $($r.RamText)")
-            $null = $sb.AppendLine("  Disponibile     : $($r.RamFree)")
-            $null = $sb.AppendLine("  Moduli          : $($r.RamModules)")
-            $null = $sb.AppendLine("")
-            $null = $sb.AppendLine("[ ARCHIVIAZIONE ]$($r.DiskHealthText)")
-            foreach ($d in $r.Disks) {
-                $null = $sb.AppendLine("  $($d.Label)  -  $($d.Text)  ($($d.UsedPct)% usato)")
-            }
-            $null = $sb.AppendLine("")
-            $null = $sb.AppendLine("[ GRAFICA ]")
-            $null = $sb.AppendLine("  Scheda          : $($r.GpuName)")
-            $null = $sb.AppendLine("  Memoria video   : $($r.GpuVram)")
-            $null = $sb.AppendLine("  Risoluzione     : $($r.GpuResolution)")
-            $null = $sb.AppendLine("  Driver          : $($r.GpuDriver)")
-            $null = $sb.AppendLine("")
-            $null = $sb.AppendLine("[ RETE ]")
-            $null = $sb.AppendLine("  Scheda          : $($r.NetAdapter)")
-            $null = $sb.AppendLine("  Indirizzo IPv4  : $($r.NetIp)")
-            $null = $sb.AppendLine("  Indirizzo MAC   : $($r.NetMac)")
-            $null = $sb.AppendLine("  Stato           : $($r.NetStatus)")
-            if ($r.HasBattery) {
-                $null = $sb.AppendLine("")
-                $null = $sb.AppendLine("[ BATTERIA ]")
-                $null = $sb.AppendLine("  Carica          : $($r.BatteryCharge)")
-                $null = $sb.AppendLine("  Stato           : $($r.BatteryStatus)")
-                $null = $sb.AppendLine("  Salute          : $($r.BatteryHealth)")
-            }
-
-            $fileName = "WinRUtil-Sistema_{0}_{1}.txt" -f $r.Hostname, (Get-Date -Format 'yyyyMMdd-HHmmss')
-            $path = Join-Path ([Environment]::GetFolderPath('Desktop')) $fileName
-            $sb.ToString() | Out-File -FilePath $path -Encoding UTF8 -Force
-            Write-WinUtilSystemLog "Report salvato sul Desktop: $fileName" -Level Success
+            $isText = [System.IO.Path]::GetExtension($path) -ieq '.txt'
+            $content = if ($isText) { ConvertTo-WinUtilSystemReportText -Report $r } else { ConvertTo-WinUtilSystemReportHtml -Report $r }
+            [System.IO.File]::WriteAllText($path, $content, [System.Text.UTF8Encoding]::new($true))
+            Write-WinUtilSystemLog "Report salvato: $path" -Level Success
+            if (-not $isText) { Start-Process -FilePath $path }
         } catch {
             Write-WinUtilSystemLog "Impossibile creare il report: $($_.Exception.Message)" -Level Error
         }
@@ -6140,6 +6473,13 @@ function Invoke-WPFTab {
     } elseif ($sync.currentTab -eq "System") {
         # Auto-populate the System dashboard when it is opened
         Invoke-WPFSystemInfoRefresh
+    }
+
+    # Live CPU / memory values only while the System dashboard is visible
+    if ($sync.currentTab -eq "System") {
+        Start-WinUtilSystemLiveUpdate
+    } else {
+        Stop-WinUtilSystemLiveUpdate
     }
 
     # Show search bar in Install and Tweaks tabs
@@ -7185,9 +7525,9 @@ function Get-WinRUtilWifiProfiles {
                     $password = $keyMaterial
                 }
 
-                # AutoConnect: Italian Si / No based on connectionMode.
+                # AutoConnect: Italian yes / no based on connectionMode (char code keeps the source ASCII-only).
                 if ($connectionMode -and $connectionMode.Trim().ToLowerInvariant() -eq 'auto') {
-                    $autoConnect = 'Si'
+                    $autoConnect = "S$([char]0x00EC)"
                 }
                 else {
                     $autoConnect = 'No'
@@ -7290,6 +7630,216 @@ function Invoke-WPFWifiCopyAll {
         Write-WinUtilWifiLog "Copia negli appunti non riuscita: $($_.Exception.Message)" -Level Error
     }
 }
+
+function Test-WinUtilWlanService {
+    <#
+        .SYNOPSIS
+            Returns $true when the WLAN AutoConfig service is running; otherwise logs why the Wi-Fi tools are unavailable.
+    #>
+    $svc = Get-Service -Name 'Wlansvc' -ErrorAction SilentlyContinue
+    if ($null -eq $svc -or $svc.Status -ne 'Running') {
+        Write-WinUtilWifiLog "Servizio WLAN (Wlansvc) non attivo: su questo PC non sono disponibili reti Wi-Fi." -Level Warning
+        return $false
+    }
+    return $true
+}
+
+function Export-WinUtilWifiProfiles {
+    <#
+        .SYNOPSIS
+            Exports every saved Wi-Fi profile, with its key in clear text, to a .zip archive that
+            Import-WinUtilWifiProfiles (or "netsh wlan add profile") can import on another PC.
+        .PARAMETER Path
+            Full path of the .zip archive to create. An existing file is replaced.
+        .OUTPUTS
+            The number of exported profiles.
+    #>
+    param(
+        [Parameter(Mandatory)]
+        [string]$Path
+    )
+
+    $work = Join-Path $env:TEMP ("winrutil_wifi_" + [guid]::NewGuid().ToString())
+    try {
+        New-Item -ItemType Directory -Path $work -Force -ErrorAction Stop | Out-Null
+        $null = netsh wlan export profile key=clear folder="$work" 2>&1
+
+        $files = @(Get-ChildItem -LiteralPath $work -Filter '*.xml' -File -ErrorAction SilentlyContinue)
+        if ($files.Count -eq 0) {
+            return 0
+        }
+
+        $readme = @(
+            "Profili Wi-Fi esportati da WinRUtil ($env:COMPUTERNAME, $(Get-Date -Format 'dd/MM/yyyy HH:mm'))."
+            "ATTENZIONE: i file contengono le password in chiaro, conserva questo archivio in un luogo sicuro."
+            ""
+            "Per importarli su un altro PC:"
+            "- WinRUtil > Wi-Fi > Importa profili, poi scegli questo file .zip"
+            "- oppure, da un prompt dei comandi come amministratore, per ogni file .xml:"
+            "  netsh wlan add profile filename=""NomeFile.xml"" user=all"
+        )
+        Set-Content -LiteralPath (Join-Path $work 'LEGGIMI.txt') -Value $readme -Encoding ASCII
+
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        if (Test-Path -LiteralPath $Path) {
+            Remove-Item -LiteralPath $Path -Force -ErrorAction Stop
+        }
+        [System.IO.Compression.ZipFile]::CreateFromDirectory($work, $Path)
+        return $files.Count
+    }
+    finally {
+        # The exported files contain the keys in clear text: never leave them behind
+        if (Test-Path -LiteralPath $work) {
+            Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+function Import-WinUtilWifiProfiles {
+    <#
+        .SYNOPSIS
+            Imports Wi-Fi profiles for all users from .zip archives created by Export-WinUtilWifiProfiles
+            or from .xml profile files exported by netsh.
+        .PARAMETER Path
+            One or more .zip or .xml files.
+        .OUTPUTS
+            One object per profile file, with Name, Success and Message.
+    #>
+    param(
+        [Parameter(Mandatory)]
+        [string[]]$Path
+    )
+
+    $work = Join-Path $env:TEMP ("winrutil_wifi_" + [guid]::NewGuid().ToString())
+    try {
+        $xmlFiles = New-Object System.Collections.Generic.List[string]
+        foreach ($item in $Path) {
+            if ([System.IO.Path]::GetExtension($item) -ieq '.zip') {
+                Add-Type -AssemblyName System.IO.Compression.FileSystem
+                $target = Join-Path $work ([guid]::NewGuid().ToString())
+                New-Item -ItemType Directory -Path $target -Force -ErrorAction Stop | Out-Null
+                [System.IO.Compression.ZipFile]::ExtractToDirectory($item, $target)
+                Get-ChildItem -LiteralPath $target -Filter '*.xml' -File -Recurse | ForEach-Object { $xmlFiles.Add($_.FullName) }
+            } else {
+                $xmlFiles.Add($item)
+            }
+        }
+
+        foreach ($file in $xmlFiles) {
+            # Only WLAN profile documents are handed to netsh
+            $name = $null
+            try {
+                $doc = New-Object System.Xml.XmlDocument
+                $stream = [System.IO.File]::OpenRead($file)
+                try { $doc.Load($stream) } finally { $stream.Dispose() }
+                if ($doc.DocumentElement.LocalName -eq 'WLANProfile') {
+                    $nameNode = $doc.DocumentElement.SelectSingleNode("*[local-name()='name']")
+                    if ($nameNode) { $name = $nameNode.InnerText }
+                }
+            } catch {
+                $name = $null
+            }
+
+            if ([string]::IsNullOrEmpty($name)) {
+                [PSCustomObject]@{ Name = [System.IO.Path]::GetFileName($file); Success = $false; Message = "File non valido: non contiene un profilo Wi-Fi." }
+                continue
+            }
+
+            $output = netsh wlan add profile filename="$file" user=all 2>&1
+            [PSCustomObject]@{
+                Name    = $name
+                Success = ($LASTEXITCODE -eq 0)
+                Message = (($output | Out-String) -replace '\s+', ' ').Trim()
+            }
+        }
+    }
+    finally {
+        if (Test-Path -LiteralPath $work) {
+            Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+function Invoke-WPFWifiExport {
+    <#
+        .SYNOPSIS
+            Asks for a destination file and exports all saved Wi-Fi profiles, with their passwords, to a .zip archive.
+    #>
+    if (-not (Test-WinUtilWlanService)) {
+        return
+    }
+
+    $dialog = New-Object System.Windows.Forms.SaveFileDialog
+    $dialog.Title = "Esporta i profili Wi-Fi"
+    $dialog.Filter = "Archivio ZIP (*.zip)|*.zip"
+    $dialog.FileName = "WinRUtil-WiFi_{0}_{1}.zip" -f $env:COMPUTERNAME, (Get-Date -Format 'yyyyMMdd-HHmm')
+    $dialog.InitialDirectory = [Environment]::GetFolderPath('Desktop')
+    if ($dialog.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) {
+        Write-WinUtilWifiLog "Esportazione annullata." -Level Warning
+        return
+    }
+
+    Write-WinUtilWifiLog "Esportazione dei profili Wi-Fi..."
+    try {
+        $count = Export-WinUtilWifiProfiles -Path $dialog.FileName
+        if ($count -eq 0) {
+            Write-WinUtilWifiLog "Nessun profilo Wi-Fi da esportare." -Level Warning
+        } else {
+            Write-WinUtilWifiLog ("Esportati {0} profilo/i in {1}" -f $count, $dialog.FileName) -Level Success
+            Write-WinUtilWifiLog "Il file contiene le password in chiaro: conservalo in un luogo sicuro." -Level Warning
+        }
+    } catch {
+        Write-WinUtilWifiLog "Esportazione non riuscita: $($_.Exception.Message)" -Level Error
+    }
+}
+
+function Invoke-WPFWifiImport {
+    <#
+        .SYNOPSIS
+            Asks for one or more exported files (.zip or .xml) and imports the Wi-Fi profiles they contain.
+    #>
+    if (-not (Test-WinUtilWlanService)) {
+        return
+    }
+
+    $dialog = New-Object System.Windows.Forms.OpenFileDialog
+    $dialog.Title = "Importa profili Wi-Fi"
+    $dialog.Filter = "Profili Wi-Fi (*.zip;*.xml)|*.zip;*.xml"
+    $dialog.Multiselect = $true
+    $dialog.InitialDirectory = [Environment]::GetFolderPath('Desktop')
+    if ($dialog.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) {
+        Write-WinUtilWifiLog "Importazione annullata." -Level Warning
+        return
+    }
+
+    Write-WinUtilWifiLog "Importazione dei profili Wi-Fi..."
+    [System.Windows.Input.Mouse]::OverrideCursor = [System.Windows.Input.Cursors]::Wait
+    try {
+        $results = @(Import-WinUtilWifiProfiles -Path $dialog.FileNames)
+        foreach ($res in $results) {
+            if ($res.Success) {
+                Write-WinUtilWifiLog "Importata: $($res.Name)"
+            } else {
+                Write-WinUtilWifiLog "Non importata: $($res.Name) - $($res.Message)" -Level Warning
+            }
+        }
+
+        $imported = @($results | Where-Object { $_.Success }).Count
+        if ($results.Count -eq 0) {
+            Write-WinUtilWifiLog "Nessun profilo Wi-Fi trovato nei file selezionati." -Level Warning
+        } elseif ($imported -eq $results.Count) {
+            Write-WinUtilWifiLog ("Importate {0} rete/i." -f $imported) -Level Success
+        } else {
+            Write-WinUtilWifiLog ("Importate {0} rete/i su {1}." -f $imported, $results.Count) -Level Warning
+        }
+    } catch {
+        Write-WinUtilWifiLog "Importazione non riuscita: $($_.Exception.Message)" -Level Error
+    } finally {
+        [System.Windows.Input.Mouse]::OverrideCursor = $null
+    }
+
+    Invoke-WPFWifiRefresh
+}
 Function Show-WinRUtilLogo {
     <#
         .SYNOPSIS
@@ -7303,18 +7853,27 @@ Function Show-WinRUtilLogo {
             Show-WinRUtilLogo
     #>
 
+    # The box-drawing characters are mapped at runtime so the source stays ASCII-only:
+    # '#' full block, '|' and '=' double lines, '[' ']' '{' '}' double-line corners
+    $glyphs = @{
+        '#' = [char]0x2588; '|' = [char]0x2551; '=' = [char]0x2550
+        '[' = [char]0x2554; ']' = [char]0x2557; '{' = [char]0x255A; '}' = [char]0x255D
+    }
     $logo = @(
-        '██╗    ██╗██╗███╗   ██╗██████╗ ██╗   ██╗████████╗██╗██╗'
-        '██║    ██║██║████╗  ██║██╔══██╗██║   ██║╚══██╔══╝██║██║'
-        '██║ █╗ ██║██║██╔██╗ ██║██████╔╝██║   ██║   ██║   ██║██║'
-        '██║███╗██║██║██║╚██╗██║██╔══██╗██║   ██║   ██║   ██║██║'
-        '╚███╔███╔╝██║██║ ╚████║██║  ██║╚██████╔╝   ██║   ██║███████╗'
-        ' ╚══╝╚══╝ ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝ ╚═════╝    ╚═╝   ╚═╝╚══════╝'
-    )
+        '##]    ##]##]###]   ##]######] ##]   ##]########]##]##]'
+        '##|    ##|##|####]  ##|##[==##]##|   ##|{==##[==}##|##|'
+        '##| #] ##|##|##[##] ##|######[}##|   ##|   ##|   ##|##|'
+        '##|###]##|##|##|{##]##|##[==##]##|   ##|   ##|   ##|##|'
+        '{###[###[}##|##| {####|##|  ##|{######[}   ##|   ##|#######]'
+        ' {==}{==} {=}{=}  {===}{=}  {=} {=====}    {=}   {=}{======}'
+    ) | ForEach-Object {
+        -join ($_.ToCharArray() | ForEach-Object { if ($glyphs.ContainsKey([string]$_)) { $glyphs[[string]$_] } else { $_ } })
+    }
 
     $width = 60
-    $tagline = 'WinRUtil  •  Windows Toolkit'
-    if ($sync.version) { $tagline += "  •  v$($sync.version)" }
+    $bullet = [char]0x2022
+    $tagline = "WinRUtil  $bullet  Windows Toolkit"
+    if ($sync.version) { $tagline += "  $bullet  v$($sync.version)" }
     $rule = [string][char]0x2500 * $width
     $centered = (' ' * [math]::Max(0, [math]::Floor(($width - $tagline.Length) / 2))) + $tagline
 
@@ -9542,7 +10101,6 @@ $sync.configs.themes = @'
                    "IconButtonSize":  "35",
                    "SettingsIconFontSize":  "18",
                    "CloseIconFontSize":  "18",
-                   "GroupBorderBackgroundColor":  "#59161B26",
                    "ButtonFontSize":  "12",
                    "ButtonFontFamily":  "Inter, Segoe UI Variable, Segoe UI",
                    "ButtonWidth":  "200",
@@ -9553,50 +10111,65 @@ $sync.configs.themes = @'
                    "SearchBarHeight":  "26",
                    "SearchBarTextBoxFontSize":  "12",
                    "SearchBarClearButtonFontSize":  "14",
-                   "CheckboxMouseOverColor":  "#3DF5A0",
                    "ButtonBorderThickness":  "1",
                    "ButtonMargin":  "1",
                    "ButtonCornerRadius":  "8"
                },
     "Light":  {
-                  "AppInstallUnselectedColor":  "#F7F7F7",
-                  "AppInstallHighlightedColor":  "#CFCFCF",
-                  "AppInstallSelectedColor":  "#C2C2C2",
-                  "AppInstallOverlayBackgroundColor":  "#6A6D72",
-                  "ComboBoxForegroundColor":  "#232629",
-                  "ComboBoxBackgroundColor":  "#F7F7F7",
-                  "LabelboxForegroundColor":  "#232629",
-                  "MainForegroundColor":  "#232629",
-                  "MainBackgroundColor":  "#F7F7F7",
-                  "LabelBackgroundColor":  "#F7F7F7",
-                  "LinkForegroundColor":  "#484848",
-                  "LinkHoverForegroundColor":  "#232629",
-                  "ScrollBarBackgroundColor":  "#4A4D52",
-                  "ScrollBarHoverColor":  "#5A5D62",
-                  "ScrollBarDraggingColor":  "#6A6D72",
-                  "ProgressBarForegroundColor":  "#2E77FF",
-                  "ProgressBarBackgroundColor":  "Transparent",
-                  "ProgressBarTextColor":  "#232629",
-                  "ButtonInstallBackgroundColor":  "#F7F7F7",
-                  "ButtonTweaksBackgroundColor":  "#F7F7F7",
-                  "ButtonConfigBackgroundColor":  "#F7F7F7",
-                  "ButtonUpdatesBackgroundColor":  "#F7F7F7",
-                  "ButtonWin11ISOBackgroundColor":  "#F7F7F7",
-                  "ButtonInstallForegroundColor":  "#232629",
-                  "ButtonTweaksForegroundColor":  "#232629",
-                  "ButtonConfigForegroundColor":  "#232629",
-                  "ButtonUpdatesForegroundColor":  "#232629",
-                  "ButtonWin11ISOForegroundColor":  "#232629",
-                  "ButtonBackgroundColor":  "#F5F5F5",
-                  "ButtonBackgroundPressedColor":  "#1A1A1A",
-                  "ButtonBackgroundMouseoverColor":  "#C2C2C2",
-                  "ButtonBackgroundSelectedColor":  "#F0F0F0",
-                  "ButtonForegroundColor":  "#232629",
-                  "ToggleButtonOnColor":  "#2E77FF",
-                  "ToggleButtonOffColor":  "#707070",
-                  "ToolTipBackgroundColor":  "#F7F7F7",
-                  "BorderColor":  "#232629",
-                  "BorderOpacity":  "0.2"
+                  "AppInstallUnselectedColor":  "#F1F4F8",
+                  "AppInstallHighlightedColor":  "#E2E8F0",
+                  "AppInstallSelectedColor":  "#DCFCE7",
+                  "AppInstallOverlayBackgroundColor":  "#E6FFFFFF",
+                  "ComboBoxForegroundColor":  "#0F172A",
+                  "ComboBoxBackgroundColor":  "#FFFFFF",
+                  "LabelboxForegroundColor":  "#047857",
+                  "MainForegroundColor":  "#0F172A",
+                  "MainBackgroundColor":  "#FFFFFF",
+                  "LabelBackgroundColor":  "#00FFFFFF",
+                  "LinkForegroundColor":  "#047857",
+                  "LinkHoverForegroundColor":  "#0F172A",
+                  "ScrollBarBackgroundColor":  "#C3CBD5",
+                  "ScrollBarHoverColor":  "#059669",
+                  "ScrollBarDraggingColor":  "#047857",
+                  "ProgressBarForegroundColor":  "#059669",
+                  "ProgressBarBackgroundColor":  "#E2E8F0",
+                  "ProgressBarTextColor":  "#0F172A",
+                  "ButtonInstallBackgroundColor":  "#F1F4F8",
+                  "ButtonTweaksBackgroundColor":  "#F1F4F8",
+                  "ButtonConfigBackgroundColor":  "#F1F4F8",
+                  "ButtonUpdatesBackgroundColor":  "#F1F4F8",
+                  "ButtonWin11ISOBackgroundColor":  "#F1F4F8",
+                  "ButtonInstallForegroundColor":  "#0F172A",
+                  "ButtonTweaksForegroundColor":  "#0F172A",
+                  "ButtonConfigForegroundColor":  "#0F172A",
+                  "ButtonUpdatesForegroundColor":  "#0F172A",
+                  "ButtonWin11ISOForegroundColor":  "#0F172A",
+                  "ButtonBackgroundColor":  "#F1F4F8",
+                  "ButtonBackgroundPressedColor":  "#CBD5E1",
+                  "ButtonBackgroundMouseoverColor":  "#E2E8F0",
+                  "ButtonBackgroundSelectedColor":  "#D1FAE5",
+                  "ButtonBackgroundDisabledColor":  "#F1F4F8",
+                  "ButtonForegroundColor":  "#0F172A",
+                  "ButtonForegroundDisabledColor":  "#A0A8B4",
+                  "ToggleButtonOnColor":  "#059669",
+                  "ToggleButtonOffColor":  "#7C8798",
+                  "ToolTipBackgroundColor":  "#FFFFFF",
+                  "BorderColor":  "#D6DCE4",
+                  "BorderOpacity":  "0.2",
+                  "WindowBackgroundStartColor":  "#F8FAFC",
+                  "WindowBackgroundEndColor":  "#EEF2F6",
+                  "SidebarBackgroundColor":  "#0A0F172A",
+                  "GroupBorderBackgroundColor":  "#FFFFFF",
+                  "AccentColor":  "#047857",
+                  "AccentGlowColor":  "#047857",
+                  "AccentGlowOpacity":  "0.18",
+                  "MutedForegroundColor":  "#556275",
+                  "CheckboxMouseOverColor":  "#047857",
+                  "FOSSHighlightColor":  "#15803D",
+                  "DataGridAlternatingRowColor":  "#F5F7FA",
+                  "SuccessColor":  "#047857",
+                  "WarningColor":  "#B45309",
+                  "DangerColor":  "#DC2626"
               },
     "Dark":  {
                  "AppInstallUnselectedColor":  "#14FFFFFF",
@@ -9615,7 +10188,7 @@ $sync.configs.themes = @'
                  "ScrollBarHoverColor":  "#3DF5A0",
                  "ScrollBarDraggingColor":  "#2BD389",
                  "ProgressBarForegroundColor":  "#3DF5A0",
-                 "ProgressBarBackgroundColor":  "Transparent",
+                 "ProgressBarBackgroundColor":  "#1AFFFFFF",
                  "ProgressBarTextColor":  "#F8FAFC",
                  "ButtonInstallBackgroundColor":  "#59161B26",
                  "ButtonTweaksBackgroundColor":  "#59161B26",
@@ -9631,12 +10204,28 @@ $sync.configs.themes = @'
                  "ButtonBackgroundPressedColor":  "#3DF5A0",
                  "ButtonBackgroundMouseoverColor":  "#26FFFFFF",
                  "ButtonBackgroundSelectedColor":  "#403DF5A0",
+                 "ButtonBackgroundDisabledColor":  "#403DF5A0",
                  "ButtonForegroundColor":  "#F8FAFC",
+                 "ButtonForegroundDisabledColor":  "#696969",
                  "ToggleButtonOnColor":  "#3DF5A0",
                  "ToggleButtonOffColor":  "#4A5568",
                  "ToolTipBackgroundColor":  "#FF121724",
                  "BorderColor":  "#3DF5A0",
-                 "BorderOpacity":  "0.10"
+                 "BorderOpacity":  "0.10",
+                 "WindowBackgroundStartColor":  "#0B0E16",
+                 "WindowBackgroundEndColor":  "#07090F",
+                 "SidebarBackgroundColor":  "#26000000",
+                 "GroupBorderBackgroundColor":  "#59161B26",
+                 "AccentColor":  "#3DF5A0",
+                 "AccentGlowColor":  "#3DF5A0",
+                 "AccentGlowOpacity":  "0.45",
+                 "MutedForegroundColor":  "#8A93A6",
+                 "CheckboxMouseOverColor":  "#3DF5A0",
+                 "FOSSHighlightColor":  "#4CAF50",
+                 "DataGridAlternatingRowColor":  "#14FFFFFF",
+                 "SuccessColor":  "#3DF5A0",
+                 "WarningColor":  "#F5A623",
+                 "DangerColor":  "#EF4444"
              }
 }
 '@ | ConvertFrom-Json
@@ -11442,8 +12031,8 @@ $inputXML = @'
                                 <Setter TargetName="BackgroundBorder" Property="Background" Value="{DynamicResource ButtonBackgroundMouseoverColor}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="BackgroundBorder" Property="Background" Value="{DynamicResource ButtonBackgroundSelectedColor}"/>
-                                <Setter Property="Foreground" Value="DimGray"/>
+                                <Setter TargetName="BackgroundBorder" Property="Background" Value="{DynamicResource ButtonBackgroundDisabledColor}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource ButtonForegroundDisabledColor}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -11552,8 +12141,17 @@ $inputXML = @'
                                 <ToggleButton x:Name="ToggleButton"
                                               Background="Transparent"
                                               BorderThickness="0"
+                                              Margin="0"
+                                              Focusable="False"
                                               IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
                                               ClickMode="Press">
+                                    <ToggleButton.Template>
+                                        <ControlTemplate TargetType="ToggleButton">
+                                            <Border Background="{TemplateBinding Background}">
+                                                <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Center"/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </ToggleButton.Template>
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
@@ -11583,6 +12181,7 @@ $inputXML = @'
                                    AllowsTransparency="True"
                                    PopupAnimation="Slide">
                                 <Border x:Name="DropDownBorder"
+                                        MinWidth="{TemplateBinding ActualWidth}"
                                         Background="{TemplateBinding Background}"
                                         BorderBrush="{DynamicResource BorderColor}"
                                         BorderThickness="1"
@@ -11648,7 +12247,7 @@ $inputXML = @'
                                 <Setter TargetName="AccentBar" Property="Opacity" Value="1"/>
                                 <Setter Property="Effect">
                                     <Setter.Value>
-                                        <DropShadowEffect Opacity="0.45" ShadowDepth="0" Color="#3DF5A0" BlurRadius="18"/>
+                                        <DropShadowEffect Opacity="{DynamicResource AccentGlowOpacity}" ShadowDepth="0" Color="{DynamicResource CAccentGlowColor}" BlurRadius="18"/>
                                     </Setter.Value>
                                 </Setter>
                             </Trigger>
@@ -11686,8 +12285,8 @@ $inputXML = @'
                                 <Setter TargetName="BackgroundBorder" Property="Background" Value="{DynamicResource ButtonBackgroundMouseoverColor}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="BackgroundBorder" Property="Background" Value="{DynamicResource ButtonBackgroundSelectedColor}"/>
-                                <Setter Property="Foreground" Value="DimGray"/>
+                                <Setter TargetName="BackgroundBorder" Property="Background" Value="{DynamicResource ButtonBackgroundDisabledColor}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource ButtonForegroundDisabledColor}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -11782,8 +12381,8 @@ $inputXML = @'
 
                             <!-- IsEnabled state -->
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="BackgroundBorder" Property="Background" Value="{DynamicResource ButtonBackgroundSelectedColor}"/>
-                                <Setter Property="Foreground" Value="DimGray"/>
+                                <Setter TargetName="BackgroundBorder" Property="Background" Value="{DynamicResource ButtonBackgroundDisabledColor}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource ButtonForegroundDisabledColor}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -11804,7 +12403,7 @@ $inputXML = @'
             <Setter Property="BorderThickness" Value="0"/>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Foreground" Value="Red"/>
+                    <Setter Property="Foreground" Value="{DynamicResource DangerColor}"/>
                     <Setter Property="Background" Value="Transparent"/>
                     <Setter Property="BorderThickness" Value="10"/>
                     <Setter Property="Cursor" Value="Hand"/>
@@ -11814,7 +12413,7 @@ $inputXML = @'
         <!-- Checkbox template -->
         <Style TargetType="CheckBox">
             <Setter Property="Foreground" Value="{DynamicResource MainForegroundColor}"/>
-            <Setter Property="Background" Value="{DynamicResource MainBackgroundColor}"/>
+            <Setter Property="Background" Value="Transparent"/>
             <Setter Property="FontSize" Value="{DynamicResource FontSize}" />
             <Setter Property="FontFamily" Value="{DynamicResource FontFamily}"/>
             <Setter Property="TextElement.FontFamily" Value="{DynamicResource FontFamily}"/>
@@ -11856,8 +12455,7 @@ $inputXML = @'
                                 <Setter TargetName="CheckMarkContainer" Property="Visibility" Value="Visible"/>
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <!--Setter TargetName="Border" Property="Background" Value="{DynamicResource ButtonBackgroundPressedColor}"/-->
-                                <Setter Property="Foreground" Value="{DynamicResource ButtonBackgroundPressedColor}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource CheckboxMouseOverColor}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -11907,77 +12505,6 @@ $inputXML = @'
                 </Setter.Value>
             </Setter>
         </Style>
-        <Style x:Key="ToggleSwitchStyle" TargetType="CheckBox">
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="CheckBox">
-                        <StackPanel>
-                            <Grid>
-                                <Border Width="45"
-                                        Height="20"
-                                        Background="#555555"
-                                        CornerRadius="10"
-                                        Margin="5,0"
-                                />
-                                <Border Name="WPFToggleSwitchButton"
-                                        Width="25"
-                                        Height="25"
-                                        Background="Black"
-                                        CornerRadius="12.5"
-                                        HorizontalAlignment="Left"
-                                />
-                                <ContentPresenter Name="WPFToggleSwitchContent"
-                                                  Margin="10,0,0,0"
-                                                  Content="{TemplateBinding Content}"
-                                                  VerticalAlignment="Center"
-                                />
-                            </Grid>
-                        </StackPanel>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsChecked" Value="false">
-                                <Trigger.ExitActions>
-                                    <RemoveStoryboard BeginStoryboardName="WPFToggleSwitchLeft" />
-                                    <BeginStoryboard x:Name="WPFToggleSwitchRight">
-                                        <Storyboard>
-                                            <ThicknessAnimation Storyboard.TargetProperty="Margin"
-                                                    Storyboard.TargetName="WPFToggleSwitchButton"
-                                                    Duration="0:0:0:0"
-                                                    From="0,0,0,0"
-                                                    To="28,0,0,0">
-                                            </ThicknessAnimation>
-                                        </Storyboard>
-                                    </BeginStoryboard>
-                                </Trigger.ExitActions>
-                                <Setter TargetName="WPFToggleSwitchButton"
-                                        Property="Background"
-                                        Value="#fff9f4f4"
-                                />
-                            </Trigger>
-                            <Trigger Property="IsChecked" Value="true">
-                                <Trigger.ExitActions>
-                                    <RemoveStoryboard BeginStoryboardName="WPFToggleSwitchRight" />
-                                    <BeginStoryboard x:Name="WPFToggleSwitchLeft">
-                                        <Storyboard>
-                                            <ThicknessAnimation Storyboard.TargetProperty="Margin"
-                                                    Storyboard.TargetName="WPFToggleSwitchButton"
-                                                    Duration="0:0:0:0"
-                                                    From="28,0,0,0"
-                                                    To="0,0,0,0">
-                                            </ThicknessAnimation>
-                                        </Storyboard>
-                                    </BeginStoryboard>
-                                </Trigger.ExitActions>
-                                <Setter TargetName="WPFToggleSwitchButton"
-                                        Property="Background"
-                                        Value="#ff060600"
-                                />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
         <Style x:Key="ColorfulToggleSwitchStyle" TargetType="{x:Type CheckBox}">
             <Setter Property="Template">
                 <Setter.Value>
@@ -12069,17 +12596,6 @@ $inputXML = @'
                 </Setter.Value>
             </Setter>
             <Setter Property="VerticalContentAlignment" Value="Center" />
-        </Style>
-
-        <Style x:Key="labelfortweaks" TargetType="{x:Type Label}">
-            <Setter Property="Foreground" Value="{DynamicResource MainForegroundColor}" />
-            <Setter Property="Background" Value="{DynamicResource MainBackgroundColor}" />
-            <Setter Property="FontFamily" Value="{DynamicResource FontFamily}"/>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Foreground" Value="White" />
-                </Trigger>
-            </Style.Triggers>
         </Style>
 
         <Style x:Key="BorderStyle" TargetType="Border">
@@ -12183,25 +12699,93 @@ $inputXML = @'
                 </Setter.Value>
             </Setter>
         </Style>
-        <Style x:Key="ScrollVisibilityRectangle" TargetType="Rectangle">
-            <Setter Property="Visibility" Value="Collapsed"/>
+        <Style x:Key="IconToggleButtonStyle" TargetType="ToggleButton">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="2"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Opacity" Value="0.75"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
             <Style.Triggers>
-                <MultiDataTrigger>
-                    <MultiDataTrigger.Conditions>
-                        <Condition Binding="{Binding Path=ComputedHorizontalScrollBarVisibility, ElementName=scrollViewer}" Value="Visible"/>
-                        <Condition Binding="{Binding Path=ComputedVerticalScrollBarVisibility, ElementName=scrollViewer}" Value="Visible"/>
-                    </MultiDataTrigger.Conditions>
-                    <Setter Property="Visibility" Value="Visible"/>
-                </MultiDataTrigger>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Opacity" Value="1"/>
+                </Trigger>
+                <Trigger Property="IsChecked" Value="True">
+                    <Setter Property="Opacity" Value="1"/>
+                </Trigger>
             </Style.Triggers>
+        </Style>
+        <Style TargetType="ProgressBar">
+            <Setter Property="Foreground" Value="{DynamicResource ProgressBarForegroundColor}"/>
+            <Setter Property="Background" Value="{DynamicResource ProgressBarBackgroundColor}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ProgressBar">
+                        <Grid>
+                            <Border x:Name="PART_Track" CornerRadius="4" Background="{TemplateBinding Background}"/>
+                            <Border x:Name="PART_Indicator" CornerRadius="4" Background="{TemplateBinding Foreground}" HorizontalAlignment="Left"/>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="DataGridCellStyle" TargetType="DataGridCell">
+            <Setter Property="Foreground" Value="{DynamicResource MainForegroundColor}"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="4,3"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="DataGridCell">
+                        <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource MainForegroundColor}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="DataGridRowStyle" TargetType="DataGridRow">
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource ButtonBackgroundSelectedColor}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <!-- Row colors are set by the style (not as attributes) so the selected row trigger can override them -->
+        <Style x:Key="ThemedDataGridStyle" TargetType="DataGrid">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="RowBackground" Value="Transparent"/>
+            <Setter Property="AlternatingRowBackground" Value="{DynamicResource DataGridAlternatingRowColor}"/>
+            <Setter Property="Foreground" Value="{DynamicResource MainForegroundColor}"/>
+            <Setter Property="GridLinesVisibility" Value="None"/>
+            <Setter Property="HeadersVisibility" Value="Column"/>
+            <Setter Property="CellStyle" Value="{StaticResource DataGridCellStyle}"/>
+            <Setter Property="RowStyle" Value="{StaticResource DataGridRowStyle}"/>
         </Style>
     </Window.Resources>
     <!-- Glass root -->
     <Border CornerRadius="14" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1">
         <Border.Background>
             <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                <GradientStop Color="#FF0B0E16" Offset="0"/>
-                <GradientStop Color="#FF07090F" Offset="1"/>
+                <GradientStop Color="{DynamicResource CWindowBackgroundStartColor}" Offset="0"/>
+                <GradientStop Color="{DynamicResource CWindowBackgroundEndColor}" Offset="1"/>
             </LinearGradientBrush>
         </Border.Background>
     <Grid Background="Transparent" ShowGridLines="False" Name="WPFMainGrid" Width="Auto" Height="Auto" HorizontalAlignment="Stretch">
@@ -12216,7 +12800,7 @@ $inputXML = @'
         </Grid.ColumnDefinitions>
 
         <!-- Sidebar -->
-        <Border Grid.Row="0" Grid.RowSpan="3" Grid.Column="0" Background="#26000000"
+        <Border Grid.Row="0" Grid.RowSpan="3" Grid.Column="0" Background="{DynamicResource SidebarBackgroundColor}"
                 BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,0,1,0">
             <DockPanel LastChildFill="False" Margin="0,0,0,12">
                 <!-- Brand -->
@@ -12289,7 +12873,7 @@ $inputXML = @'
 
         <!-- Offline banner -->
         <Border Name="WPFOfflineBanner" Grid.Row="0" Grid.Column="1" Background="#8B0000" Visibility="Collapsed" Padding="6,4">
-            <TextBlock Text="&#x26A0; Modalità offline - Nessuna connessione a Internet" Foreground="White" FontWeight="Bold"
+            <TextBlock Text="&#x26A0; Modalit&#xE0; offline - Nessuna connessione a Internet" Foreground="White" FontWeight="Bold"
                 HorizontalAlignment="Center" FontSize="13" Background="Transparent"/>
         </Border>
         <Grid Grid.Row="1" Grid.Column="1" Name="WPFTitleBar" Background="Transparent">
@@ -12303,11 +12887,11 @@ $inputXML = @'
                 <TextBlock Name="WPFCurrentTabTitle" Text="Installa" FontSize="17" FontWeight="SemiBold"
                            Foreground="{DynamicResource MainForegroundColor}"/>
                 <TextBlock Text="Strumenti per Windows" FontSize="11"
-                           Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                           Foreground="{DynamicResource MutedForegroundColor}"/>
             </StackPanel>
 
             <!-- Search Bar and Action Buttons -->
-            <Grid Name="GridBesideNavDockPanel" Grid.Column="1" Background="{DynamicResource MainBackgroundColor}" ShowGridLines="False" Height="Auto">
+            <Grid Name="GridBesideNavDockPanel" Grid.Column="1" Background="Transparent" ShowGridLines="False" Height="Auto">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="2*"/> <!-- Search bar area - priority space -->
                     <ColumnDefinition Width="Auto"/><!-- Buttons area -->
@@ -12329,7 +12913,7 @@ $inputXML = @'
                         <TextBlock
                             VerticalAlignment="Center" HorizontalAlignment="Right"
                             FontFamily="Segoe MDL2 Assets"
-                            Foreground="{DynamicResource ButtonBackgroundSelectedColor}"
+                            Foreground="{DynamicResource MutedForegroundColor}"
                             FontSize="{DynamicResource IconFontSize}"
                             Margin="0,0,8,0" Width="Auto" Height="Auto">&#xE721;
                         </TextBlock>
@@ -12347,7 +12931,7 @@ $inputXML = @'
                     <Button Name="ThemeButton"
                         Style="{StaticResource HoverButtonStyle}"
                         BorderBrush="Transparent"
-                    Background="{DynamicResource MainBackgroundColor}"
+                    Background="Transparent"
                     Foreground="{DynamicResource MainForegroundColor}"
                     FontSize="{DynamicResource SettingsIconFontSize}"
                     Width="{DynamicResource IconButtonSize}" Height="{DynamicResource IconButtonSize}"
@@ -12385,7 +12969,7 @@ $inputXML = @'
                     <Button Name="FontScalingButton"
                         Style="{StaticResource HoverButtonStyle}"
                         BorderBrush="Transparent"
-                    Background="{DynamicResource MainBackgroundColor}"
+                    Background="Transparent"
                     Foreground="{DynamicResource MainForegroundColor}"
                     FontSize="{DynamicResource SettingsIconFontSize}"
                     Width="{DynamicResource IconButtonSize}" Height="{DynamicResource IconButtonSize}"
@@ -12393,7 +12977,7 @@ $inputXML = @'
                     Margin="0,0,2,0"
                     FontFamily="Segoe MDL2 Assets"
                     Content="&#xE8D3;"
-                    ToolTip="Regola la dimensione del testo per l'accessibilità"
+                    ToolTip="Regola la dimensione del testo per l'accessibilit&#xE0;"
                 />
                     <Popup Name="FontScalingPopup"
                     IsOpen="False"
@@ -12453,7 +13037,7 @@ $inputXML = @'
                     <Button Name="SettingsButton"
                         Style="{StaticResource HoverButtonStyle}"
                         BorderBrush="Transparent"
-                    Background="{DynamicResource MainBackgroundColor}"
+                    Background="Transparent"
                     Foreground="{DynamicResource MainForegroundColor}"
                     FontSize="{DynamicResource SettingsIconFontSize}"
                     Width="{DynamicResource IconButtonSize}" Height="{DynamicResource IconButtonSize}"
@@ -12487,7 +13071,7 @@ $inputXML = @'
                     <Button
                     Content="&#xD7;" BorderThickness="0"
                 BorderBrush="Transparent"
-                Background="{DynamicResource MainBackgroundColor}"
+                Background="Transparent"
                 Width="{DynamicResource IconButtonSize}" Height="{DynamicResource IconButtonSize}"
                 HorizontalAlignment="Right" VerticalAlignment="Top"
                 Margin="0,0,0,0"
@@ -12531,7 +13115,7 @@ $inputXML = @'
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
 
-                            <StackPanel Background="{DynamicResource MainBackgroundColor}" Orientation="Vertical" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Margin="5">
+                            <StackPanel Background="Transparent" Orientation="Vertical" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Margin="5">
                                 <Label Content="Selezioni consigliate:" FontSize="{DynamicResource FontSize}" VerticalAlignment="Center" Margin="2"/>
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,2,0,0">
                                     <Button Name="WPFstandard" Content=" Standard " Margin="2" Width="{DynamicResource ButtonWidth}" Height="{DynamicResource ButtonHeight}"/>
@@ -12620,13 +13204,13 @@ $inputXML = @'
                                              Foreground="{DynamicResource MainForegroundColor}">
                                         <Run FontWeight="Bold">Configurazione di sicurezza bilanciata</Run>
                                         <LineBreak/>
-                                         - Aggiornamenti delle funzionalità ritardati di 365 giorni
+                                         - Aggiornamenti delle funzionalit&#xE0; ritardati di 365 giorni
                                         <LineBreak/>
                                          - Aggiornamenti di sicurezza installati dopo 4 giorni
                                         <LineBreak/>
                                          - Impedisce a Windows Update di installare driver
                                         <LineBreak/><LineBreak/>
-                                        <Run FontWeight="SemiBold">Aggiornamenti funzionalità:</Run> nuove funzionalità e possibili bug
+                                        <Run FontWeight="SemiBold">Aggiornamenti funzionalit&#xE0;:</Run> nuove funzionalit&#xE0; e possibili bug
                                         <LineBreak/>
                                         <Run FontWeight="SemiBold">Aggiornamenti di sicurezza:</Run> patch di sicurezza critiche
                                     <LineBreak/><LineBreak/>
@@ -12640,14 +13224,14 @@ $inputXML = @'
                                 <StackPanel>
                                     <Button Name="WPFUpdatesdisable"
                                             FontSize="{DynamicResource ConfigTabButtonFontSize}"
-                                            Content="Disabilita tutti gli aggiornamenti"
-                                            Foreground="Red"
+                                            Content="Disabilita aggiornamenti"
+                                            Foreground="{DynamicResource DangerColor}"
                                             Margin="10,5"
                                             Padding="10"/>
                                     <TextBlock Margin="10"
                                              TextWrapping="Wrap"
                                              Foreground="{DynamicResource MainForegroundColor}">
-                                        <Run FontWeight="Bold" Foreground="Red">!! Sconsigliato !!</Run>
+                                        <Run FontWeight="Bold" Foreground="{DynamicResource DangerColor}">!! Sconsigliato !!</Run>
                                         <LineBreak/>
                                          - Disabilita TUTTI gli aggiornamenti di Windows
                                         <LineBreak/>
@@ -12655,7 +13239,7 @@ $inputXML = @'
                                         <LineBreak/>
                                          - Usare solo su sistemi isolati
                                         <LineBreak/><LineBreak/>
-                                        <Run FontStyle="Italic" FontSize="11">Avviso: senza aggiornamenti di sicurezza il sistema sarà vulnerabile.</Run>
+                                        <Run FontStyle="Italic" FontSize="11">Avviso: senza aggiornamenti di sicurezza il sistema sar&#xE0; vulnerabile.</Run>
                                     </TextBlock>
                                 </StackPanel>
                             </Border>
@@ -12735,7 +13319,7 @@ $inputXML = @'
                                         Margin="5" Padding="15">
                                     <StackPanel>
                                         <TextBlock FontSize="{DynamicResource FontSize}" FontWeight="Bold"
-                                                   Foreground="OrangeRed" Margin="0,0,0,10">
+                                                   Foreground="{DynamicResource DangerColor}" Margin="0,0,0,10">
                                             !!ATTENZIONE!! Devi usare una ISO ufficiale Microsoft
                                         </TextBlock>
                                         <TextBlock FontSize="{DynamicResource FontSize}"
@@ -12845,9 +13429,9 @@ $inputXML = @'
                                 <TextBlock FontSize="{DynamicResource FontSize}"
                                            Foreground="{DynamicResource MainForegroundColor}"
                                            TextWrapping="Wrap" Margin="0,0,0,12">
-                                    Il contenuto della ISO verrà estratto in una cartella di lavoro temporanea,
-                                    install.wim verrà modificato (componenti rimossi, ottimizzazioni applicate)
-                                    e il risultato verrà riassemblato. L'operazione può richiedere diversi minuti
+                                    Il contenuto della ISO verr&#xE0; estratto in una cartella di lavoro temporanea,
+                                    install.wim verr&#xE0; modificato (componenti rimossi, ottimizzazioni applicate)
+                                    e il risultato verr&#xE0; riassemblato. L'operazione pu&#xF2; richiedere diversi minuti
                                     a seconda dell'hardware.
                                 </TextBlock>
                                 <Button Name="WPFWin11ISOModifyButton"
@@ -12876,7 +13460,7 @@ $inputXML = @'
                                     <Button Grid.Column="1"
                                             Name="WPFWin11ISOCleanResetButton"
                                             Content="Pulisci e reimposta"
-                                            Foreground="OrangeRed"
+                                            Foreground="{DynamicResource DangerColor}"
                                             Width="Auto" Padding="12,0"
                                             Height="{DynamicResource ButtonHeight}"
                                             ToolTip="Elimina la cartella di lavoro temporanea e riporta l'interfaccia al Passo 1"
@@ -12898,8 +13482,8 @@ $inputXML = @'
                                             Height="{DynamicResource ButtonHeight}"/>
                                     <Button Grid.Column="2"
                                             Name="WPFWin11ISOChooseUSBButton"
-                                            Content="Scrivi direttamente su unità USB (CANCELLA L'UNITÀ)"
-                                            Foreground="OrangeRed"
+                                            Content="Scrivi direttamente su unit&#xE0; USB (CANCELLA L'UNIT&#xC0;)"
+                                            Foreground="{DynamicResource DangerColor}"
                                             HorizontalAlignment="Stretch"
                                             Width="Auto" Padding="12,0"
                                             Height="{DynamicResource ButtonHeight}"/>
@@ -12914,9 +13498,9 @@ $inputXML = @'
                                         <TextBlock FontSize="{DynamicResource FontSize}"
                                                    Foreground="{DynamicResource MainForegroundColor}"
                                                    TextWrapping="Wrap" Margin="0,0,0,8">
-                                            <Run FontWeight="Bold" Foreground="OrangeRed">!! Tutti i dati sull'unità USB selezionata verranno cancellati definitivamente !!</Run>
+                                            <Run FontWeight="Bold" Foreground="{DynamicResource DangerColor}">!! Tutti i dati sull'unit&#xE0; USB selezionata verranno cancellati definitivamente !!</Run>
                                             <LineBreak/>
-                                            Seleziona qui sotto un'unità USB rimovibile, poi clicca Cancella e scrivi.
+                                            Seleziona qui sotto un'unit&#xE0; USB rimovibile, poi clicca Cancella e scrivi.
                                         </TextBlock>
                                         <!-- USB drive selector row -->
                                         <Grid Margin="0,0,0,8">
@@ -12938,7 +13522,7 @@ $inputXML = @'
                                         </Grid>
                                         <Button Name="WPFWin11ISOWriteUSBButton"
                                                 Content="Cancella e scrivi su USB"
-                                                Foreground="OrangeRed"
+                                                Foreground="{DynamicResource DangerColor}"
                                                 HorizontalAlignment="Stretch"
                                                 Width="Auto" Padding="12,0"
                                                 Height="{DynamicResource ButtonHeight}"
@@ -12959,7 +13543,7 @@ $inputXML = @'
                                    FontSize="{DynamicResource FontSize}" FontWeight="Bold"
                                    Foreground="{DynamicResource MainForegroundColor}"
                                    Margin="0,0,0,4">
-                            Registro attività
+                            Registro attivit&#xE0;
                         </TextBlock>
                         <TextBox Grid.Row="1"
                                  Name="WPFWin11ISOStatusLog"
@@ -12992,7 +13576,7 @@ $inputXML = @'
                             <TextBlock Text="Driver stampanti e code" FontSize="{DynamicResource HeaderFontSize}" FontWeight="Bold"
                                        Foreground="{DynamicResource MainForegroundColor}" Margin="0,0,0,2"/>
                             <TextBlock Text="Rileva le stampanti, installa o aggiorna i driver e gestisci lo spooler di stampa."
-                                       FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}" Margin="0,0,0,12"/>
+                                       FontSize="12" Foreground="{DynamicResource MutedForegroundColor}" Margin="0,0,0,12"/>
                             <WrapPanel Orientation="Horizontal">
                                 <Button Name="WPFPrinterRefresh" Content="Aggiorna elenco" Width="Auto" MinWidth="130" Margin="0,0,8,8" Padding="12,0"/>
                                 <Button Name="WPFPrinterRestartSpooler" Content="Riavvia spooler" Width="Auto" MinWidth="130" Margin="0,0,8,8" Padding="12,0"/>
@@ -13007,9 +13591,7 @@ $inputXML = @'
                     <Border Grid.Row="1" Background="{DynamicResource GroupBorderBackgroundColor}" CornerRadius="12"
                             BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="8" Margin="6,2,6,6">
                         <DataGrid Name="WPFPrinterList" AutoGenerateColumns="False" IsReadOnly="True"
-                                  Background="Transparent" BorderThickness="0" RowBackground="Transparent" AlternatingRowBackground="#14FFFFFF"
-                                  Foreground="{DynamicResource MainForegroundColor}" GridLinesVisibility="None"
-                                  HeadersVisibility="Column" CanUserAddRows="False" SelectionMode="Single">
+                                  Style="{StaticResource ThemedDataGridStyle}" CanUserAddRows="False" SelectionMode="Single">
                             <DataGrid.Resources>
                                 <Style TargetType="DataGridColumnHeader">
                                     <Setter Property="Foreground" Value="{DynamicResource MainForegroundColor}"/>
@@ -13035,7 +13617,7 @@ $inputXML = @'
                     <Border Grid.Row="2" Background="{DynamicResource GroupBorderBackgroundColor}" CornerRadius="12"
                             BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="10" Margin="6,2,6,6">
                         <StackPanel>
-                            <TextBlock Text="Registro attività" FontSize="{DynamicResource FontSize}" FontWeight="Bold"
+                            <TextBlock Text="Registro attivit&#xE0;" FontSize="{DynamicResource FontSize}" FontWeight="Bold"
                                        Foreground="{DynamicResource MainForegroundColor}" Margin="0,0,0,4"/>
                             <TextBox Name="WPFPrinterStatusLog" IsReadOnly="True" TextWrapping="Wrap" Height="90"
                                      VerticalScrollBarVisibility="Auto" Background="Transparent"
@@ -13065,7 +13647,7 @@ $inputXML = @'
                                 <TextBlock Text="Panoramica del sistema" FontSize="{DynamicResource HeaderFontSize}" FontWeight="Bold"
                                            Foreground="{DynamicResource MainForegroundColor}"/>
                                 <TextBlock Text="Diagnostica hardware, stato di Windows e attivazione, in tempo reale."
-                                           FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}" Margin="0,2,0,0"/>
+                                           FontSize="12" Foreground="{DynamicResource MutedForegroundColor}" Margin="0,2,0,0"/>
                             </StackPanel>
                             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                                 <Button Name="WPFSystemInfoRefresh" Content="Aggiorna" MinWidth="104" Margin="0,0,8,0" Padding="12,0"/>
@@ -13098,7 +13680,7 @@ $inputXML = @'
                                     <!-- Icon disc -->
                                     <Border Grid.Column="0" Width="58" Height="58" CornerRadius="15" Background="#1F3DF5A0"
                                             VerticalAlignment="Top" Margin="0,2,18,0">
-                                        <TextBlock Text="&#xE7F8;" FontFamily="Segoe MDL2 Assets" FontSize="27" Foreground="#3DF5A0"
+                                        <TextBlock Text="&#xE7F8;" FontFamily="Segoe MDL2 Assets" FontSize="27" Foreground="{DynamicResource AccentColor}"
                                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                     </Border>
 
@@ -13107,20 +13689,20 @@ $inputXML = @'
                                         <TextBlock Name="WPFSysOSCaption" Text="Windows" FontSize="22" FontWeight="Bold"
                                                    Foreground="{DynamicResource MainForegroundColor}" TextWrapping="Wrap"/>
                                         <TextBlock Name="WPFSysOSBuild" Text="Caricamento in corso..." FontSize="13"
-                                                   Foreground="{DynamicResource ToggleButtonOffColor}" Margin="0,3,0,0"/>
+                                                   Foreground="{DynamicResource MutedForegroundColor}" Margin="0,3,0,0"/>
                                         <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
                                             <StackPanel Orientation="Vertical" Margin="0,0,30,0">
-                                                <TextBlock Text="NOME PC" FontSize="10" FontWeight="SemiBold" Foreground="#7F8A9E"/>
+                                                <TextBlock Text="NOME PC" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource MutedForegroundColor}"/>
                                                 <TextBlock Name="WPFSysHostname" Text="-" FontSize="13" FontWeight="SemiBold"
                                                            Foreground="{DynamicResource MainForegroundColor}" Margin="0,2,0,0"/>
                                             </StackPanel>
                                             <StackPanel Orientation="Vertical" Margin="0,0,30,0">
-                                                <TextBlock Text="ACCESO DA" FontSize="10" FontWeight="SemiBold" Foreground="#7F8A9E"/>
+                                                <TextBlock Text="ACCESO DA" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource MutedForegroundColor}"/>
                                                 <TextBlock Name="WPFSysUptime" Text="-" FontSize="13" FontWeight="SemiBold"
                                                            Foreground="{DynamicResource MainForegroundColor}" Margin="0,2,0,0"/>
                                             </StackPanel>
                                             <StackPanel Orientation="Vertical">
-                                                <TextBlock Text="INSTALLATO IL" FontSize="10" FontWeight="SemiBold" Foreground="#7F8A9E"/>
+                                                <TextBlock Text="INSTALLATO IL" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource MutedForegroundColor}"/>
                                                 <TextBlock Name="WPFSysInstallDate" Text="-" FontSize="13" FontWeight="SemiBold"
                                                            Foreground="{DynamicResource MainForegroundColor}" Margin="0,2,0,0"/>
                                             </StackPanel>
@@ -13131,7 +13713,7 @@ $inputXML = @'
                                     <Border Grid.Column="2" Name="WPFSysActivationPill" CornerRadius="20" Background="#1F3DF5A0"
                                             Padding="15,9" VerticalAlignment="Top" Margin="14,2,0,0">
                                         <StackPanel Orientation="Horizontal">
-                                            <Ellipse Name="WPFSysActivationDot" Width="9" Height="9" Fill="#3DF5A0"
+                                            <Ellipse Name="WPFSysActivationDot" Width="9" Height="9" Fill="{DynamicResource AccentColor}"
                                                      VerticalAlignment="Center" Margin="0,0,8,0"/>
                                             <TextBlock Name="WPFSysActivation" Text="Verifica..." FontSize="13" FontWeight="SemiBold"
                                                        Foreground="{DynamicResource MainForegroundColor}" VerticalAlignment="Center"/>
@@ -13148,40 +13730,46 @@ $inputXML = @'
                                         BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="16,14" Margin="6">
                                     <StackPanel>
                                         <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                            <TextBlock Text="&#xE977;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="#3DF5A0"
+                                            <TextBlock Text="&#xE977;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="{DynamicResource AccentColor}"
                                                        VerticalAlignment="Center" Margin="0,0,9,0"/>
                                             <TextBlock Text="HARDWARE" FontSize="11" FontWeight="SemiBold"
-                                                       Foreground="{DynamicResource ToggleButtonOffColor}" VerticalAlignment="Center"/>
+                                                       Foreground="{DynamicResource MutedForegroundColor}" VerticalAlignment="Center"/>
                                         </StackPanel>
                                         <Grid Margin="0,0,0,7">
                                             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Text="Produttore" FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                            <TextBlock Grid.Column="0" Text="Produttore" FontSize="12" Foreground="{DynamicResource MutedForegroundColor}"/>
                                             <TextBlock Grid.Column="1" Name="WPFSysManufacturer" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" TextWrapping="Wrap" Margin="10,0,0,0"/>
                                         </Grid>
                                         <Grid Margin="0,0,0,7">
                                             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Text="Modello" FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                            <TextBlock Grid.Column="0" Text="Modello" FontSize="12" Foreground="{DynamicResource MutedForegroundColor}"/>
                                             <TextBlock Grid.Column="1" Name="WPFSysModel" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" TextWrapping="Wrap" Margin="10,0,0,0"/>
                                         </Grid>
                                         <Grid Margin="0,0,0,7">
                                             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Text="N. di serie" FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                            <TextBlock Grid.Column="0" Text="N. di serie" FontSize="12" Foreground="{DynamicResource MutedForegroundColor}"/>
                                             <TextBlock Grid.Column="1" Name="WPFSysSerial" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" TextWrapping="Wrap" Margin="10,0,0,0"/>
                                         </Grid>
                                         <Grid Margin="0,0,0,7">
                                             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Text="BIOS / UEFI" FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                            <TextBlock Grid.Column="0" Text="BIOS / UEFI" FontSize="12" Foreground="{DynamicResource MutedForegroundColor}"/>
                                             <TextBlock Grid.Column="1" Name="WPFSysBios" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" TextWrapping="Wrap" Margin="10,0,0,0"/>
                                         </Grid>
                                         <Grid Margin="0,0,0,7">
                                             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Text="Secure Boot" FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                            <TextBlock Grid.Column="0" Text="Secure Boot" FontSize="12" Foreground="{DynamicResource MutedForegroundColor}"/>
                                             <TextBlock Grid.Column="1" Name="WPFSysSecureBoot" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" Margin="10,0,0,0"/>
+                                        </Grid>
+                                        <Grid Margin="0,0,0,7">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="TPM" FontSize="12" Foreground="{DynamicResource MutedForegroundColor}"/>
+                                            <TextBlock Grid.Column="1" Name="WPFSysTpm" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" Margin="10,0,0,0"/>
                                         </Grid>
                                         <Grid>
                                             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Text="TPM" FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}"/>
-                                            <TextBlock Grid.Column="1" Name="WPFSysTpm" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" Margin="10,0,0,0"/>
+                                            <TextBlock Grid.Column="0" Text="BitLocker" FontSize="12" Foreground="{DynamicResource MutedForegroundColor}"/>
+                                            <TextBlock Grid.Column="1" Name="WPFSysBitLocker" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" TextWrapping="Wrap" Margin="10,0,0,0"
+                                                       ToolTip="Stato della crittografia BitLocker dell'unit&#xE0; di sistema"/>
                                         </Grid>
                                     </StackPanel>
                                 </Border>
@@ -13191,32 +13779,32 @@ $inputXML = @'
                                         BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="16,14" Margin="6">
                                     <StackPanel>
                                         <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                            <TextBlock Text="&#xE950;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="#3DF5A0"
+                                            <TextBlock Text="&#xE950;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="{DynamicResource AccentColor}"
                                                        VerticalAlignment="Center" Margin="0,0,9,0"/>
                                             <TextBlock Text="PROCESSORE" FontSize="11" FontWeight="SemiBold"
-                                                       Foreground="{DynamicResource ToggleButtonOffColor}" VerticalAlignment="Center"/>
+                                                       Foreground="{DynamicResource MutedForegroundColor}" VerticalAlignment="Center"/>
                                         </StackPanel>
                                         <TextBlock Name="WPFSysCpuName" Text="-" FontSize="13" FontWeight="SemiBold"
                                                    Foreground="{DynamicResource MainForegroundColor}" TextWrapping="Wrap" Margin="0,0,0,10"/>
                                         <Grid Margin="0,0,0,7">
                                             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Text="Core / Thread" FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                            <TextBlock Grid.Column="0" Text="Core / Thread" FontSize="12" Foreground="{DynamicResource MutedForegroundColor}"/>
                                             <TextBlock Grid.Column="1" Name="WPFSysCpuCores" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" Margin="10,0,0,0"/>
                                         </Grid>
                                         <Grid Margin="0,0,0,12">
                                             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Text="Frequenza base" FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                            <TextBlock Grid.Column="0" Text="Frequenza base" FontSize="12" Foreground="{DynamicResource MutedForegroundColor}"/>
                                             <TextBlock Grid.Column="1" Name="WPFSysCpuClock" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" Margin="10,0,0,0"/>
                                         </Grid>
                                         <Grid Margin="0,0,0,5">
                                             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Text="Carico attuale" FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}"/>
-                                            <TextBlock Grid.Column="1" Name="WPFSysCpuLoad" Text="-" FontSize="12" FontWeight="SemiBold" Foreground="#3DF5A0" TextAlignment="Right"/>
+                                            <TextBlock Grid.Column="0" Text="Carico attuale" FontSize="12" Foreground="{DynamicResource MutedForegroundColor}"/>
+                                            <TextBlock Grid.Column="1" Name="WPFSysCpuLoad" Text="-" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource AccentColor}" TextAlignment="Right"/>
                                         </Grid>
-                                        <Border CornerRadius="4" Height="8" Background="#1AFFFFFF" ClipToBounds="True">
+                                        <Border CornerRadius="4" Height="8" Background="{DynamicResource ProgressBarBackgroundColor}" ClipToBounds="True">
                                             <Grid Name="WPFSysCpuLoadBar">
                                                 <Grid.ColumnDefinitions><ColumnDefinition Width="0*"/><ColumnDefinition Width="100*"/></Grid.ColumnDefinitions>
-                                                <Border Grid.Column="0" CornerRadius="4" Background="#3DF5A0"/>
+                                                <Border Grid.Column="0" CornerRadius="4" Background="{DynamicResource AccentColor}"/>
                                             </Grid>
                                         </Border>
                                     </StackPanel>
@@ -13227,27 +13815,27 @@ $inputXML = @'
                                         BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="16,14" Margin="6">
                                     <StackPanel>
                                         <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                            <TextBlock Text="&#xE964;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="#3DF5A0"
+                                            <TextBlock Text="&#xE964;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="{DynamicResource AccentColor}"
                                                        VerticalAlignment="Center" Margin="0,0,9,0"/>
                                             <TextBlock Text="MEMORIA" FontSize="11" FontWeight="SemiBold"
-                                                       Foreground="{DynamicResource ToggleButtonOffColor}" VerticalAlignment="Center"/>
+                                                       Foreground="{DynamicResource MutedForegroundColor}" VerticalAlignment="Center"/>
                                         </StackPanel>
                                         <TextBlock Name="WPFSysRamText" Text="-" FontSize="20" FontWeight="Bold"
                                                    Foreground="{DynamicResource MainForegroundColor}" Margin="0,0,0,10"/>
-                                        <Border CornerRadius="4" Height="8" Background="#1AFFFFFF" ClipToBounds="True" Margin="0,0,0,12">
+                                        <Border CornerRadius="4" Height="8" Background="{DynamicResource ProgressBarBackgroundColor}" ClipToBounds="True" Margin="0,0,0,12">
                                             <Grid Name="WPFSysRamBar">
                                                 <Grid.ColumnDefinitions><ColumnDefinition Width="0*"/><ColumnDefinition Width="100*"/></Grid.ColumnDefinitions>
-                                                <Border Grid.Column="0" CornerRadius="4" Background="#3DF5A0"/>
+                                                <Border Grid.Column="0" CornerRadius="4" Background="{DynamicResource AccentColor}"/>
                                             </Grid>
                                         </Border>
                                         <Grid Margin="0,0,0,7">
                                             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Text="Disponibile" FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                            <TextBlock Grid.Column="0" Text="Disponibile" FontSize="12" Foreground="{DynamicResource MutedForegroundColor}"/>
                                             <TextBlock Grid.Column="1" Name="WPFSysRamFree" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" Margin="10,0,0,0"/>
                                         </Grid>
                                         <Grid>
                                             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Text="Moduli" FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                            <TextBlock Grid.Column="0" Text="Moduli" FontSize="12" Foreground="{DynamicResource MutedForegroundColor}"/>
                                             <TextBlock Grid.Column="1" Name="WPFSysRamModules" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" TextWrapping="Wrap" Margin="10,0,0,0"/>
                                         </Grid>
                                     </StackPanel>
@@ -13260,24 +13848,24 @@ $inputXML = @'
                                         <Grid Margin="0,0,0,14">
                                             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                             <StackPanel Grid.Column="0" Orientation="Horizontal">
-                                                <TextBlock Text="&#xEDA2;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="#3DF5A0"
+                                                <TextBlock Text="&#xEDA2;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="{DynamicResource AccentColor}"
                                                            VerticalAlignment="Center" Margin="0,0,9,0"/>
                                                 <TextBlock Text="ARCHIVIAZIONE" FontSize="11" FontWeight="SemiBold"
-                                                           Foreground="{DynamicResource ToggleButtonOffColor}" VerticalAlignment="Center"/>
+                                                           Foreground="{DynamicResource MutedForegroundColor}" VerticalAlignment="Center"/>
                                             </StackPanel>
                                             <TextBlock Grid.Column="1" Name="WPFSysDiskHealth" Text="-" FontSize="11" FontWeight="SemiBold"
-                                                       Foreground="#3DF5A0" VerticalAlignment="Center"/>
+                                                       Foreground="{DynamicResource AccentColor}" VerticalAlignment="Center"/>
                                         </Grid>
                                         <StackPanel Name="WPFSysDisk0" Visibility="Collapsed" Margin="0,0,0,11">
                                             <Grid Margin="0,0,0,4">
                                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                                 <TextBlock Grid.Column="0" Name="WPFSysDisk0Label" Text="-" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource MainForegroundColor}"/>
-                                                <TextBlock Grid.Column="1" Name="WPFSysDisk0Text" Text="-" FontSize="11" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                                <TextBlock Grid.Column="1" Name="WPFSysDisk0Text" Text="-" FontSize="11" Foreground="{DynamicResource MutedForegroundColor}"/>
                                             </Grid>
-                                            <Border CornerRadius="4" Height="8" Background="#1AFFFFFF" ClipToBounds="True">
+                                            <Border CornerRadius="4" Height="8" Background="{DynamicResource ProgressBarBackgroundColor}" ClipToBounds="True">
                                                 <Grid Name="WPFSysDisk0Bar">
                                                     <Grid.ColumnDefinitions><ColumnDefinition Width="0*"/><ColumnDefinition Width="100*"/></Grid.ColumnDefinitions>
-                                                    <Border Grid.Column="0" CornerRadius="4" Background="#3DF5A0"/>
+                                                    <Border Grid.Column="0" CornerRadius="4" Background="{DynamicResource AccentColor}"/>
                                                 </Grid>
                                             </Border>
                                         </StackPanel>
@@ -13285,12 +13873,12 @@ $inputXML = @'
                                             <Grid Margin="0,0,0,4">
                                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                                 <TextBlock Grid.Column="0" Name="WPFSysDisk1Label" Text="-" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource MainForegroundColor}"/>
-                                                <TextBlock Grid.Column="1" Name="WPFSysDisk1Text" Text="-" FontSize="11" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                                <TextBlock Grid.Column="1" Name="WPFSysDisk1Text" Text="-" FontSize="11" Foreground="{DynamicResource MutedForegroundColor}"/>
                                             </Grid>
-                                            <Border CornerRadius="4" Height="8" Background="#1AFFFFFF" ClipToBounds="True">
+                                            <Border CornerRadius="4" Height="8" Background="{DynamicResource ProgressBarBackgroundColor}" ClipToBounds="True">
                                                 <Grid Name="WPFSysDisk1Bar">
                                                     <Grid.ColumnDefinitions><ColumnDefinition Width="0*"/><ColumnDefinition Width="100*"/></Grid.ColumnDefinitions>
-                                                    <Border Grid.Column="0" CornerRadius="4" Background="#3DF5A0"/>
+                                                    <Border Grid.Column="0" CornerRadius="4" Background="{DynamicResource AccentColor}"/>
                                                 </Grid>
                                             </Border>
                                         </StackPanel>
@@ -13298,12 +13886,12 @@ $inputXML = @'
                                             <Grid Margin="0,0,0,4">
                                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                                 <TextBlock Grid.Column="0" Name="WPFSysDisk2Label" Text="-" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource MainForegroundColor}"/>
-                                                <TextBlock Grid.Column="1" Name="WPFSysDisk2Text" Text="-" FontSize="11" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                                <TextBlock Grid.Column="1" Name="WPFSysDisk2Text" Text="-" FontSize="11" Foreground="{DynamicResource MutedForegroundColor}"/>
                                             </Grid>
-                                            <Border CornerRadius="4" Height="8" Background="#1AFFFFFF" ClipToBounds="True">
+                                            <Border CornerRadius="4" Height="8" Background="{DynamicResource ProgressBarBackgroundColor}" ClipToBounds="True">
                                                 <Grid Name="WPFSysDisk2Bar">
                                                     <Grid.ColumnDefinitions><ColumnDefinition Width="0*"/><ColumnDefinition Width="100*"/></Grid.ColumnDefinitions>
-                                                    <Border Grid.Column="0" CornerRadius="4" Background="#3DF5A0"/>
+                                                    <Border Grid.Column="0" CornerRadius="4" Background="{DynamicResource AccentColor}"/>
                                                 </Grid>
                                             </Border>
                                         </StackPanel>
@@ -13311,12 +13899,12 @@ $inputXML = @'
                                             <Grid Margin="0,0,0,4">
                                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                                 <TextBlock Grid.Column="0" Name="WPFSysDisk3Label" Text="-" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource MainForegroundColor}"/>
-                                                <TextBlock Grid.Column="1" Name="WPFSysDisk3Text" Text="-" FontSize="11" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                                <TextBlock Grid.Column="1" Name="WPFSysDisk3Text" Text="-" FontSize="11" Foreground="{DynamicResource MutedForegroundColor}"/>
                                             </Grid>
-                                            <Border CornerRadius="4" Height="8" Background="#1AFFFFFF" ClipToBounds="True">
+                                            <Border CornerRadius="4" Height="8" Background="{DynamicResource ProgressBarBackgroundColor}" ClipToBounds="True">
                                                 <Grid Name="WPFSysDisk3Bar">
                                                     <Grid.ColumnDefinitions><ColumnDefinition Width="0*"/><ColumnDefinition Width="100*"/></Grid.ColumnDefinitions>
-                                                    <Border Grid.Column="0" CornerRadius="4" Background="#3DF5A0"/>
+                                                    <Border Grid.Column="0" CornerRadius="4" Background="{DynamicResource AccentColor}"/>
                                                 </Grid>
                                             </Border>
                                         </StackPanel>
@@ -13328,26 +13916,26 @@ $inputXML = @'
                                         BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="16,14" Margin="6">
                                     <StackPanel>
                                         <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                            <TextBlock Text="&#xE7F4;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="#3DF5A0"
+                                            <TextBlock Text="&#xE7F4;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="{DynamicResource AccentColor}"
                                                        VerticalAlignment="Center" Margin="0,0,9,0"/>
                                             <TextBlock Text="GRAFICA" FontSize="11" FontWeight="SemiBold"
-                                                       Foreground="{DynamicResource ToggleButtonOffColor}" VerticalAlignment="Center"/>
+                                                       Foreground="{DynamicResource MutedForegroundColor}" VerticalAlignment="Center"/>
                                         </StackPanel>
                                         <TextBlock Name="WPFSysGpuName" Text="-" FontSize="13" FontWeight="SemiBold"
                                                    Foreground="{DynamicResource MainForegroundColor}" TextWrapping="Wrap" Margin="0,0,0,10"/>
                                         <Grid Margin="0,0,0,7">
                                             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Text="Memoria video" FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                            <TextBlock Grid.Column="0" Text="Memoria video" FontSize="12" Foreground="{DynamicResource MutedForegroundColor}"/>
                                             <TextBlock Grid.Column="1" Name="WPFSysGpuVram" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" Margin="10,0,0,0"/>
                                         </Grid>
                                         <Grid Margin="0,0,0,7">
                                             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Text="Risoluzione" FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                            <TextBlock Grid.Column="0" Text="Risoluzione" FontSize="12" Foreground="{DynamicResource MutedForegroundColor}"/>
                                             <TextBlock Grid.Column="1" Name="WPFSysGpuResolution" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" Margin="10,0,0,0"/>
                                         </Grid>
                                         <Grid>
                                             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Text="Driver" FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                            <TextBlock Grid.Column="0" Text="Driver" FontSize="12" Foreground="{DynamicResource MutedForegroundColor}"/>
                                             <TextBlock Grid.Column="1" Name="WPFSysGpuDriver" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" Margin="10,0,0,0"/>
                                         </Grid>
                                     </StackPanel>
@@ -13358,31 +13946,68 @@ $inputXML = @'
                                         BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="16,14" Margin="6">
                                     <StackPanel>
                                         <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                            <TextBlock Text="&#xE968;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="#3DF5A0"
+                                            <TextBlock Text="&#xE968;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="{DynamicResource AccentColor}"
                                                        VerticalAlignment="Center" Margin="0,0,9,0"/>
                                             <TextBlock Text="RETE" FontSize="11" FontWeight="SemiBold"
-                                                       Foreground="{DynamicResource ToggleButtonOffColor}" VerticalAlignment="Center"/>
+                                                       Foreground="{DynamicResource MutedForegroundColor}" VerticalAlignment="Center"/>
                                         </StackPanel>
                                         <Grid Margin="0,0,0,7">
                                             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Text="Scheda" FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                            <TextBlock Grid.Column="0" Text="Scheda" FontSize="12" Foreground="{DynamicResource MutedForegroundColor}"/>
                                             <TextBlock Grid.Column="1" Name="WPFSysNetAdapter" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" TextWrapping="Wrap" Margin="10,0,0,0"/>
                                         </Grid>
                                         <Grid Margin="0,0,0,7">
                                             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Text="Indirizzo IPv4" FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}"/>
-                                            <TextBlock Grid.Column="1" Name="WPFSysNetIp" Text="-" FontSize="12" FontWeight="SemiBold" Foreground="#3DF5A0" TextAlignment="Right" Margin="10,0,0,0"/>
+                                            <TextBlock Grid.Column="0" Text="Indirizzo IPv4" FontSize="12" Foreground="{DynamicResource MutedForegroundColor}"/>
+                                            <TextBlock Grid.Column="1" Name="WPFSysNetIp" Text="-" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource AccentColor}" TextAlignment="Right" Margin="10,0,0,0"/>
                                         </Grid>
                                         <Grid Margin="0,0,0,7">
                                             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Text="Indirizzo MAC" FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                            <TextBlock Grid.Column="0" Text="Indirizzo MAC" FontSize="12" Foreground="{DynamicResource MutedForegroundColor}"/>
                                             <TextBlock Grid.Column="1" Name="WPFSysNetMac" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" Margin="10,0,0,0"/>
                                         </Grid>
                                         <Grid>
                                             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Text="Stato" FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                            <TextBlock Grid.Column="0" Text="Stato" FontSize="12" Foreground="{DynamicResource MutedForegroundColor}"/>
                                             <TextBlock Grid.Column="1" Name="WPFSysNetStatus" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" Margin="10,0,0,0"/>
                                         </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Windows Update -->
+                                <Border Width="330" CornerRadius="14" Background="{DynamicResource GroupBorderBackgroundColor}"
+                                        BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="16,14" Margin="6">
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                            <TextBlock Text="&#xE895;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="{DynamicResource AccentColor}"
+                                                       VerticalAlignment="Center" Margin="0,0,9,0"/>
+                                            <TextBlock Text="AGGIORNAMENTI WINDOWS" FontSize="11" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource MutedForegroundColor}" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                        <Grid Margin="0,0,0,7">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Ultima installazione" FontSize="12" Foreground="{DynamicResource MutedForegroundColor}"/>
+                                            <TextBlock Grid.Column="1" Name="WPFSysUpdLastInstall" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" Margin="10,0,0,0"/>
+                                        </Grid>
+                                        <Grid Margin="0,0,0,12">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Ultima ricerca" FontSize="12" Foreground="{DynamicResource MutedForegroundColor}"/>
+                                            <TextBlock Grid.Column="1" Name="WPFSysUpdLastSearch" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" Margin="10,0,0,0"/>
+                                        </Grid>
+                                        <TextBlock Text="INSTALLATI DI RECENTE" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource MutedForegroundColor}" Margin="0,0,0,6"/>
+                                        <ItemsControl Name="WPFSysUpdList">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="0,0,0,5" Background="Transparent" ToolTip="{Binding Title}">
+                                                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                                        <TextBlock Grid.Column="0" Text="{Binding Date}" FontSize="12" Foreground="{DynamicResource MutedForegroundColor}" Margin="0,0,10,0"/>
+                                                        <TextBlock Grid.Column="1" Text="{Binding Title}" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextTrimming="CharacterEllipsis"/>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <TextBlock Name="WPFSysUpdEmpty" Text="Nessun aggiornamento recente trovato." FontSize="12"
+                                                   Foreground="{DynamicResource MutedForegroundColor}" Visibility="Collapsed"/>
                                     </StackPanel>
                                 </Border>
 
@@ -13391,27 +14016,27 @@ $inputXML = @'
                                         BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="16,14" Margin="6" Visibility="Collapsed">
                                     <StackPanel>
                                         <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                            <TextBlock Text="&#xE83F;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="#3DF5A0"
+                                            <TextBlock Text="&#xE83F;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="{DynamicResource AccentColor}"
                                                        VerticalAlignment="Center" Margin="0,0,9,0"/>
                                             <TextBlock Text="BATTERIA" FontSize="11" FontWeight="SemiBold"
-                                                       Foreground="{DynamicResource ToggleButtonOffColor}" VerticalAlignment="Center"/>
+                                                       Foreground="{DynamicResource MutedForegroundColor}" VerticalAlignment="Center"/>
                                         </StackPanel>
                                         <TextBlock Name="WPFSysBatteryCharge" Text="-" FontSize="20" FontWeight="Bold"
                                                    Foreground="{DynamicResource MainForegroundColor}" Margin="0,0,0,10"/>
-                                        <Border CornerRadius="4" Height="8" Background="#1AFFFFFF" ClipToBounds="True" Margin="0,0,0,12">
+                                        <Border CornerRadius="4" Height="8" Background="{DynamicResource ProgressBarBackgroundColor}" ClipToBounds="True" Margin="0,0,0,12">
                                             <Grid Name="WPFSysBatteryBar">
                                                 <Grid.ColumnDefinitions><ColumnDefinition Width="0*"/><ColumnDefinition Width="100*"/></Grid.ColumnDefinitions>
-                                                <Border Grid.Column="0" CornerRadius="4" Background="#3DF5A0"/>
+                                                <Border Grid.Column="0" CornerRadius="4" Background="{DynamicResource AccentColor}"/>
                                             </Grid>
                                         </Border>
                                         <Grid Margin="0,0,0,7">
                                             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Text="Stato" FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                            <TextBlock Grid.Column="0" Text="Stato" FontSize="12" Foreground="{DynamicResource MutedForegroundColor}"/>
                                             <TextBlock Grid.Column="1" Name="WPFSysBatteryStatus" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" Margin="10,0,0,0"/>
                                         </Grid>
                                         <Grid>
                                             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Text="Salute (usura)" FontSize="12" Foreground="{DynamicResource ToggleButtonOffColor}"/>
+                                            <TextBlock Grid.Column="0" Text="Salute (usura)" FontSize="12" Foreground="{DynamicResource MutedForegroundColor}"/>
                                             <TextBlock Grid.Column="1" Name="WPFSysBatteryHealth" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" Margin="10,0,0,0"/>
                                         </Grid>
                                     </StackPanel>
@@ -13423,7 +14048,7 @@ $inputXML = @'
                             <Border CornerRadius="14" Background="{DynamicResource GroupBorderBackgroundColor}"
                                     BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="14,12" Margin="6,4,6,6">
                                 <StackPanel>
-                                    <TextBlock Text="Registro attività" FontSize="{DynamicResource FontSize}" FontWeight="Bold"
+                                    <TextBlock Text="Registro attivit&#xE0;" FontSize="{DynamicResource FontSize}" FontWeight="Bold"
                                                Foreground="{DynamicResource MainForegroundColor}" Margin="0,0,0,6"/>
                                     <TextBox Name="WPFSystemLog" IsReadOnly="True" TextWrapping="Wrap" Height="80"
                                              VerticalScrollBarVisibility="Auto" Background="Transparent"
@@ -13449,20 +14074,22 @@ $inputXML = @'
                         <StackPanel Orientation="Vertical">
                             <TextBlock Text="Password Wi-Fi salvate" FontSize="{DynamicResource HeaderFontSize}" FontWeight="Bold"
                                        Foreground="{DynamicResource MainForegroundColor}" Margin="0,0,0,2"/>
-                            <TextBlock Text="Recupera le chiavi delle reti Wi-Fi memorizzate su questo PC." FontSize="12"
-                                       Foreground="{DynamicResource ToggleButtonOffColor}" Margin="0,0,0,12"/>
+                            <TextBlock Text="Recupera le password delle reti Wi-Fi memorizzate su questo PC e trasferiscile su un altro PC." FontSize="12"
+                                       Foreground="{DynamicResource MutedForegroundColor}" Margin="0,0,0,12"/>
                             <WrapPanel Orientation="Horizontal">
                                 <Button Name="WPFWifiRefresh" Content="Scansiona reti Wi-Fi" Width="Auto" MinWidth="130" Margin="0,0,8,8" Padding="12,0"/>
                                 <Button Name="WPFWifiCopyAll" Content="Copia tutte" Width="Auto" MinWidth="110" Margin="0,0,8,8" Padding="12,0"/>
+                                <Button Name="WPFWifiExport" Content="Esporta profili" Width="Auto" MinWidth="130" Margin="0,0,8,8" Padding="12,0"
+                                        ToolTip="Salva tutte le reti Wi-Fi, con le password, in un file .zip da importare su un altro PC"/>
+                                <Button Name="WPFWifiImport" Content="Importa profili" Width="Auto" MinWidth="130" Margin="0,0,8,8" Padding="12,0"
+                                        ToolTip="Aggiunge a questo PC le reti Wi-Fi di un file .zip esportato da WinRUtil o di file .xml di netsh"/>
                             </WrapPanel>
                         </StackPanel>
                     </Border>
                     <Border Grid.Row="1" Background="{DynamicResource GroupBorderBackgroundColor}" CornerRadius="12"
                             BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="8" Margin="6,2,6,6">
                         <DataGrid Name="WPFWifiList" AutoGenerateColumns="False" IsReadOnly="True"
-                                  Background="Transparent" BorderThickness="0" RowBackground="Transparent" AlternatingRowBackground="#14FFFFFF"
-                                  Foreground="{DynamicResource MainForegroundColor}" GridLinesVisibility="None"
-                                  HeadersVisibility="Column" CanUserAddRows="False" SelectionMode="Single">
+                                  Style="{StaticResource ThemedDataGridStyle}" CanUserAddRows="False" SelectionMode="Single">
                             <DataGrid.Resources>
                                 <Style TargetType="DataGridColumnHeader">
                                     <Setter Property="Foreground" Value="{DynamicResource MainForegroundColor}"/>
@@ -13479,25 +14106,31 @@ $inputXML = @'
                                 <DataGridTemplateColumn Header="Password" Width="2*">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
-                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                <ToggleButton x:Name="WifiEye" Background="Transparent" BorderThickness="0"
-                                                              Padding="0" Margin="0,0,8,0" Cursor="Hand"
-                                                              ToolTip="Mostra/Nascondi password" VerticalAlignment="Center"
-                                                              Focusable="True">
-                                                    <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE7B3;" FontSize="14"
-                                                               Foreground="{DynamicResource MainForegroundColor}"/>
-                                                </ToggleButton>
-                                                <TextBlock x:Name="WifiMasked" Text="&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;"
-                                                           VerticalAlignment="Center" Foreground="{DynamicResource MainForegroundColor}"
-                                                           Visibility="Visible"/>
-                                                <TextBlock x:Name="WifiClear" Text="{Binding Password}"
-                                                           VerticalAlignment="Center" Foreground="{DynamicResource MainForegroundColor}"
-                                                           Visibility="Collapsed"/>
-                                            </StackPanel>
+                                            <Grid VerticalAlignment="Center">
+                                                <StackPanel x:Name="WifiSecret" Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <ToggleButton x:Name="WifiEye" Style="{StaticResource IconToggleButtonStyle}"
+                                                                  Margin="0,0,8,0" ToolTip="Mostra/Nascondi password">
+                                                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE7B3;" FontSize="14"
+                                                                   Foreground="{DynamicResource MainForegroundColor}"/>
+                                                    </ToggleButton>
+                                                    <TextBlock x:Name="WifiMasked" Text="&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;"
+                                                               VerticalAlignment="Center" Foreground="{DynamicResource MainForegroundColor}"
+                                                               Visibility="Visible"/>
+                                                    <TextBlock x:Name="WifiClear" Text="{Binding Password}"
+                                                               VerticalAlignment="Center" Foreground="{DynamicResource MainForegroundColor}"
+                                                               Visibility="Collapsed"/>
+                                                </StackPanel>
+                                                <TextBlock x:Name="WifiOpen" Text="Nessuna (rete aperta)" VerticalAlignment="Center"
+                                                           Foreground="{DynamicResource MutedForegroundColor}" Visibility="Collapsed"/>
+                                            </Grid>
                                             <DataTemplate.Triggers>
                                                 <DataTrigger Binding="{Binding IsChecked, ElementName=WifiEye}" Value="True">
                                                     <Setter TargetName="WifiMasked" Property="Visibility" Value="Collapsed"/>
                                                     <Setter TargetName="WifiClear" Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Password}" Value="">
+                                                    <Setter TargetName="WifiSecret" Property="Visibility" Value="Collapsed"/>
+                                                    <Setter TargetName="WifiOpen" Property="Visibility" Value="Visible"/>
                                                 </DataTrigger>
                                             </DataTemplate.Triggers>
                                         </DataTemplate>
@@ -13511,7 +14144,7 @@ $inputXML = @'
                     <Border Grid.Row="2" Background="{DynamicResource GroupBorderBackgroundColor}" CornerRadius="12"
                             BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="10" Margin="6,2,6,6">
                         <StackPanel>
-                            <TextBlock Text="Registro attività" FontSize="{DynamicResource FontSize}" FontWeight="Bold"
+                            <TextBlock Text="Registro attivit&#xE0;" FontSize="{DynamicResource FontSize}" FontWeight="Bold"
                                        Foreground="{DynamicResource MainForegroundColor}" Margin="0,0,0,4"/>
                             <TextBox Name="WPFWifiStatusLog" IsReadOnly="True" TextWrapping="Wrap" Height="90"
                                      VerticalScrollBarVisibility="Auto" Background="Transparent"
@@ -13788,6 +14421,7 @@ Set-WinUtilTaskbaritem -state "None"
 $sync["Form"].title = $sync["Form"].title + " " + $sync.version
 # Set the commands that will run when the form is closed
 $sync["Form"].Add_Closing({
+    Stop-WinUtilSystemLiveUpdate
     $sync.runspace.Dispose()
     $sync.runspace.Close()
     [System.GC]::Collect()
@@ -13823,7 +14457,9 @@ $commonKeyEvents = {
             "C" { Invoke-WPFButton "WPFTab3BT"; $keyEventArgs.Handled = $true } # Navigate to Config tab
             "U" { Invoke-WPFButton "WPFTab4BT"; $keyEventArgs.Handled = $true } # Navigate to Updates tab
             "W" { Invoke-WPFButton "WPFTab5BT"; $keyEventArgs.Handled = $true } # Navigate to Win11ISO tab
+            "P" { Invoke-WPFButton "WPFTab6BT"; $keyEventArgs.Handled = $true } # Navigate to Printers tab
             "S" { Invoke-WPFButton "WPFTab7BT"; $keyEventArgs.Handled = $true } # Navigate to System dashboard
+            "F" { Invoke-WPFButton "WPFTab8BT"; $keyEventArgs.Handled = $true } # Navigate to Wi-Fi tab
         }
     }
     # Handle Ctrl key combinations for specific actions
@@ -14020,11 +14656,13 @@ $sync["AboutMenuItem"].Add_Click({
     Write-Debug "About clicked"
     Invoke-WPFPopup -Action "Hide" -Popups @("Settings")
 
+    $dash = [char]0x2014
+    $copyright = [char]0x00A9
     $authorInfo = @"
-WinRUtil — Windows toolkit
+WinRUtil $dash Windows toolkit
 Maintainer : <a href="https://github.com/rtecnocopy89">@rtecnocopy89</a>
 GitHub     : <a href="https://github.com/rtecnocopy89/WinRUtil">rtecnocopy89/WinRUtil</a>
-Copyright  : © 2026 rtecnocopy89 — © 2022 CT Tech Group LLC
+Copyright  : $copyright 2026 rtecnocopy89 $dash $copyright 2022 CT Tech Group LLC
 Based on   : <a href="https://github.com/ChrisTitusTech/winutil">ChrisTitusTech/winutil</a> (MIT)
 Version    : $($sync.version)
 "@
@@ -14061,7 +14699,7 @@ $sync["FontScalingApplyButton"].Add_Click({
     Invoke-WPFPopup -Action "Hide" -Popups @("FontScaling")
 })
 
-# ── Win11ISO Tab button handlers ──────────────────────────────────────────────
+# -- Win11ISO Tab button handlers ----------------------------------------------
 
 $sync["WPFTab5BT"].Add_Click({
     $sync["Form"].Dispatcher.BeginInvoke([System.Windows.Threading.DispatcherPriority]::Background, [action]{ Invoke-WinUtilISOCheckExistingWork }) | Out-Null
@@ -14114,7 +14752,7 @@ $sync["WPFWin11ISOCleanResetButton"].Add_Click({
     Invoke-WinUtilISOCleanAndReset
 })
 
-# ──────────────────────────────────────────────────────────────────────────────
+# ------------------------------------------------------------------------------
 
 $sync["Form"].ShowDialog() | out-null
 Stop-Transcript

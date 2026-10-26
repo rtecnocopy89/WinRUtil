@@ -38,7 +38,7 @@
         $selectedAppRemoveButton.SetResourceReference([Windows.Controls.Control]::StyleProperty, "HoverButtonStyle")
 
         # Highlight the Remove icon on Hover
-        $selectedAppRemoveButton.Add_MouseEnter({ $this.Foreground = "Red" })
+        $selectedAppRemoveButton.Add_MouseEnter({ $this.SetResourceReference([Windows.Controls.Control]::ForegroundProperty, "DangerColor") })
         $selectedAppRemoveButton.Add_MouseLeave({ $this.SetResourceReference([Windows.Controls.Control]::ForegroundProperty, "MainForegroundColor") })
         $selectedAppRemoveButton.Add_Click({
             $sync.($this.Tag).isChecked = $false # On click of the remove button, we only have to uncheck the corresponding checkbox. This will kick of all necessary changes to update the UI

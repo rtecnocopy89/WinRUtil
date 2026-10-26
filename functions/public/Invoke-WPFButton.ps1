@@ -71,13 +71,15 @@
         "WPFPrinterRemoveDriver" {Invoke-WPFPrinterDriver -Action "Remove"}
         "WPFWifiRefresh" {Invoke-WPFWifiRefresh}
         "WPFWifiCopyAll" {Invoke-WPFWifiCopyAll}
+        "WPFWifiExport" {Invoke-WPFWifiExport}
+        "WPFWifiImport" {Invoke-WPFWifiImport}
         "WPFSystemInfoRefresh" {Invoke-WPFSystemInfoRefresh}
         "WPFSystemInfoExport" {Invoke-WPFSystemInfoExport}
         "WPFCloseButton" {$sync.Form.Close(); Write-Host "Bye bye!"}
         "WPFselectedAppsButton" {$sync.selectedAppsPopup.IsOpen = -not $sync.selectedAppsPopup.IsOpen}
         "WPFToggleFOSSHighlight" {
             if ($sync.WPFToggleFOSSHighlight.IsChecked) {
-                 $sync.Form.Resources["FOSSColor"] = [Windows.Media.SolidColorBrush]::new([Windows.Media.Color]::FromRgb(76, 175, 80)) # #4CAF50
+                 $sync.Form.Resources["FOSSColor"] = $sync.Form.Resources["FOSSHighlightColor"]
             } else {
                  $sync.Form.Resources["FOSSColor"] = $sync.Form.Resources["MainForegroundColor"]
             }

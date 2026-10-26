@@ -36,6 +36,25 @@ function Update-Progress {
     Write-Progress -Activity $Activity -Status $StatusMessage -PercentComplete $Percent
 }
 
+# The bundle must be pure ASCII: 'irm | iex' rejects a BOM, while Windows PowerShell 5.1 reads a
+# BOM-less local file with the ANSI codepage. Non-ASCII characters in the embedded XML and JSON
+# are therefore written as character references / \u escapes, which decode to the same text.
+function ConvertTo-XmlCharacterReference {
+    param([string]$Text)
+    [regex]::Replace($Text, '[\uD800-\uDBFF][\uDC00-\uDFFF]|[^\x00-\x7F]', {
+        param($match)
+        '&#x{0:X};' -f [char]::ConvertToUtf32($match.Value, 0)
+    })
+}
+
+function ConvertTo-JsonUnicodeEscape {
+    param([string]$Text)
+    [regex]::Replace($Text, '[^\x00-\x7F]', {
+        param($match)
+        '\u{0:x4}' -f [int][char]$match.Value
+    })
+}
+
 Update-Progress "Pre-req: Running Preprocessor..." 0
 
 # Dot source the 'Invoke-Preprocessing' Function from 'tools/Invoke-Preprocessing.ps1' Script
@@ -92,13 +111,14 @@ Get-ChildItem "config" | Where-Object {$psitem.extension -eq ".json"} | ForEach-
     $json = @"
 $($jsonAsObject | ConvertTo-Json -Depth 3)
 "@
+    $json = ConvertTo-JsonUnicodeEscape $json
 
     $sync.configs.$($psitem.BaseName) = $json | ConvertFrom-Json
     $script_content.Add($(Write-Output "`$sync.configs.$($psitem.BaseName) = @'`r`n$json`r`n'@ `| ConvertFrom-Json" ))
 }
 
 # Read the entire XAML file as a single string, preserving line breaks
-$xaml = Get-Content "$workingdir\xaml\inputXML.xaml" -Raw
+$xaml = ConvertTo-XmlCharacterReference (Get-Content "$workingdir\xaml\inputXML.xaml" -Raw)
 
 Update-Progress "Adding: Xaml " 90
 
@@ -119,6 +139,7 @@ if (Test-Path $autounattendPath) {
     $autounattendXml = ($autounattendRaw -split "`r?`n" |
         Where-Object { $_.Trim() -ne '' } |
         ForEach-Object { $_.TrimEnd() }) -join "`r`n"
+    $autounattendXml = ConvertTo-XmlCharacterReference $autounattendXml
 } else {
     # No answer file present: the Win11 ISO OOBE-bypass step degrades gracefully at runtime.
     Write-Host "Note: tools\autounattend.xml not found - building without an embedded answer file."
@@ -137,13 +158,20 @@ Remove-Item "xaml\inputApp.xaml" -ErrorAction SilentlyContinue
 Remove-Item "xaml\inputTweaks.xaml" -ErrorAction SilentlyContinue
 Remove-Item "xaml\inputFeatures.xaml" -ErrorAction SilentlyContinue
 
-# Write as UTF-8 WITHOUT BOM: a BOM survives `irm | iex` as a literal U+FEFF character at the
-# start of the string and breaks parsing (the opening <# is seen as the token '<U+FEFF><#').
-# GitHub raw serves the file with charset=utf-8, so irm decodes accents correctly without a BOM,
-# and PowerShell 7 reads BOM-less files as UTF-8 by default.
+# Write WITHOUT BOM: a BOM survives `irm | iex` as a literal U+FEFF character at the start of the
+# string and breaks parsing (the opening <# is seen as the token '<U+FEFF><#').
+# The content is pure ASCII (checked below), so irm, Windows PowerShell 5.1 and PowerShell 7 all read it the same way.
 $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
 [System.IO.File]::WriteAllText((Join-Path $workingdir $scriptname), ($script_content -join "`r`n"), $utf8NoBom)
 Write-Progress -Activity "Compiling" -Completed
+
+Update-Progress -Activity "Validating" -StatusMessage "Checking winrutil.ps1 Encoding" -Percent 0
+$nonAsciiLines = @(Select-String -LiteralPath (Join-Path $workingdir $scriptname) -Pattern '[^\x00-\x7F]' -CaseSensitive -Encoding utf8)
+if ($nonAsciiLines.Count -gt 0) {
+    Write-Warning "winrutil.ps1 must be pure ASCII. In PowerShell code write non-ASCII characters with [char] codes, e.g. `$([char]0x00E8). Found on:"
+    $nonAsciiLines | Select-Object -First 10 | ForEach-Object { Write-Host "  line $($_.LineNumber): $($_.Line.Trim())" -ForegroundColor Red }
+    exit 1
+}
 
 Update-Progress -Activity "Validating" -StatusMessage "Checking winrutil.ps1 Syntax" -Percent 0
 try {
