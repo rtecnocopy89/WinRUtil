@@ -2121,43 +2121,6 @@
                                     </StackPanel>
                                 </Border>
 
-                                <!-- Windows Update -->
-                                <Border Width="330" CornerRadius="14" Background="{DynamicResource GroupBorderBackgroundColor}"
-                                        BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="16,14" Margin="6">
-                                    <StackPanel>
-                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                            <TextBlock Text="&#xE895;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="{DynamicResource AccentColor}"
-                                                       VerticalAlignment="Center" Margin="0,0,9,0"/>
-                                            <TextBlock Text="AGGIORNAMENTI WINDOWS" FontSize="11" FontWeight="SemiBold"
-                                                       Foreground="{DynamicResource MutedForegroundColor}" VerticalAlignment="Center"/>
-                                        </StackPanel>
-                                        <Grid Margin="0,0,0,7">
-                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Text="Ultima installazione" FontSize="12" Foreground="{DynamicResource MutedForegroundColor}"/>
-                                            <TextBlock Grid.Column="1" Name="WPFSysUpdLastInstall" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" Margin="10,0,0,0"/>
-                                        </Grid>
-                                        <Grid Margin="0,0,0,12">
-                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Text="Ultima ricerca" FontSize="12" Foreground="{DynamicResource MutedForegroundColor}"/>
-                                            <TextBlock Grid.Column="1" Name="WPFSysUpdLastSearch" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" Margin="10,0,0,0"/>
-                                        </Grid>
-                                        <TextBlock Text="INSTALLATI DI RECENTE" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource MutedForegroundColor}" Margin="0,0,0,6"/>
-                                        <ItemsControl Name="WPFSysUpdList">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <Grid Margin="0,0,0,5" Background="Transparent" ToolTip="{Binding Title}">
-                                                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                                        <TextBlock Grid.Column="0" Text="{Binding Date}" FontSize="12" Foreground="{DynamicResource MutedForegroundColor}" Margin="0,0,10,0"/>
-                                                        <TextBlock Grid.Column="1" Text="{Binding Title}" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextTrimming="CharacterEllipsis"/>
-                                                    </Grid>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                        <TextBlock Name="WPFSysUpdEmpty" Text="Nessun aggiornamento recente trovato." FontSize="12"
-                                                   Foreground="{DynamicResource MutedForegroundColor}" Visibility="Collapsed"/>
-                                    </StackPanel>
-                                </Border>
-
                                 <!-- Battery -->
                                 <Border Name="WPFSysBatteryCard" Width="330" CornerRadius="14" Background="{DynamicResource GroupBorderBackgroundColor}"
                                         BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="16,14" Margin="6" Visibility="Collapsed">
@@ -2190,6 +2153,100 @@
                                 </Border>
 
                             </WrapPanel>
+
+                            <!-- Windows Update history: full width so that long update titles stay readable -->
+                            <Border CornerRadius="14" Background="{DynamicResource GroupBorderBackgroundColor}"
+                                    BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="16,14" Margin="6,4,6,6">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,12">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock Text="&#xE895;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="{DynamicResource AccentColor}"
+                                                       VerticalAlignment="Center" Margin="0,0,9,0"/>
+                                            <TextBlock Text="AGGIORNAMENTI WINDOWS" FontSize="11" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource MutedForegroundColor}" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <StackPanel Margin="0,0,28,0">
+                                                <TextBlock Text="ULTIMA INSTALLAZIONE" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource MutedForegroundColor}"/>
+                                                <TextBlock Name="WPFSysUpdLastInstall" Text="-" FontSize="12" FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource MainForegroundColor}" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                            <StackPanel>
+                                                <TextBlock Text="ULTIMA RICERCA" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource MutedForegroundColor}"/>
+                                                <TextBlock Name="WPFSysUpdLastSearch" Text="-" FontSize="12" FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource MainForegroundColor}" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <!-- The header row and the item rows share the widths of the date, KB and result columns -->
+                                    <StackPanel Name="WPFSysUpdTable" Grid.IsSharedSizeScope="True">
+                                        <Grid Margin="10,0,10,4">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" SharedSizeGroup="UpdDate"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto" SharedSizeGroup="UpdKb"/>
+                                                <ColumnDefinition Width="Auto" SharedSizeGroup="UpdResult"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="DATA" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource MutedForegroundColor}" Margin="0,0,24,0"/>
+                                            <TextBlock Grid.Column="1" Text="AGGIORNAMENTO" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource MutedForegroundColor}" Margin="0,0,24,0"/>
+                                            <TextBlock Grid.Column="2" Text="KB" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource MutedForegroundColor}" Margin="0,0,24,0"/>
+                                            <TextBlock Grid.Column="3" Text="ESITO" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource MutedForegroundColor}"/>
+                                        </Grid>
+                                        <ItemsControl Name="WPFSysUpdList" AlternationCount="2">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Name="UpdRow" CornerRadius="6" Padding="10,6" Background="Transparent">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="Auto" SharedSizeGroup="UpdDate"/>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="Auto" SharedSizeGroup="UpdKb"/>
+                                                                <ColumnDefinition Width="Auto" SharedSizeGroup="UpdResult"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <TextBlock Grid.Column="0" Text="{Binding Date}" FontSize="{DynamicResource FontSize}"
+                                                                       Foreground="{DynamicResource MutedForegroundColor}" Margin="0,0,24,0"/>
+                                                            <TextBlock Grid.Column="1" Text="{Binding Title}" FontSize="{DynamicResource FontSize}"
+                                                                       Foreground="{DynamicResource MainForegroundColor}" TextWrapping="Wrap" Margin="0,0,24,0"/>
+                                                            <TextBlock Grid.Column="2" Text="{Binding KB}" FontSize="{DynamicResource FontSize}"
+                                                                       Foreground="{DynamicResource MainForegroundColor}" Margin="0,0,24,0"/>
+                                                            <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Top">
+                                                                <Ellipse Name="UpdResultDot" Width="8" Height="8" Fill="{DynamicResource SuccessColor}"
+                                                                         VerticalAlignment="Center" Margin="0,0,7,0"/>
+                                                                <TextBlock Name="UpdResultText" Text="{Binding Result}" FontSize="{DynamicResource FontSize}"
+                                                                           FontWeight="SemiBold" Foreground="{DynamicResource SuccessColor}"/>
+                                                            </StackPanel>
+                                                        </Grid>
+                                                    </Border>
+                                                    <DataTemplate.Triggers>
+                                                        <Trigger Property="ItemsControl.AlternationIndex" Value="1">
+                                                            <Setter TargetName="UpdRow" Property="Background" Value="{DynamicResource DataGridAlternatingRowColor}"/>
+                                                        </Trigger>
+                                                        <DataTrigger Binding="{Binding Level}" Value="Warning">
+                                                            <Setter TargetName="UpdResultDot" Property="Fill" Value="{DynamicResource WarningColor}"/>
+                                                            <Setter TargetName="UpdResultText" Property="Foreground" Value="{DynamicResource WarningColor}"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Level}" Value="Danger">
+                                                            <Setter TargetName="UpdResultDot" Property="Fill" Value="{DynamicResource DangerColor}"/>
+                                                            <Setter TargetName="UpdResultText" Property="Foreground" Value="{DynamicResource DangerColor}"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Level}" Value="Muted">
+                                                            <Setter TargetName="UpdResultDot" Property="Fill" Value="{DynamicResource MutedForegroundColor}"/>
+                                                            <Setter TargetName="UpdResultText" Property="Foreground" Value="{DynamicResource MutedForegroundColor}"/>
+                                                        </DataTrigger>
+                                                    </DataTemplate.Triggers>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                    <TextBlock Name="WPFSysUpdEmpty" Text="Nessun aggiornamento recente trovato." FontSize="12"
+                                               Foreground="{DynamicResource MutedForegroundColor}" Visibility="Collapsed"/>
+                                </StackPanel>
+                            </Border>
 
                             <!-- Status log -->
                             <Border CornerRadius="14" Background="{DynamicResource GroupBorderBackgroundColor}"

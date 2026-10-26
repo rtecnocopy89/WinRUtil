@@ -5910,7 +5910,7 @@ function Get-WinUtilSystemReport {
         param($value)
         $date = [datetime]$value
         if ($date.Year -lt 2000) { return $nd }
-        [datetime]::SpecifyKind($date, [System.DateTimeKind]::Utc).ToLocalTime().ToString('dd/MM/yyyy')
+        [datetime]::SpecifyKind($date, [System.DateTimeKind]::Utc).ToLocalTime().ToString('dd/MM/yyyy HH:mm')
     }
     $r.UpdatesLastInstall = $nd; $r.UpdatesLastSearch = $nd; $r.UpdatesRecent = @()
     try {
@@ -5923,14 +5923,31 @@ function Get-WinUtilSystemReport {
         $total = $searcher.GetTotalHistoryCount()
         if ($total -gt 0) {
             $recent = New-Object System.Collections.Generic.List[object]
-            foreach ($entry in $searcher.QueryHistory(0, [math]::Min($total, 100))) {
-                # Successful installations only (Operation 1, ResultCode 2/3), without the daily
-                # Defender definition updates (KB2267602 / KB915597) and the Microsoft Store app updates
-                if ($entry.Operation -ne 1 -or $entry.ResultCode -notin @(2, 3) -or -not $entry.Title) { continue }
+            foreach ($entry in $searcher.QueryHistory(0, [math]::Min($total, 300))) {
+                # Completed installations and removals (Operation 1/2, ResultCode 2-5), newest first and
+                # one row per update, without the daily Defender definition updates (KB2267602 / KB915597)
+                # and the Microsoft Store app updates
+                if ($entry.Operation -notin @(1, 2) -or $entry.ResultCode -notin @(2, 3, 4, 5) -or -not $entry.Title) { continue }
                 if ($entry.Title -match '2267602|915597' -or $entry.Title -match '^9[0-9A-Z]{11}-') { continue }
                 if ($recent | Where-Object { $_.Title -eq $entry.Title }) { continue }
-                $recent.Add([pscustomobject]@{ Date = (& $toLocalDate $entry.Date); Title = $entry.Title })
-                if ($recent.Count -ge 4) { break }
+
+                # Localized titles use either "(KB5031234)" or "- 4052623 KB"
+                $kb = if ($entry.Title -match 'KB\s*(\d{6,8})' -or $entry.Title -match '(\d{6,8})\s*KB') { "KB$($Matches[1])" } else { "" }
+                $result, $level = if ($entry.Operation -eq 2) {
+                    if ($entry.ResultCode -in @(2, 3)) { "Rimosso", "Muted" } else { "Rimozione non riuscita", "Danger" }
+                } else {
+                    switch ($entry.ResultCode) {
+                        2 { "Installato", "Success" }
+                        3 { "Installato con errori", "Warning" }
+                        4 { "Non riuscito", "Danger" }
+                        default { "Annullato", "Warning" }
+                    }
+                }
+                if ($entry.ResultCode -ne 2 -and $entry.HResult -ne 0) { $result = "{0} ({1})" -f $result, ('0x{0:X8}' -f $entry.HResult) }
+                $recent.Add([pscustomobject]@{
+                    Date = (& $toLocalDate $entry.Date); Title = $entry.Title; KB = $kb; Result = $result; Level = $level
+                })
+                if ($recent.Count -ge 15) { break }
             }
             $r.UpdatesRecent = $recent.ToArray()
         }
@@ -6040,7 +6057,9 @@ function Invoke-WPFSystemInfoRefresh {
                 $sync.WPFSysUpdLastInstall.Text = $r.UpdatesLastInstall
                 $sync.WPFSysUpdLastSearch.Text  = $r.UpdatesLastSearch
                 $sync.WPFSysUpdList.ItemsSource = @($r.UpdatesRecent)
-                $sync.WPFSysUpdEmpty.Visibility = if (@($r.UpdatesRecent).Count -gt 0) { "Collapsed" } else { "Visible" }
+                $hasUpdates = @($r.UpdatesRecent).Count -gt 0
+                $sync.WPFSysUpdTable.Visibility = if ($hasUpdates) { "Visible" } else { "Collapsed" }
+                $sync.WPFSysUpdEmpty.Visibility = if ($hasUpdates) { "Collapsed" } else { "Visible" }
 
                 # Battery
                 if ($r.HasBattery) {
@@ -6211,9 +6230,9 @@ function ConvertTo-WinUtilSystemReportText {
     $null = $sb.AppendLine("  Ultima installazione : $($r.UpdatesLastInstall)")
     $null = $sb.AppendLine("  Ultima ricerca       : $($r.UpdatesLastSearch)")
     if (@($r.UpdatesRecent).Count -gt 0) {
-        $null = $sb.AppendLine("  Installati di recente:")
+        $null = $sb.AppendLine("  Cronologia recente:")
         foreach ($u in $r.UpdatesRecent) {
-            $null = $sb.AppendLine("    $($u.Date)  $($u.Title)")
+            $null = $sb.AppendLine(("    {0}  {1,-26} {2}" -f $u.Date, $u.Result, $u.Title))
         }
     }
     $sb.ToString()
@@ -6269,11 +6288,15 @@ td.v{text-align:right;overflow-wrap:anywhere}
 .ok{color:var(--accent)}
 .warn{color:var(--warn)}
 .danger{color:var(--danger)}
-ul{list-style:none;margin:8px 0 0;padding:0}
-li{display:flex;gap:10px;padding:3px 0}
-li span{color:var(--muted);white-space:nowrap}
+.muted{color:var(--muted)}
+.nw{white-space:nowrap}
+.wide{margin-top:16px}
+.wide .facts{margin-top:0}
+table.list{margin-top:14px}
+table.list th{text-align:left;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);padding:4px 14px 6px 0}
+table.list td{padding:6px 14px 6px 0;border-top:1px solid var(--border)}
 footer{margin-top:24px;color:var(--muted);font-size:12px}
-@media print{body{background:#fff}main{padding:0}.hero,.card{break-inside:avoid}}
+@media print{body{background:#fff}main{padding:0}.hero,.card{break-inside:avoid}.card.wide{break-inside:auto}tr{break-inside:avoid}}
 '@
 
     $sb = New-Object System.Text.StringBuilder
@@ -6344,15 +6367,20 @@ footer{margin-top:24px;color:var(--muted);font-size:12px}
         $null = $sb.AppendLine((& $card 'Batteria' $body))
     }
 
-    $body = '<table>' +
-        (& $row 'Ultima installazione' $r.UpdatesLastInstall) +
-        (& $row 'Ultima ricerca' $r.UpdatesLastSearch) + '</table>'
-    if (@($r.UpdatesRecent).Count -gt 0) {
-        $body += '<ul>' + (-join (@($r.UpdatesRecent) | ForEach-Object { "<li><span>$(& $enc $_.Date)</span>$(& $enc $_.Title)</li>" })) + '</ul>'
-    }
-    $null = $sb.AppendLine((& $card 'Aggiornamenti Windows' $body))
-
     $null = $sb.AppendLine('</div>')
+
+    # Windows Update history as a full-width table, as in the dashboard
+    $level = @{ Success = 'ok'; Warning = 'warn'; Danger = 'danger'; Muted = 'muted' }
+    $body = "<div class=""facts""><div><span>Ultima installazione</span><b>$(& $enc $r.UpdatesLastInstall)</b></div>" +
+        "<div><span>Ultima ricerca</span><b>$(& $enc $r.UpdatesLastSearch)</b></div></div>"
+    if (@($r.UpdatesRecent).Count -gt 0) {
+        $body += '<table class="list"><thead><tr><th>Data</th><th>Aggiornamento</th><th>KB</th><th>Esito</th></tr></thead><tbody>' +
+            (-join (@($r.UpdatesRecent) | ForEach-Object {
+                "<tr><td class=""nw muted"">$(& $enc $_.Date)</td><td>$(& $enc $_.Title)</td><td class=""nw"">$(& $enc $_.KB)</td>" +
+                "<td class=""nw $($level[[string]$_.Level])"">$(& $enc $_.Result)</td></tr>"
+            })) + '</tbody></table>'
+    }
+    $null = $sb.AppendLine("<section class=""card wide""><h3>Aggiornamenti Windows</h3>$body</section>")
     $null = $sb.AppendLine("<footer>Generato con WinRUtil $(& $enc $sync.version) &middot; https://github.com/rtecnocopy89/WinRUtil</footer>")
     $null = $sb.AppendLine('</main>')
     $null = $sb.AppendLine('</body>')
@@ -13974,43 +14002,6 @@ $inputXML = @'
                                     </StackPanel>
                                 </Border>
 
-                                <!-- Windows Update -->
-                                <Border Width="330" CornerRadius="14" Background="{DynamicResource GroupBorderBackgroundColor}"
-                                        BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="16,14" Margin="6">
-                                    <StackPanel>
-                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                            <TextBlock Text="&#xE895;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="{DynamicResource AccentColor}"
-                                                       VerticalAlignment="Center" Margin="0,0,9,0"/>
-                                            <TextBlock Text="AGGIORNAMENTI WINDOWS" FontSize="11" FontWeight="SemiBold"
-                                                       Foreground="{DynamicResource MutedForegroundColor}" VerticalAlignment="Center"/>
-                                        </StackPanel>
-                                        <Grid Margin="0,0,0,7">
-                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Text="Ultima installazione" FontSize="12" Foreground="{DynamicResource MutedForegroundColor}"/>
-                                            <TextBlock Grid.Column="1" Name="WPFSysUpdLastInstall" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" Margin="10,0,0,0"/>
-                                        </Grid>
-                                        <Grid Margin="0,0,0,12">
-                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Text="Ultima ricerca" FontSize="12" Foreground="{DynamicResource MutedForegroundColor}"/>
-                                            <TextBlock Grid.Column="1" Name="WPFSysUpdLastSearch" Text="-" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextAlignment="Right" Margin="10,0,0,0"/>
-                                        </Grid>
-                                        <TextBlock Text="INSTALLATI DI RECENTE" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource MutedForegroundColor}" Margin="0,0,0,6"/>
-                                        <ItemsControl Name="WPFSysUpdList">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <Grid Margin="0,0,0,5" Background="Transparent" ToolTip="{Binding Title}">
-                                                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                                        <TextBlock Grid.Column="0" Text="{Binding Date}" FontSize="12" Foreground="{DynamicResource MutedForegroundColor}" Margin="0,0,10,0"/>
-                                                        <TextBlock Grid.Column="1" Text="{Binding Title}" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" TextTrimming="CharacterEllipsis"/>
-                                                    </Grid>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                        <TextBlock Name="WPFSysUpdEmpty" Text="Nessun aggiornamento recente trovato." FontSize="12"
-                                                   Foreground="{DynamicResource MutedForegroundColor}" Visibility="Collapsed"/>
-                                    </StackPanel>
-                                </Border>
-
                                 <!-- Battery -->
                                 <Border Name="WPFSysBatteryCard" Width="330" CornerRadius="14" Background="{DynamicResource GroupBorderBackgroundColor}"
                                         BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="16,14" Margin="6" Visibility="Collapsed">
@@ -14043,6 +14034,100 @@ $inputXML = @'
                                 </Border>
 
                             </WrapPanel>
+
+                            <!-- Windows Update history: full width so that long update titles stay readable -->
+                            <Border CornerRadius="14" Background="{DynamicResource GroupBorderBackgroundColor}"
+                                    BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="16,14" Margin="6,4,6,6">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,12">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock Text="&#xE895;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="{DynamicResource AccentColor}"
+                                                       VerticalAlignment="Center" Margin="0,0,9,0"/>
+                                            <TextBlock Text="AGGIORNAMENTI WINDOWS" FontSize="11" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource MutedForegroundColor}" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <StackPanel Margin="0,0,28,0">
+                                                <TextBlock Text="ULTIMA INSTALLAZIONE" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource MutedForegroundColor}"/>
+                                                <TextBlock Name="WPFSysUpdLastInstall" Text="-" FontSize="12" FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource MainForegroundColor}" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                            <StackPanel>
+                                                <TextBlock Text="ULTIMA RICERCA" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource MutedForegroundColor}"/>
+                                                <TextBlock Name="WPFSysUpdLastSearch" Text="-" FontSize="12" FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource MainForegroundColor}" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <!-- The header row and the item rows share the widths of the date, KB and result columns -->
+                                    <StackPanel Name="WPFSysUpdTable" Grid.IsSharedSizeScope="True">
+                                        <Grid Margin="10,0,10,4">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" SharedSizeGroup="UpdDate"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto" SharedSizeGroup="UpdKb"/>
+                                                <ColumnDefinition Width="Auto" SharedSizeGroup="UpdResult"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="DATA" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource MutedForegroundColor}" Margin="0,0,24,0"/>
+                                            <TextBlock Grid.Column="1" Text="AGGIORNAMENTO" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource MutedForegroundColor}" Margin="0,0,24,0"/>
+                                            <TextBlock Grid.Column="2" Text="KB" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource MutedForegroundColor}" Margin="0,0,24,0"/>
+                                            <TextBlock Grid.Column="3" Text="ESITO" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource MutedForegroundColor}"/>
+                                        </Grid>
+                                        <ItemsControl Name="WPFSysUpdList" AlternationCount="2">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Name="UpdRow" CornerRadius="6" Padding="10,6" Background="Transparent">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="Auto" SharedSizeGroup="UpdDate"/>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="Auto" SharedSizeGroup="UpdKb"/>
+                                                                <ColumnDefinition Width="Auto" SharedSizeGroup="UpdResult"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <TextBlock Grid.Column="0" Text="{Binding Date}" FontSize="{DynamicResource FontSize}"
+                                                                       Foreground="{DynamicResource MutedForegroundColor}" Margin="0,0,24,0"/>
+                                                            <TextBlock Grid.Column="1" Text="{Binding Title}" FontSize="{DynamicResource FontSize}"
+                                                                       Foreground="{DynamicResource MainForegroundColor}" TextWrapping="Wrap" Margin="0,0,24,0"/>
+                                                            <TextBlock Grid.Column="2" Text="{Binding KB}" FontSize="{DynamicResource FontSize}"
+                                                                       Foreground="{DynamicResource MainForegroundColor}" Margin="0,0,24,0"/>
+                                                            <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Top">
+                                                                <Ellipse Name="UpdResultDot" Width="8" Height="8" Fill="{DynamicResource SuccessColor}"
+                                                                         VerticalAlignment="Center" Margin="0,0,7,0"/>
+                                                                <TextBlock Name="UpdResultText" Text="{Binding Result}" FontSize="{DynamicResource FontSize}"
+                                                                           FontWeight="SemiBold" Foreground="{DynamicResource SuccessColor}"/>
+                                                            </StackPanel>
+                                                        </Grid>
+                                                    </Border>
+                                                    <DataTemplate.Triggers>
+                                                        <Trigger Property="ItemsControl.AlternationIndex" Value="1">
+                                                            <Setter TargetName="UpdRow" Property="Background" Value="{DynamicResource DataGridAlternatingRowColor}"/>
+                                                        </Trigger>
+                                                        <DataTrigger Binding="{Binding Level}" Value="Warning">
+                                                            <Setter TargetName="UpdResultDot" Property="Fill" Value="{DynamicResource WarningColor}"/>
+                                                            <Setter TargetName="UpdResultText" Property="Foreground" Value="{DynamicResource WarningColor}"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Level}" Value="Danger">
+                                                            <Setter TargetName="UpdResultDot" Property="Fill" Value="{DynamicResource DangerColor}"/>
+                                                            <Setter TargetName="UpdResultText" Property="Foreground" Value="{DynamicResource DangerColor}"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Level}" Value="Muted">
+                                                            <Setter TargetName="UpdResultDot" Property="Fill" Value="{DynamicResource MutedForegroundColor}"/>
+                                                            <Setter TargetName="UpdResultText" Property="Foreground" Value="{DynamicResource MutedForegroundColor}"/>
+                                                        </DataTrigger>
+                                                    </DataTemplate.Triggers>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                    <TextBlock Name="WPFSysUpdEmpty" Text="Nessun aggiornamento recente trovato." FontSize="12"
+                                               Foreground="{DynamicResource MutedForegroundColor}" Visibility="Collapsed"/>
+                                </StackPanel>
+                            </Border>
 
                             <!-- Status log -->
                             <Border CornerRadius="14" Background="{DynamicResource GroupBorderBackgroundColor}"
