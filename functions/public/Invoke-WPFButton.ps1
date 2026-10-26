@@ -48,6 +48,9 @@
         "WPFInstall" {Invoke-WPFInstall}
         "WPFUninstall" {Invoke-WPFUnInstall}
         "WPFInstallUpgrade" {Invoke-WPFInstallUpgrade}
+        "WPFUpgradeStart" {Invoke-WPFUpgradeStart}
+        "WPFUpgradeRefresh" {Invoke-WPFUpgradeRefresh}
+        "WPFUpgradeClose" {Invoke-WPFUpgradeClose}
         "WPFCollapseAllCategories" {Invoke-WPFToggleAllCategories -Action "Collapse"}
         "WPFExpandAllCategories" {Invoke-WPFToggleAllCategories -Action "Expand"}
         "WPFStandard" {Invoke-WPFPresets "Standard" -checkboxfilterpattern "WPFTweak*"}

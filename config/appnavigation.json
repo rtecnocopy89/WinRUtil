@@ -14,11 +14,11 @@
         "Description": "Disinstalla le applicazioni selezionate"
     },
     "WPFInstallUpgrade": {
-        "Content": "Aggiorna tutte le applicazioni",
+        "Content": "Aggiorna applicazioni",
         "Category": "____Azioni",
         "Type": "Button",
         "Order": "3",
-        "Description": "Aggiorna tutte le applicazioni all'ultima versione"
+        "Description": "Mostra gli aggiornamenti disponibili per le applicazioni installate e scegli quali installare"
     },
     "WingetRadioButton": {
         "Content": "WinGet",

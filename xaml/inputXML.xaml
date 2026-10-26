@@ -1267,6 +1267,133 @@
                         <Grid Name="appspanel" Grid.Column="1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
                         </Grid>
                     </Grid>
+
+                    <!-- Available updates of the installed programs, to choose the ones to install (Invoke-WPFInstallUpgrade) -->
+                    <Border Name="WPFUpgradeOverlay" Visibility="Collapsed" Background="#99000000" CornerRadius="12" Margin="6">
+                        <!-- Opaque base: the dark MainBackgroundColor would let the app list show through -->
+                        <Border Background="{DynamicResource WindowBackgroundStartColor}" CornerRadius="14" Margin="28,22" MaxWidth="1040">
+                            <Border Background="{DynamicResource MainBackgroundColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1"
+                                    CornerRadius="14" Padding="22,18">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Grid.Row="0" Text="Aggiornamenti delle applicazioni" FontSize="{DynamicResource HeaderFontSize}" FontWeight="Bold"
+                                               Foreground="{DynamicResource MainForegroundColor}"/>
+                                    <DockPanel Grid.Row="1" Margin="0,6,0,12">
+                                        <Path Name="WPFUpgradeSpinner" DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,8,0" VerticalAlignment="Center"
+                                              Visibility="Collapsed" Data="M 8,1.5 A 6.5,6.5 0 1 1 1.5,8" Stroke="{DynamicResource AccentColor}"
+                                              StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" RenderTransformOrigin="0.5,0.5">
+                                            <Path.RenderTransform>
+                                                <RotateTransform/>
+                                            </Path.RenderTransform>
+                                        </Path>
+                                        <TextBlock Name="WPFUpgradeStatus" FontSize="12" Foreground="{DynamicResource MutedForegroundColor}"
+                                                   TextWrapping="Wrap" VerticalAlignment="Center"/>
+                                    </DockPanel>
+                                    <DockPanel Grid.Row="2" Margin="0,0,4,6" LastChildFill="False">
+                                        <CheckBox Name="WPFUpgradeSelectAll" Content="Seleziona tutte" DockPanel.Dock="Left" VerticalAlignment="Center"/>
+                                        <TextBlock Name="WPFUpgradeCount" DockPanel.Dock="Right" FontSize="12" Foreground="{DynamicResource MutedForegroundColor}"
+                                                   VerticalAlignment="Center"/>
+                                    </DockPanel>
+                                    <Border Grid.Row="3" Background="{DynamicResource GroupBorderBackgroundColor}" CornerRadius="10"
+                                            BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="8">
+                                        <DataGrid Name="WPFUpgradeList" AutoGenerateColumns="False" IsReadOnly="True"
+                                                  Style="{StaticResource ThemedDataGridStyle}" CanUserAddRows="False" SelectionMode="Single">
+                                            <DataGrid.Resources>
+                                                <Style TargetType="DataGridColumnHeader">
+                                                    <Setter Property="Foreground" Value="{DynamicResource MainForegroundColor}"/>
+                                                    <Setter Property="Background" Value="Transparent"/>
+                                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                                    <Setter Property="Padding" Value="6,4"/>
+                                                    <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
+                                                    <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                                                    <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                                                </Style>
+                                            </DataGrid.Resources>
+                                            <DataGrid.Columns>
+                                                <DataGridTemplateColumn Header="Applicazione" Width="2.2*" SortMemberPath="Name">
+                                                    <DataGridTemplateColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <!-- Handled by the Click handler of WPFUpgradeList in main.ps1 -->
+                                                            <CheckBox x:Name="UpgradeCheck" Uid="UpgradeCheck" ToolTip="{Binding Id}"
+                                                                      IsChecked="{Binding Selected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                                                                <CheckBox.Resources>
+                                                                    <!-- Lines the boxes up with the column header and the "Seleziona tutte" box -->
+                                                                    <Thickness x:Key="CheckBoxMargin">2,0,0,0</Thickness>
+                                                                </CheckBox.Resources>
+                                                                <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
+                                                            </CheckBox>
+                                                            <DataTemplate.Triggers>
+                                                                <DataTrigger Binding="{Binding Done}" Value="True">
+                                                                    <Setter TargetName="UpgradeCheck" Property="IsEnabled" Value="False"/>
+                                                                    <Setter TargetName="UpgradeCheck" Property="Foreground" Value="{DynamicResource MutedForegroundColor}"/>
+                                                                </DataTrigger>
+                                                            </DataTemplate.Triggers>
+                                                        </DataTemplate>
+                                                    </DataGridTemplateColumn.CellTemplate>
+                                                </DataGridTemplateColumn>
+                                                <DataGridTextColumn Header="Versione installata" Binding="{Binding Version}" Width="*"/>
+                                                <DataGridTextColumn Header="Nuova versione" Binding="{Binding Available}" Width="*"/>
+                                                <DataGridTextColumn Header="Origine" Binding="{Binding Source}" Width="Auto"/>
+                                                <DataGridTemplateColumn Header="Stato" Width="1.7*" SortMemberPath="Status">
+                                                    <DataGridTemplateColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <DockPanel>
+                                                                <Ellipse x:Name="UpgradeDot" DockPanel.Dock="Left" Width="8" Height="8" Margin="0,0,7,0"
+                                                                         VerticalAlignment="Center" Visibility="Collapsed"/>
+                                                                <TextBlock x:Name="UpgradeResult" Text="{Binding Status}" ToolTip="{Binding Status}" FontWeight="SemiBold"
+                                                                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                                            </DockPanel>
+                                                            <DataTemplate.Triggers>
+                                                                <DataTrigger Binding="{Binding Level}" Value="Muted">
+                                                                    <Setter TargetName="UpgradeDot" Property="Visibility" Value="Visible"/>
+                                                                    <Setter TargetName="UpgradeDot" Property="Fill" Value="{DynamicResource MutedForegroundColor}"/>
+                                                                    <Setter TargetName="UpgradeResult" Property="Foreground" Value="{DynamicResource MutedForegroundColor}"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Level}" Value="Running">
+                                                                    <Setter TargetName="UpgradeDot" Property="Visibility" Value="Visible"/>
+                                                                    <Setter TargetName="UpgradeDot" Property="Stroke" Value="{DynamicResource AccentColor}"/>
+                                                                    <Setter TargetName="UpgradeDot" Property="StrokeThickness" Value="1.5"/>
+                                                                    <Setter TargetName="UpgradeResult" Property="Foreground" Value="{DynamicResource MainForegroundColor}"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Level}" Value="Success">
+                                                                    <Setter TargetName="UpgradeDot" Property="Visibility" Value="Visible"/>
+                                                                    <Setter TargetName="UpgradeDot" Property="Fill" Value="{DynamicResource SuccessColor}"/>
+                                                                    <Setter TargetName="UpgradeResult" Property="Foreground" Value="{DynamicResource SuccessColor}"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Level}" Value="Warning">
+                                                                    <Setter TargetName="UpgradeDot" Property="Visibility" Value="Visible"/>
+                                                                    <Setter TargetName="UpgradeDot" Property="Fill" Value="{DynamicResource WarningColor}"/>
+                                                                    <Setter TargetName="UpgradeResult" Property="Foreground" Value="{DynamicResource WarningColor}"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Level}" Value="Danger">
+                                                                    <Setter TargetName="UpgradeDot" Property="Visibility" Value="Visible"/>
+                                                                    <Setter TargetName="UpgradeDot" Property="Fill" Value="{DynamicResource DangerColor}"/>
+                                                                    <Setter TargetName="UpgradeResult" Property="Foreground" Value="{DynamicResource DangerColor}"/>
+                                                                </DataTrigger>
+                                                            </DataTemplate.Triggers>
+                                                        </DataTemplate>
+                                                    </DataGridTemplateColumn.CellTemplate>
+                                                </DataGridTemplateColumn>
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+                                    </Border>
+                                    <DockPanel Grid.Row="4" Margin="0,14,0,0" LastChildFill="False">
+                                        <Button Name="WPFUpgradeRefresh" Content="Cerca di nuovo" DockPanel.Dock="Left" Width="Auto" MinWidth="120" Padding="12,0" Margin="0"
+                                                ToolTip="Cerca di nuovo gli aggiornamenti disponibili"/>
+                                        <Button Name="WPFUpgradeClose" Content="Chiudi" DockPanel.Dock="Right" Width="Auto" MinWidth="90" Padding="12,0" Margin="0"/>
+                                        <Button Name="WPFUpgradeStart" Content="Aggiorna selezionate" DockPanel.Dock="Right" Width="Auto" MinWidth="150" Padding="12,0" Margin="0,0,8,0"
+                                                ToolTip="Installa gli aggiornamenti delle applicazioni selezionate, una alla volta"/>
+                                    </DockPanel>
+                                </Grid>
+                            </Border>
+                        </Border>
+                    </Border>
                 </Grid>
             </TabItem>
             <TabItem Header="Tweaks" Visibility="Collapsed" Name="WPFTab2">

@@ -25,7 +25,7 @@ irm https://raw.githubusercontent.com/rtecnocopy89/WinRUtil/master/winrutil.ps1 
 ## Funzionalità
 
 - **Sistema** — panoramica di Windows e attivazione, hardware (con Secure Boot, TPM e BitLocker), processore e memoria aggiornati in tempo reale, dischi (con stato di salute), grafica, rete, batteria e cronologia degli aggiornamenti di Windows con l'esito di ognuno (anche quelli non riusciti, con il codice di errore), con esportazione del report in HTML (pronto da stampare o salvare in PDF) o in testo.
-- **Installa** — installa e aggiorna applicazioni tramite WinGet o Chocolatey.
+- **Installa** — installa e aggiorna applicazioni tramite WinGet o Chocolatey. "Aggiorna applicazioni" elenca gli aggiornamenti disponibili per tutti i programmi installati: scegli quali installare e segui l'esito di ognuno.
 - **Ottimizza** — ottimizzazioni per privacy, prestazioni e qualità d'uso, con preset e annullamento con un clic, tutte descritte in italiano.
 - **Configura** — attiva le funzionalità di Windows ed esegui le riparazioni (Windows Update, rete, controllo del sistema con CHKDSK, SFC e DISM, WinGet).
 - **Aggiornamenti** — gestisci i criteri di Windows Update (predefinito / solo sicurezza / disabilitato).

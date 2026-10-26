@@ -128,7 +128,8 @@ if (-NOT ($readerOperationSuccessful)) {
     exit 1
 }
 
-# Setup the Window to follow listen for windows Theme Change events and update the winutil theme
+# Setup the Window to follow listen for windows Theme Change events and update the winutil theme,
+# and to keep the maximized window inside the work area of its monitor
 # throttle logic needed, because windows seems to send more than one theme change event per change
 $lastThemeChangeTime = [datetime]::MinValue
 $debounceInterval = [timespan]::FromSeconds(2)
@@ -151,6 +152,16 @@ $sync.Form.Add_Loaded({
                 $script:lastThemeChangeTime = $currentTime
                 $handled = $true
             }
+        }
+        # WM_GETMINMAXINFO (0x0024): a window without a frame is maximized over the whole monitor, so the
+        # taskbar would cover its bottom (the buttons of the Tweaks tab); maximize it to the work area instead.
+        # MINMAXINFO is made of POINTs (two Int32): ptMaxSize is at offset 8, ptMaxPosition at offset 16.
+        if ($msg -eq 0x0024) {
+            $screen = [System.Windows.Forms.Screen]::FromHandle($hwnd)
+            [System.Runtime.InteropServices.Marshal]::WriteInt32($lParam, 8, $screen.WorkingArea.Width)
+            [System.Runtime.InteropServices.Marshal]::WriteInt32($lParam, 12, $screen.WorkingArea.Height)
+            [System.Runtime.InteropServices.Marshal]::WriteInt32($lParam, 16, $screen.WorkingArea.Left - $screen.Bounds.Left)
+            [System.Runtime.InteropServices.Marshal]::WriteInt32($lParam, 20, $screen.WorkingArea.Top - $screen.Bounds.Top)
         }
         return 0
     })
@@ -283,6 +294,7 @@ $commonKeyEvents = {
         "Escape" {
             $sync.SearchBar.Text = ""
             if ($sync.WPFWifiQrOverlay.Visibility -eq "Visible") { Invoke-WPFWifiQrClose }
+            if ($sync.WPFUpgradeOverlay.Visibility -eq "Visible") { Invoke-WPFUpgradeClose }
         }
     }
     # Handle Alt key combinations for navigation
@@ -332,31 +344,25 @@ $sync["Form"].Add_Deactivated({
 })
 
 $sync["Form"].Add_ContentRendered({
-    # Load the Windows Forms assembly
-    Add-Type -AssemblyName System.Windows.Forms
-    $primaryScreen = [System.Windows.Forms.Screen]::PrimaryScreen
-    # Check if the primary screen is found
-    if ($primaryScreen) {
-        # Extract screen width and height for the primary monitor
-        $screenWidth = $primaryScreen.Bounds.Width
-        $screenHeight = $primaryScreen.Bounds.Height
+    # Keep the window inside the work area of its monitor (the screen without the taskbar), so that
+    # the bottom of every tab stays visible. The work area is in pixels, the window size in WPF units.
+    $hwnd = (New-Object System.Windows.Interop.WindowInteropHelper $sync.Form).Handle
+    $workArea = [System.Windows.Forms.Screen]::FromHandle($hwnd).WorkingArea
+    $toWpf = [System.Windows.PresentationSource]::FromVisual($sync.Form).CompositionTarget.TransformFromDevice
+    $workWidth = $workArea.Width * $toWpf.M11
+    $workHeight = $workArea.Height * $toWpf.M22
+    Write-Debug "Work area of the monitor: $workWidth x $workHeight"
 
-        # Print the screen size
-        Write-Debug "Primary Monitor Width: $screenWidth pixels"
-        Write-Debug "Primary Monitor Height: $screenHeight pixels"
-
-        # Compare with the primary monitor size
-        if ($sync.Form.ActualWidth -gt $screenWidth -or $sync.Form.ActualHeight -gt $screenHeight) {
-            Write-Debug "The specified width and/or height is greater than the primary monitor size."
-            $sync.Form.Left = 0
-            $sync.Form.Top = 0
-            $sync.Form.Width = $screenWidth
-            $sync.Form.Height = $screenHeight
-        } else {
-            Write-Debug "The specified width and height are within the primary monitor size limits."
-        }
-    } else {
-        Write-Debug "Unable to retrieve information about the primary monitor."
+    if ($sync.Form.ActualWidth -gt $workWidth -or $sync.Form.ActualHeight -gt $workHeight) {
+        Write-Debug "The window is larger than the work area of the monitor: resizing it."
+        $width = [Math]::Min($sync.Form.ActualWidth, $workWidth)
+        $height = [Math]::Min($sync.Form.ActualHeight, $workHeight)
+        $sync.Form.MinWidth = [Math]::Min($sync.Form.MinWidth, $width)
+        $sync.Form.MinHeight = [Math]::Min($sync.Form.MinHeight, $height)
+        $sync.Form.Width = $width
+        $sync.Form.Height = $height
+        $sync.Form.Left = $workArea.Left * $toWpf.M11 + ($workWidth - $width) / 2
+        $sync.Form.Top = $workArea.Top * $toWpf.M22 + ($workHeight - $height) / 2
     }
 
     if ($PARAM_OFFLINE) {
@@ -542,6 +548,18 @@ $sync["WPFWifiList"].AddHandler([System.Windows.Controls.Primitives.ButtonBase]:
     if ($clickArgs.OriginalSource.Uid -eq "WifiQr") {
         Show-WinUtilWifiQRCode -Network $clickArgs.OriginalSource.Tag
     }
+})
+
+# Install tab: the check box of each program in the update list, and the one that selects them all
+$sync["WPFUpgradeList"].AddHandler([System.Windows.Controls.Primitives.ButtonBase]::ClickEvent, [System.Windows.RoutedEventHandler]{
+    param($list, $clickArgs)
+    if ($clickArgs.OriginalSource.Uid -eq "UpgradeCheck") {
+        $clickArgs.OriginalSource.DataContext.Selected = [bool]$clickArgs.OriginalSource.IsChecked
+        Update-WinUtilUpgradeView
+    }
+})
+$sync["WPFUpgradeSelectAll"].Add_Click({
+    Invoke-WPFUpgradeSelectAll
 })
 
 $sync["Form"].ShowDialog() | out-null

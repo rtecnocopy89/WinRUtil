@@ -207,6 +207,120 @@ function Add-WinUtilSessionAction {
         Result    = $result
     })
 }
+function ConvertFrom-WinUtilWingetTable {
+    <#
+    .SYNOPSIS
+        Reads the package tables printed by "winget upgrade"
+
+    .DESCRIPTION
+        The column positions come from the header above the dashed line, so names that contain
+        spaces are read correctly. WinGet aligns the columns by display width: East Asian wide
+        characters take two columns and are counted that way.
+
+    .PARAMETER Lines
+        The output of WinGet, one line per item
+
+    .OUTPUTS
+        One object per row with Name, Id, Version, Available, Source and Table, the position of the
+        table in the output (the first table lists the upgrades that "winget upgrade --all" installs)
+
+    .EXAMPLE
+        ConvertFrom-WinUtilWingetTable -Lines (winget upgrade | Out-String -Stream)
+    #>
+
+    param([string[]]$Lines)
+
+    function ConvertTo-CellText {
+        # Adds a NUL after every wide character, so that string positions match the columns
+        param([string]$Text)
+        if ($Text -notmatch '[^\x00-\x7F]') {
+            return $Text
+        }
+        $builder = [System.Text.StringBuilder]::new()
+        foreach ($char in $Text.ToCharArray()) {
+            $null = $builder.Append($char)
+            $code = [int]$char
+            if (($code -ge 0x1100 -and $code -le 0x115F) -or ($code -ge 0x2E80 -and $code -le 0xA4CF -and $code -ne 0x303F) -or
+                ($code -ge 0xAC00 -and $code -le 0xD7A3) -or ($code -ge 0xF900 -and $code -le 0xFAFF) -or
+                ($code -ge 0xFE10 -and $code -le 0xFE19) -or ($code -ge 0xFE30 -and $code -le 0xFE6F) -or
+                ($code -ge 0xFF00 -and $code -le 0xFF60) -or ($code -ge 0xFFE0 -and $code -le 0xFFE6)) {
+                $null = $builder.Append([char]0)
+            }
+        }
+        return $builder.ToString()
+    }
+
+    function Test-TableRow {
+        # Every column starts right after a space with a value, and every row has all five values
+        param([string]$Row, [int[]]$Starts)
+        if ($Row.Length -le $Starts[-1] -or $Row[0] -eq ' ') {
+            return $false
+        }
+        for ($c = 1; $c -lt $Starts.Count; $c++) {
+            if ($Row[$Starts[$c] - 1] -ne ' ' -or $Row[$Starts[$c]] -eq ' ') {
+                return $false
+            }
+        }
+        return $true
+    }
+
+    $table = 0
+    for ($i = 1; $i -lt $Lines.Count; $i++) {
+        if ($Lines[$i] -notmatch '^-{8,}\s*$') {
+            continue
+        }
+
+        # The header is the line above the dashes, without what a progress spinner may have left before it
+        $header = ConvertTo-CellText (($Lines[$i - 1].TrimEnd("`r") -split "`r")[-1])
+        $words = @([regex]::Matches($header, '\S+') | ForEach-Object { $_.Index })
+        if ($words.Count -lt 5 -or $words.Count -gt 9) {
+            continue
+        }
+
+        # The rows, followed by the summary line ("N upgrades available.") that ends the table
+        $body = @(for ($j = $i + 1; $j -lt $Lines.Count -and -not [string]::IsNullOrWhiteSpace($Lines[$j]); $j++) {
+            ConvertTo-CellText $Lines[$j]
+        })
+
+        # Name, Id, Version, Available and Source. The Korean titles have two words, so the header
+        # words are grouped into the five columns that fit the most rows
+        $starts = $null
+        $rowCount = -1
+        for ($mask = 0; $mask -lt (1 -shl ($words.Count - 1)); $mask++) {
+            $candidate = @($words[0]) + @(for ($w = 1; $w -lt $words.Count; $w++) {
+                if ($mask -band (1 -shl ($w - 1))) { $words[$w] }
+            })
+            if ($candidate.Count -ne 5) {
+                continue
+            }
+            $fitting = 0
+            while ($fitting -lt $body.Count -and (Test-TableRow -Row $body[$fitting] -Starts $candidate)) {
+                $fitting++
+            }
+            if ($fitting -gt $rowCount) {
+                $starts = $candidate
+                $rowCount = $fitting
+            }
+        }
+
+        $table++
+        for ($r = 0; $r -lt $rowCount; $r++) {
+            $row = $body[$r]
+            $cells = for ($c = 0; $c -lt 5; $c++) {
+                $end = if ($c -lt 4) { $starts[$c + 1] } else { $row.Length }
+                $row.Substring($starts[$c], $end - $starts[$c]).Replace([string][char]0, '').Trim()
+            }
+            [pscustomobject]@{
+                Name      = $cells[0]
+                Id        = $cells[1]
+                Version   = $cells[2]
+                Available = $cells[3]
+                Source    = $cells[4]
+                Table     = $table
+            }
+        }
+    }
+}
 function ConvertTo-WinUtilQRCode {
     <#
     .SYNOPSIS
@@ -810,6 +924,81 @@ function Get-LocalizedYesNo {
     return $charactersArray
 
   }
+function Get-WinUtilProgramUpdates {
+    <#
+    .SYNOPSIS
+        Lists the installed programs that have an update available
+
+    .PARAMETER Manager
+        The package manager to ask: Winget or Choco
+
+    .OUTPUTS
+        One entry of the update list of the Install tab per program. Selected is false for the
+        programs that "winget upgrade --all" leaves out: the ones whose installed version is
+        unknown and the ones that must be upgraded explicitly.
+
+    .EXAMPLE
+        Get-WinUtilProgramUpdates -Manager "Winget"
+    #>
+
+    param(
+        [Parameter(Mandatory)]
+        [ValidateSet("Winget", "Choco")]
+        [string]$Manager
+    )
+
+    if ($Manager -eq "Choco") {
+        # One "name|installed|available|pinned" line per outdated package; pinned packages are not upgraded
+        $lines = choco outdated --limit-output --ignore-unfound | Where-Object { $_ -match '^[^|]+\|[^|]*\|[^|]+\|false$' }
+        foreach ($line in $lines) {
+            $name, $version, $available = ($line -split '\|')[0..2]
+            [pscustomobject]@{
+                Selected  = $true
+                Name      = $name
+                Id        = $name
+                Version   = $version
+                Available = $available
+                Source    = "chocolatey"
+                Manager   = "Choco"
+                Status    = ""
+                Level     = ""
+                Done      = $false
+            }
+        }
+        return
+    }
+
+    $originalEncoding = [Console]::OutputEncoding
+    try {
+        [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new()
+        $lines = @(winget upgrade --include-unknown --accept-source-agreements --disable-interactivity | Out-String -Stream)
+        $exitCode = $LASTEXITCODE
+    } finally {
+        [Console]::OutputEncoding = $originalEncoding
+    }
+
+    $rows = @(ConvertFrom-WinUtilWingetTable -Lines $lines)
+    # Without a table WinGet prints a message: no updates (also "no applicable update" or "no package found") or an error
+    if ($rows.Count -eq 0 -and ('0x{0:X8}' -f $exitCode) -notin @('0x00000000', '0x8A15002B', '0x8A150014')) {
+        $message = $lines | Where-Object { $_.Trim() } | Select-Object -Last 1
+        throw ("{0} (codice di WinGet 0x{1:X8})" -f $message, $exitCode).Trim()
+    }
+
+    foreach ($row in $rows) {
+        [pscustomobject]@{
+            Selected  = ($row.Table -eq 1 -and $row.Version -match '\d')
+            Name      = $row.Name
+            Id        = $row.Id
+            Version   = $row.Version
+            Available = $row.Available
+            Source    = $row.Source
+            Manager   = "Winget"
+            Status    = ""
+            Level     = ""
+            Done      = $false
+        }
+    }
+}
 function Get-WinUtilSelectedPackages
 {
      <#
@@ -3706,6 +3895,9 @@ function Invoke-WPFButton {
         "WPFInstall" {Invoke-WPFInstall}
         "WPFUninstall" {Invoke-WPFUnInstall}
         "WPFInstallUpgrade" {Invoke-WPFInstallUpgrade}
+        "WPFUpgradeStart" {Invoke-WPFUpgradeStart}
+        "WPFUpgradeRefresh" {Invoke-WPFUpgradeRefresh}
+        "WPFUpgradeClose" {Invoke-WPFUpgradeClose}
         "WPFCollapseAllCategories" {Invoke-WPFToggleAllCategories -Action "Collapse"}
         "WPFExpandAllCategories" {Invoke-WPFToggleAllCategories -Action "Expand"}
         "WPFStandard" {Invoke-WPFPresets "Standard" -checkboxfilterpattern "WPFTweak*"}
@@ -4324,26 +4516,261 @@ function Invoke-WPFInstall {
     }
 }
 function Invoke-WPFInstallUpgrade {
-    if ($sync.ChocoRadioButton.IsChecked) {
-        Install-WinUtilChoco # Ensure Chocolatey is installed before upgrading
+    <#
+    .SYNOPSIS
+        Shows the updates available for the installed programs, so that the ones to install can be chosen
+    #>
+    if ($sync.UpgradeState -in @("Searching", "Updating")) {
+        # The search or the update is still running: show it again
+        $sync.WPFUpgradeOverlay.Visibility = "Visible"
+        return
+    }
+    if ($sync.ProcessRunning) {
+        $msg = "Attendi la fine dell'operazione in corso."
+        [System.Windows.MessageBox]::Show($msg, "WinRUtil", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning)
+        return
+    }
 
-        Write-Host "==========================================="
-        Write-Host "--           Updates started            ---"
-        Write-Host "-- You can close this window if desired ---"
-        Write-Host "==========================================="
+    $sync.WPFUpgradeOverlay.Visibility = "Visible"
+    Invoke-WPFUpgradeRefresh
+}
 
-        Start-Process -FilePath powershell.exe -ArgumentList 'choco upgrade all -y'
-        Add-WinUtilSessionAction -Area "Programmi" -Text "Aggiornamento di tutti i programmi (Chocolatey)" -Status "Info"
+function Invoke-WPFUpgradeRefresh {
+    <#
+    .SYNOPSIS
+        Searches the available updates in the background, with the package manager chosen in the Install tab,
+        and lists them in the update list
+    #>
+    if ($sync.ProcessRunning) {
+        return
+    }
+
+    $manager = if ($sync.ChocoRadioButton.IsChecked) { "Choco" } else { "Winget" }
+    $sync.ProcessRunning = $true
+    $sync.UpgradeState = "Searching"
+    $sync.WPFUpgradeList.ItemsSource = @()
+    $sync.WPFUpgradeStatus.Text = "Ricerca degli aggiornamenti con {0} in corso..." -f $(if ($manager -eq "Choco") { "Chocolatey" } else { "WinGet" })
+    Update-WinUtilUpgradeView
+
+    Invoke-WPFRunspace -ParameterList @(, @("Manager", $manager)) -ScriptBlock {
+        param($Manager)
+        $updates = @()
+        Invoke-WPFUIThread -ScriptBlock { Set-WinUtilTaskbaritem -state "Indeterminate" }
+        try {
+            if ($Manager -eq "Choco" -and -not (Get-Command choco -ErrorAction SilentlyContinue)) {
+                $status = "Chocolatey non {0} installato: non ci sono applicazioni da aggiornare con Chocolatey." -f [char]0x00E8
+            } else {
+                if ($Manager -eq "Winget") {
+                    Install-WinUtilWinget
+                }
+                $updates = @(Get-WinUtilProgramUpdates -Manager $Manager)
+                $status = switch ($updates.Count) {
+                    0 { "Nessun aggiornamento disponibile: tutte le applicazioni sono aggiornate." }
+                    1 { "1 aggiornamento disponibile." }
+                    default { "{0} aggiornamenti disponibili." -f $updates.Count }
+                }
+                if ($updates.Count -gt 0) {
+                    $status += " Scegli quali installare e clicca 'Aggiorna selezionate'."
+                }
+                if (@($updates | Where-Object { -not $_.Selected }).Count -gt 0) {
+                    $status += " Non sono preselezionate le applicazioni con la versione installata sconosciuta e quelle che WinGet aggiorna solo su richiesta."
+                }
+            }
+        } catch {
+            $status = "Impossibile cercare gli aggiornamenti: $($_.Exception.Message)"
+        } finally {
+            $sync.UpgradeState = "Ready"
+            $sync.ProcessRunning = $false
+            Invoke-WPFUIThread -ScriptBlock {
+                $sync.WPFUpgradeList.ItemsSource = $updates
+                $sync.WPFUpgradeStatus.Text = $status
+                Update-WinUtilUpgradeView
+                Set-WinUtilTaskbaritem -state "None"
+            }
+        }
+    }
+}
+
+function Invoke-WPFUpgradeStart {
+    <#
+    .SYNOPSIS
+        Updates the programs selected in the update list one at a time, showing the result of each one
+        in the list and recording it for the intervention report
+    #>
+    $selected = @($sync.WPFUpgradeList.ItemsSource | Where-Object { $_.Selected -and -not $_.Done })
+    if ($sync.ProcessRunning -or $selected.Count -eq 0) {
+        return
+    }
+
+    foreach ($item in $selected) {
+        $item.Status = "In attesa"
+        $item.Level = "Muted"
+    }
+    $sync.ProcessRunning = $true
+    $sync.UpgradeState = "Updating"
+    $sync.WPFUpgradeList.Items.Refresh()
+    Update-WinUtilUpgradeView
+
+    Invoke-WPFRunspace -ParameterList @(, @("Programs", $selected)) -ScriptBlock {
+        param($Programs)
+        $updated = 0
+        Write-Host "==========================================="
+        Write-Host "--    Updating the selected programs    ---"
+        Write-Host "==========================================="
+        try {
+            for ($i = 0; $i -lt $Programs.Count; $i++) {
+                $program = $Programs[$i]
+                Invoke-WPFUIThread -ScriptBlock {
+                    $program.Status = "In corso..."
+                    $program.Level = "Running"
+                    $sync.WPFUpgradeList.Items.Refresh()
+                    $sync.WPFUpgradeList.ScrollIntoView($program)
+                    $sync.WPFUpgradeStatus.Text = "Aggiornamento {0} di {1}: {2}" -f ($i + 1), $Programs.Count, $program.Name
+                    Set-WinUtilTaskbaritem -state "Normal" -value ($i / $Programs.Count)
+                }
+
+                $result = Update-WinUtilProgram -Program $program
+                if ($result.Success) {
+                    $updated++
+                }
+                Add-WinUtilSessionAction -Area "Programmi" -Text ("Aggiornamento di {0} alla versione {1}" -f $program.Name, $program.Available) -Status $(if ($result.Success) { "Success" } else { "Error" })
+
+                Invoke-WPFUIThread -ScriptBlock {
+                    $program.Status = $result.Text
+                    $program.Level = $result.Level
+                    if ($result.Success) {
+                        $program.Done = $true
+                        $program.Selected = $false
+                    }
+                    $sync.WPFUpgradeList.Items.Refresh()
+                }
+            }
+            $status = "Aggiornamento completato. Applicazioni aggiornate: {0} su {1}." -f $updated, $Programs.Count
+            if ($updated -lt $Programs.Count) {
+                $status += " Quelle non riuscite restano selezionate, per riprovare."
+            }
+        } catch {
+            $status = "Aggiornamento interrotto: $($_.Exception.Message)"
+        } finally {
+            $sync.UpgradeState = "Ready"
+            $sync.ProcessRunning = $false
+            Invoke-WPFUIThread -ScriptBlock {
+                $sync.WPFUpgradeStatus.Text = $status
+                Update-WinUtilUpgradeView
+                Set-WinUtilTaskbaritem -state "None" -overlay $(if ($updated -eq $Programs.Count) { "checkmark" } else { "warning" })
+            }
+        }
+    }
+}
+
+function Update-WinUtilProgram {
+    <#
+    .SYNOPSIS
+        Updates one program of the update list with its package manager
+
+    .PARAMETER Program
+        The entry of the update list (Name, Id, Source and Manager)
+
+    .OUTPUTS
+        Success, and the Text and Level of the result shown in the update list
+    #>
+    param([Parameter(Mandatory)]$Program)
+
+    Write-Host "Updating $($Program.Name) ($($Program.Id))..."
+    if ($Program.Manager -eq "Choco") {
+        $exitCode = (Start-Process -FilePath "choco" -ArgumentList "upgrade $($Program.Id) -y" -Wait -PassThru).ExitCode
+        $result = switch ($exitCode) {
+            0 { @{ Success = $true; Text = "Aggiornata"; Level = "Success" } }
+            { $_ -in 1641, 3010 } { @{ Success = $true; Text = "Aggiornata, riavvia il PC"; Level = "Warning" } }
+            default { @{ Success = $false; Text = "Non riuscito (codice $exitCode)"; Level = "Danger" } }
+        }
     } else {
-        Install-WinUtilWinget # Ensure WinGet is installed before upgrading
+        $arguments = "upgrade --id $($Program.Id) --exact --include-unknown --silent --accept-source-agreements --accept-package-agreements"
+        if ($Program.Source) {
+            $arguments += " --source $($Program.Source)"
+        }
+        $exitCode = (Start-Process -FilePath "winget" -ArgumentList $arguments -Wait -PassThru -NoNewWindow).ExitCode
+        # The meaning of each code is shown by "winget error <code>"
+        $result = switch ('0x{0:X8}' -f $exitCode) {
+            '0x00000000' { @{ Success = $true; Text = "Aggiornata"; Level = "Success" } }
+            { $_ -in '0x8A150109', '0x8A15010B' } { @{ Success = $true; Text = "Aggiornata, riavvia il PC"; Level = "Warning" } }
+            '0x8A15002B' { @{ Success = $false; Text = "Nessun aggiornamento applicabile"; Level = "Warning" } }
+            { $_ -in '0x8A150101', '0x8A150103', '0x8A150111' } { @{ Success = $false; Text = "Non riuscito: applicazione aperta"; Level = "Danger" } }
+            '0x8A15010A' { @{ Success = $false; Text = "Non riuscito: riavvia il PC e riprova"; Level = "Danger" } }
+            default { @{ Success = $false; Text = "Non riuscito (codice $_)"; Level = "Danger" } }
+        }
+    }
 
-        Write-Host "==========================================="
-        Write-Host "--           Updates started            ---"
-        Write-Host "-- You can close this window if desired ---"
-        Write-Host "==========================================="
+    if ($result.Success) {
+        Write-Host "$($Program.Name) updated successfully."
+    } else {
+        Write-Host "Failed to update $($Program.Name) (exit code $exitCode)."
+    }
+    return [pscustomobject]$result
+}
 
-        Start-Process -FilePath powershell.exe -ArgumentList 'winget upgrade --all --include-unknown --silent --accept-source-agreements --accept-package-agreements'
-        Add-WinUtilSessionAction -Area "Programmi" -Text "Aggiornamento di tutti i programmi (WinGet)" -Status "Info"
+function Update-WinUtilUpgradeView {
+    <#
+    .SYNOPSIS
+        Updates the counter, the buttons and the progress indicator of the update list
+
+    .NOTES
+        The background runspaces call it on the UI thread: it must not pass script blocks to cmdlets
+        (Where-Object, ForEach-Object), which would wait for the runspace that is waiting for the UI thread
+    #>
+    $open = 0
+    $selected = 0
+    foreach ($item in @($sync.WPFUpgradeList.ItemsSource)) {
+        if ($item -and -not $item.Done) {
+            $open++
+            if ($item.Selected) {
+                $selected++
+            }
+        }
+    }
+    $ready = $sync.UpgradeState -eq "Ready"
+
+    $sync.WPFUpgradeCount.Text = if ($open -gt 0) { "{0} di {1} selezionate" -f $selected, $open } else { "" }
+    $sync.WPFUpgradeSelectAll.IsChecked = $open -gt 0 -and $selected -eq $open
+    $sync.WPFUpgradeSelectAll.IsEnabled = $ready -and $open -gt 0
+    $sync.WPFUpgradeStart.IsEnabled = $ready -and $selected -gt 0
+    $sync.WPFUpgradeRefresh.IsEnabled = $ready
+    $sync.WPFUpgradeClose.IsEnabled = $sync.UpgradeState -ne "Updating"
+    $sync.WPFUpgradeList.IsEnabled = $sync.UpgradeState -ne "Updating"
+
+    # The arc next to the status turns while WinGet or Chocolatey are working
+    $busy = $sync.UpgradeState -in @("Searching", "Updating")
+    if ($busy -ne ($sync.WPFUpgradeSpinner.Visibility -eq "Visible")) {
+        $animation = $null
+        if ($busy) {
+            $animation = [System.Windows.Media.Animation.DoubleAnimation]::new([double]0, [double]360, [System.Windows.Duration]::new([TimeSpan]::FromSeconds(1)))
+            $animation.RepeatBehavior = [System.Windows.Media.Animation.RepeatBehavior]::Forever
+        }
+        $sync.WPFUpgradeSpinner.RenderTransform.BeginAnimation([System.Windows.Media.RotateTransform]::AngleProperty, $animation)
+        $sync.WPFUpgradeSpinner.Visibility = if ($busy) { "Visible" } else { "Collapsed" }
+    }
+}
+
+function Invoke-WPFUpgradeSelectAll {
+    <#
+    .SYNOPSIS
+        Selects or clears every program of the update list that has not been updated yet
+    #>
+    $state = [bool]$sync.WPFUpgradeSelectAll.IsChecked
+    foreach ($item in @($sync.WPFUpgradeList.ItemsSource | Where-Object { $_ -and -not $_.Done })) {
+        $item.Selected = $state
+    }
+    $sync.WPFUpgradeList.Items.Refresh()
+    Update-WinUtilUpgradeView
+}
+
+function Invoke-WPFUpgradeClose {
+    <#
+    .SYNOPSIS
+        Hides the update list, except while the programs are being updated
+    #>
+    if ($sync.UpgradeState -ne "Updating") {
+        $sync.WPFUpgradeOverlay.Visibility = "Collapsed"
     }
 }
 function Invoke-WPFOOSU {
@@ -9498,11 +9925,11 @@ $sync.configs.appnavigation = @'
                          "Description":  "Disinstalla le applicazioni selezionate"
                      },
     "WPFInstallUpgrade":  {
-                              "Content":  "Aggiorna tutte le applicazioni",
+                              "Content":  "Aggiorna applicazioni",
                               "Category":  "____Azioni",
                               "Type":  "Button",
                               "Order":  "3",
-                              "Description":  "Aggiorna tutte le applicazioni all\u0027ultima versione"
+                              "Description":  "Mostra gli aggiornamenti disponibili per le applicazioni installate e scegli quali installare"
                           },
     "WingetRadioButton":  {
                               "Content":  "WinGet",
@@ -13001,6 +13428,133 @@ $inputXML = @'
                         <Grid Name="appspanel" Grid.Column="1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
                         </Grid>
                     </Grid>
+
+                    <!-- Available updates of the installed programs, to choose the ones to install (Invoke-WPFInstallUpgrade) -->
+                    <Border Name="WPFUpgradeOverlay" Visibility="Collapsed" Background="#99000000" CornerRadius="12" Margin="6">
+                        <!-- Opaque base: the dark MainBackgroundColor would let the app list show through -->
+                        <Border Background="{DynamicResource WindowBackgroundStartColor}" CornerRadius="14" Margin="28,22" MaxWidth="1040">
+                            <Border Background="{DynamicResource MainBackgroundColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1"
+                                    CornerRadius="14" Padding="22,18">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Grid.Row="0" Text="Aggiornamenti delle applicazioni" FontSize="{DynamicResource HeaderFontSize}" FontWeight="Bold"
+                                               Foreground="{DynamicResource MainForegroundColor}"/>
+                                    <DockPanel Grid.Row="1" Margin="0,6,0,12">
+                                        <Path Name="WPFUpgradeSpinner" DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,8,0" VerticalAlignment="Center"
+                                              Visibility="Collapsed" Data="M 8,1.5 A 6.5,6.5 0 1 1 1.5,8" Stroke="{DynamicResource AccentColor}"
+                                              StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" RenderTransformOrigin="0.5,0.5">
+                                            <Path.RenderTransform>
+                                                <RotateTransform/>
+                                            </Path.RenderTransform>
+                                        </Path>
+                                        <TextBlock Name="WPFUpgradeStatus" FontSize="12" Foreground="{DynamicResource MutedForegroundColor}"
+                                                   TextWrapping="Wrap" VerticalAlignment="Center"/>
+                                    </DockPanel>
+                                    <DockPanel Grid.Row="2" Margin="0,0,4,6" LastChildFill="False">
+                                        <CheckBox Name="WPFUpgradeSelectAll" Content="Seleziona tutte" DockPanel.Dock="Left" VerticalAlignment="Center"/>
+                                        <TextBlock Name="WPFUpgradeCount" DockPanel.Dock="Right" FontSize="12" Foreground="{DynamicResource MutedForegroundColor}"
+                                                   VerticalAlignment="Center"/>
+                                    </DockPanel>
+                                    <Border Grid.Row="3" Background="{DynamicResource GroupBorderBackgroundColor}" CornerRadius="10"
+                                            BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="8">
+                                        <DataGrid Name="WPFUpgradeList" AutoGenerateColumns="False" IsReadOnly="True"
+                                                  Style="{StaticResource ThemedDataGridStyle}" CanUserAddRows="False" SelectionMode="Single">
+                                            <DataGrid.Resources>
+                                                <Style TargetType="DataGridColumnHeader">
+                                                    <Setter Property="Foreground" Value="{DynamicResource MainForegroundColor}"/>
+                                                    <Setter Property="Background" Value="Transparent"/>
+                                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                                    <Setter Property="Padding" Value="6,4"/>
+                                                    <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
+                                                    <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                                                    <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                                                </Style>
+                                            </DataGrid.Resources>
+                                            <DataGrid.Columns>
+                                                <DataGridTemplateColumn Header="Applicazione" Width="2.2*" SortMemberPath="Name">
+                                                    <DataGridTemplateColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <!-- Handled by the Click handler of WPFUpgradeList in main.ps1 -->
+                                                            <CheckBox x:Name="UpgradeCheck" Uid="UpgradeCheck" ToolTip="{Binding Id}"
+                                                                      IsChecked="{Binding Selected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                                                                <CheckBox.Resources>
+                                                                    <!-- Lines the boxes up with the column header and the "Seleziona tutte" box -->
+                                                                    <Thickness x:Key="CheckBoxMargin">2,0,0,0</Thickness>
+                                                                </CheckBox.Resources>
+                                                                <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
+                                                            </CheckBox>
+                                                            <DataTemplate.Triggers>
+                                                                <DataTrigger Binding="{Binding Done}" Value="True">
+                                                                    <Setter TargetName="UpgradeCheck" Property="IsEnabled" Value="False"/>
+                                                                    <Setter TargetName="UpgradeCheck" Property="Foreground" Value="{DynamicResource MutedForegroundColor}"/>
+                                                                </DataTrigger>
+                                                            </DataTemplate.Triggers>
+                                                        </DataTemplate>
+                                                    </DataGridTemplateColumn.CellTemplate>
+                                                </DataGridTemplateColumn>
+                                                <DataGridTextColumn Header="Versione installata" Binding="{Binding Version}" Width="*"/>
+                                                <DataGridTextColumn Header="Nuova versione" Binding="{Binding Available}" Width="*"/>
+                                                <DataGridTextColumn Header="Origine" Binding="{Binding Source}" Width="Auto"/>
+                                                <DataGridTemplateColumn Header="Stato" Width="1.7*" SortMemberPath="Status">
+                                                    <DataGridTemplateColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <DockPanel>
+                                                                <Ellipse x:Name="UpgradeDot" DockPanel.Dock="Left" Width="8" Height="8" Margin="0,0,7,0"
+                                                                         VerticalAlignment="Center" Visibility="Collapsed"/>
+                                                                <TextBlock x:Name="UpgradeResult" Text="{Binding Status}" ToolTip="{Binding Status}" FontWeight="SemiBold"
+                                                                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                                            </DockPanel>
+                                                            <DataTemplate.Triggers>
+                                                                <DataTrigger Binding="{Binding Level}" Value="Muted">
+                                                                    <Setter TargetName="UpgradeDot" Property="Visibility" Value="Visible"/>
+                                                                    <Setter TargetName="UpgradeDot" Property="Fill" Value="{DynamicResource MutedForegroundColor}"/>
+                                                                    <Setter TargetName="UpgradeResult" Property="Foreground" Value="{DynamicResource MutedForegroundColor}"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Level}" Value="Running">
+                                                                    <Setter TargetName="UpgradeDot" Property="Visibility" Value="Visible"/>
+                                                                    <Setter TargetName="UpgradeDot" Property="Stroke" Value="{DynamicResource AccentColor}"/>
+                                                                    <Setter TargetName="UpgradeDot" Property="StrokeThickness" Value="1.5"/>
+                                                                    <Setter TargetName="UpgradeResult" Property="Foreground" Value="{DynamicResource MainForegroundColor}"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Level}" Value="Success">
+                                                                    <Setter TargetName="UpgradeDot" Property="Visibility" Value="Visible"/>
+                                                                    <Setter TargetName="UpgradeDot" Property="Fill" Value="{DynamicResource SuccessColor}"/>
+                                                                    <Setter TargetName="UpgradeResult" Property="Foreground" Value="{DynamicResource SuccessColor}"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Level}" Value="Warning">
+                                                                    <Setter TargetName="UpgradeDot" Property="Visibility" Value="Visible"/>
+                                                                    <Setter TargetName="UpgradeDot" Property="Fill" Value="{DynamicResource WarningColor}"/>
+                                                                    <Setter TargetName="UpgradeResult" Property="Foreground" Value="{DynamicResource WarningColor}"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Level}" Value="Danger">
+                                                                    <Setter TargetName="UpgradeDot" Property="Visibility" Value="Visible"/>
+                                                                    <Setter TargetName="UpgradeDot" Property="Fill" Value="{DynamicResource DangerColor}"/>
+                                                                    <Setter TargetName="UpgradeResult" Property="Foreground" Value="{DynamicResource DangerColor}"/>
+                                                                </DataTrigger>
+                                                            </DataTemplate.Triggers>
+                                                        </DataTemplate>
+                                                    </DataGridTemplateColumn.CellTemplate>
+                                                </DataGridTemplateColumn>
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+                                    </Border>
+                                    <DockPanel Grid.Row="4" Margin="0,14,0,0" LastChildFill="False">
+                                        <Button Name="WPFUpgradeRefresh" Content="Cerca di nuovo" DockPanel.Dock="Left" Width="Auto" MinWidth="120" Padding="12,0" Margin="0"
+                                                ToolTip="Cerca di nuovo gli aggiornamenti disponibili"/>
+                                        <Button Name="WPFUpgradeClose" Content="Chiudi" DockPanel.Dock="Right" Width="Auto" MinWidth="90" Padding="12,0" Margin="0"/>
+                                        <Button Name="WPFUpgradeStart" Content="Aggiorna selezionate" DockPanel.Dock="Right" Width="Auto" MinWidth="150" Padding="12,0" Margin="0,0,8,0"
+                                                ToolTip="Installa gli aggiornamenti delle applicazioni selezionate, una alla volta"/>
+                                    </DockPanel>
+                                </Grid>
+                            </Border>
+                        </Border>
+                    </Border>
                 </Grid>
             </TabItem>
             <TabItem Header="Tweaks" Visibility="Collapsed" Name="WPFTab2">
@@ -14169,7 +14723,8 @@ if (-NOT ($readerOperationSuccessful)) {
     exit 1
 }
 
-# Setup the Window to follow listen for windows Theme Change events and update the winutil theme
+# Setup the Window to follow listen for windows Theme Change events and update the winutil theme,
+# and to keep the maximized window inside the work area of its monitor
 # throttle logic needed, because windows seems to send more than one theme change event per change
 $lastThemeChangeTime = [datetime]::MinValue
 $debounceInterval = [timespan]::FromSeconds(2)
@@ -14192,6 +14747,16 @@ $sync.Form.Add_Loaded({
                 $script:lastThemeChangeTime = $currentTime
                 $handled = $true
             }
+        }
+        # WM_GETMINMAXINFO (0x0024): a window without a frame is maximized over the whole monitor, so the
+        # taskbar would cover its bottom (the buttons of the Tweaks tab); maximize it to the work area instead.
+        # MINMAXINFO is made of POINTs (two Int32): ptMaxSize is at offset 8, ptMaxPosition at offset 16.
+        if ($msg -eq 0x0024) {
+            $screen = [System.Windows.Forms.Screen]::FromHandle($hwnd)
+            [System.Runtime.InteropServices.Marshal]::WriteInt32($lParam, 8, $screen.WorkingArea.Width)
+            [System.Runtime.InteropServices.Marshal]::WriteInt32($lParam, 12, $screen.WorkingArea.Height)
+            [System.Runtime.InteropServices.Marshal]::WriteInt32($lParam, 16, $screen.WorkingArea.Left - $screen.Bounds.Left)
+            [System.Runtime.InteropServices.Marshal]::WriteInt32($lParam, 20, $screen.WorkingArea.Top - $screen.Bounds.Top)
         }
         return 0
     })
@@ -14324,6 +14889,7 @@ $commonKeyEvents = {
         "Escape" {
             $sync.SearchBar.Text = ""
             if ($sync.WPFWifiQrOverlay.Visibility -eq "Visible") { Invoke-WPFWifiQrClose }
+            if ($sync.WPFUpgradeOverlay.Visibility -eq "Visible") { Invoke-WPFUpgradeClose }
         }
     }
     # Handle Alt key combinations for navigation
@@ -14373,31 +14939,25 @@ $sync["Form"].Add_Deactivated({
 })
 
 $sync["Form"].Add_ContentRendered({
-    # Load the Windows Forms assembly
-    Add-Type -AssemblyName System.Windows.Forms
-    $primaryScreen = [System.Windows.Forms.Screen]::PrimaryScreen
-    # Check if the primary screen is found
-    if ($primaryScreen) {
-        # Extract screen width and height for the primary monitor
-        $screenWidth = $primaryScreen.Bounds.Width
-        $screenHeight = $primaryScreen.Bounds.Height
+    # Keep the window inside the work area of its monitor (the screen without the taskbar), so that
+    # the bottom of every tab stays visible. The work area is in pixels, the window size in WPF units.
+    $hwnd = (New-Object System.Windows.Interop.WindowInteropHelper $sync.Form).Handle
+    $workArea = [System.Windows.Forms.Screen]::FromHandle($hwnd).WorkingArea
+    $toWpf = [System.Windows.PresentationSource]::FromVisual($sync.Form).CompositionTarget.TransformFromDevice
+    $workWidth = $workArea.Width * $toWpf.M11
+    $workHeight = $workArea.Height * $toWpf.M22
+    Write-Debug "Work area of the monitor: $workWidth x $workHeight"
 
-        # Print the screen size
-        Write-Debug "Primary Monitor Width: $screenWidth pixels"
-        Write-Debug "Primary Monitor Height: $screenHeight pixels"
-
-        # Compare with the primary monitor size
-        if ($sync.Form.ActualWidth -gt $screenWidth -or $sync.Form.ActualHeight -gt $screenHeight) {
-            Write-Debug "The specified width and/or height is greater than the primary monitor size."
-            $sync.Form.Left = 0
-            $sync.Form.Top = 0
-            $sync.Form.Width = $screenWidth
-            $sync.Form.Height = $screenHeight
-        } else {
-            Write-Debug "The specified width and height are within the primary monitor size limits."
-        }
-    } else {
-        Write-Debug "Unable to retrieve information about the primary monitor."
+    if ($sync.Form.ActualWidth -gt $workWidth -or $sync.Form.ActualHeight -gt $workHeight) {
+        Write-Debug "The window is larger than the work area of the monitor: resizing it."
+        $width = [Math]::Min($sync.Form.ActualWidth, $workWidth)
+        $height = [Math]::Min($sync.Form.ActualHeight, $workHeight)
+        $sync.Form.MinWidth = [Math]::Min($sync.Form.MinWidth, $width)
+        $sync.Form.MinHeight = [Math]::Min($sync.Form.MinHeight, $height)
+        $sync.Form.Width = $width
+        $sync.Form.Height = $height
+        $sync.Form.Left = $workArea.Left * $toWpf.M11 + ($workWidth - $width) / 2
+        $sync.Form.Top = $workArea.Top * $toWpf.M22 + ($workHeight - $height) / 2
     }
 
     if ($PARAM_OFFLINE) {
@@ -14583,6 +15143,18 @@ $sync["WPFWifiList"].AddHandler([System.Windows.Controls.Primitives.ButtonBase]:
     if ($clickArgs.OriginalSource.Uid -eq "WifiQr") {
         Show-WinUtilWifiQRCode -Network $clickArgs.OriginalSource.Tag
     }
+})
+
+# Install tab: the check box of each program in the update list, and the one that selects them all
+$sync["WPFUpgradeList"].AddHandler([System.Windows.Controls.Primitives.ButtonBase]::ClickEvent, [System.Windows.RoutedEventHandler]{
+    param($list, $clickArgs)
+    if ($clickArgs.OriginalSource.Uid -eq "UpgradeCheck") {
+        $clickArgs.OriginalSource.DataContext.Selected = [bool]$clickArgs.OriginalSource.IsChecked
+        Update-WinUtilUpgradeView
+    }
+})
+$sync["WPFUpgradeSelectAll"].Add_Click({
+    Invoke-WPFUpgradeSelectAll
 })
 
 $sync["Form"].ShowDialog() | out-null
