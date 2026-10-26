@@ -7,8 +7,8 @@
     #>
 
     if($sync.ProcessRunning) {
-        $msg = "[Invoke-WPFFeatureInstall] Install process is currently running."
-        [System.Windows.MessageBox]::Show($msg, "Winutil", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning)
+        $msg = "Attendi la fine dell'operazione in corso."
+        [System.Windows.MessageBox]::Show($msg, "WinRUtil", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning)
         return
     }
 
@@ -24,11 +24,15 @@
         $x = 0
 
         $Features | ForEach-Object {
+            $featureName = $sync.configs.feature.$_.Content
+            if (-not $featureName) { $featureName = $_ }
+            Set-WinUtilProgressBar -Label "Attivazione: $featureName" -Percent ($x / $Features.Count * 100)
             Invoke-WinUtilFeatureInstall $_
             $X++
-            Invoke-WPFUIThread -ScriptBlock { Set-WinUtilTaskbaritem -value ($x/$CheckBox.Count) }
+            Invoke-WPFUIThread -ScriptBlock { Set-WinUtilTaskbaritem -value ($x/$Features.Count) }
         }
 
+        Set-WinUtilProgressBar -Label "Attivazione completata" -Percent 100
         $sync.ProcessRunning = $false
         Invoke-WPFUIThread -ScriptBlock { Set-WinUtilTaskbaritem -state "None" -overlay "checkmark" }
 

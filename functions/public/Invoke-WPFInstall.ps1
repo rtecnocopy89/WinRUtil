@@ -8,14 +8,14 @@ function Invoke-WPFInstall {
 
 
     if($sync.ProcessRunning) {
-        $msg = "[Invoke-WPFInstall] An Install process is currently running."
-        [System.Windows.MessageBox]::Show($msg, "Winutil", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning)
+        $msg = "Attendi la fine dell'operazione in corso."
+        [System.Windows.MessageBox]::Show($msg, "WinRUtil", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning)
         return
     }
 
     if ($PackagesToInstall.Count -eq 0) {
-        $WarningMsg = "Please select the program(s) to install or upgrade."
-        [System.Windows.MessageBox]::Show($WarningMsg, $AppTitle, [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning)
+        $WarningMsg = "Seleziona i programmi da installare o aggiornare."
+        [System.Windows.MessageBox]::Show($WarningMsg, "WinRUtil", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning)
         return
     }
 

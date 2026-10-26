@@ -19,6 +19,7 @@
             powercfg /setacvalueindex $guid SUB_PROCESSOR PROCTHROTTLEMIN 100
             powercfg /setactive $guid
             Write-Host "WinRUtil - Ultimate Power Plan plan installed and activated." -ForegroundColor Green
+            Add-WinUtilSessionAction -Area "Ottimizzazione" -Text "Profilo Prestazioni eccellenti - Attiva"
         } else {
             Write-Host "WinRUtil - Ultimate Power Plan plan is already installed." -ForegroundColor Red
             return
@@ -28,6 +29,7 @@
             powercfg /setactive SCHEME_BALANCED
             powercfg /delete ((powercfg /list | Select-String "WinRUtil - Ultimate Power Plan").ToString().Split()[3])
             Write-Host "WinRUtil - Ultimate Power Plan plan was removed." -ForegroundColor Red
+            Add-WinUtilSessionAction -Area "Ottimizzazione" -Text "Profilo Prestazioni eccellenti - Disattiva"
         } else {
             Write-Host "WinRUtil - Ultimate Power Plan plan is not installed." -ForegroundColor Yellow
         }

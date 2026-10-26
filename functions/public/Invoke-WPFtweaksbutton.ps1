@@ -7,8 +7,8 @@
   #>
 
   if($sync.ProcessRunning) {
-    $msg = "[Invoke-WPFtweaksbutton] Install process is currently running."
-    [System.Windows.MessageBox]::Show($msg, "Winutil", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning)
+    $msg = "Attendi la fine dell'operazione in corso."
+    [System.Windows.MessageBox]::Show($msg, "WinRUtil", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning)
     return
   }
 
@@ -21,8 +21,8 @@
   $completedSteps = 0
 
   if ($tweaks.count -eq 0 -and $dnsProvider -eq "Default") {
-    $msg = "Please check the tweaks you wish to perform."
-    [System.Windows.MessageBox]::Show($msg, "Winutil", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning)
+    $msg = "Seleziona le ottimizzazioni da applicare."
+    [System.Windows.MessageBox]::Show($msg, "WinRUtil", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning)
     return
   }
 
@@ -37,12 +37,12 @@
         Invoke-WPFUIThread -ScriptBlock { Set-WinUtilTaskbaritem -state "Normal" -value 0.01 -overlay "logo" }
     }
 
-    Set-WinUtilProgressBar -Label "Creating restore point" -Percent 0
+    Set-WinUtilProgressBar -Label "Creazione del punto di ripristino" -Percent 0
     Invoke-WinUtilTweaks $restorePointTweak
     $completedSteps = 1
 
     if ($tweaksToRun.Count -eq 0 -and $dnsProvider -eq "Default") {
-      Set-WinUtilProgressBar -Label "Tweaks finished" -Percent 100
+      Set-WinUtilProgressBar -Label "Ottimizzazioni completate" -Percent 100
       $sync.ProcessRunning = $false
       Invoke-WPFUIThread -ScriptBlock { Set-WinUtilTaskbaritem -state "None" -overlay "checkmark" }
       Write-Host "================================="
@@ -70,13 +70,15 @@
     Set-WinUtilDNS -DNSProvider $dnsProvider
 
     for ($i = 0; $i -lt $tweaks.Count; $i++) {
-      Set-WinUtilProgressBar -Label "Applying $($tweaks[$i])" -Percent ($completedSteps / $totalSteps * 100)
+      $tweakName = $sync.configs.tweaks.($tweaks[$i]).Content
+      if (-not $tweakName) { $tweakName = $tweaks[$i] }
+      Set-WinUtilProgressBar -Label "Applicazione: $tweakName" -Percent ($completedSteps / $totalSteps * 100)
       Invoke-WinUtilTweaks $tweaks[$i]
       $completedSteps++
       $progress = $completedSteps / $totalSteps
       Invoke-WPFUIThread -ScriptBlock { Set-WinUtilTaskbaritem -value $progress }
     }
-    Set-WinUtilProgressBar -Label "Tweaks finished" -Percent 100
+    Set-WinUtilProgressBar -Label "Ottimizzazioni completate" -Percent 100
     $sync.ProcessRunning = $false
     Invoke-WPFUIThread -ScriptBlock { Set-WinUtilTaskbaritem -state "None" -overlay "checkmark" }
     Write-Host "================================="

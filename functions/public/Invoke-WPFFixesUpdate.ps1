@@ -200,10 +200,11 @@
     Write-Progress -Id 0 -Activity "Repairing Windows Update" -Status "Completed" -PercentComplete 100
 
     Set-WinUtilTaskbaritem -state "None" -overlay "checkmark"
+    Add-WinUtilSessionAction -Area "Riparazione" -Text $(if ($Aggressive) { "Windows Update - Reimposta (completo)" } else { "Windows Update - Reimposta" })
 
     $ButtonType = [System.Windows.MessageBoxButton]::OK
-    $MessageboxTitle = "Reset Windows Update "
-    $Messageboxbody = ("Stock settings loaded.`n Please reboot your computer")
+    $MessageboxTitle = "WinRUtil - Windows Update"
+    $Messageboxbody = ("Le impostazioni di Windows Update sono state ripristinate.`nRiavvia il computer per completare l'operazione.")
     $MessageIcon = [System.Windows.MessageBoxImage]::Information
 
     [System.Windows.MessageBox]::Show($Messageboxbody, $MessageboxTitle, $ButtonType, $MessageIcon)

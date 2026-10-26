@@ -116,7 +116,11 @@
     for ($i = 0; $i -lt $count; $i++) {
         $Program = $Programs[$i]
         $result = $false
-        Set-WinUtilProgressBar -label "$Action $($Program)" -percent ($i / $count * 100)
+        # The app name shown in the Install tab, for the progress bar and the intervention report
+        $appName = ($sync.configs.applicationsHashtable.Values | Where-Object { $_.winget -eq $Program } | Select-Object -First 1).content
+        if (-not $appName) { $appName = $Program }
+        $operation = if ($Action -eq "Install") { "Installazione di {0}" } else { "Disinstallazione di {0}" }
+        Set-WinUtilProgressBar -label ($operation -f $appName) -percent ($i / $count * 100)
         Invoke-WPFUIThread -ScriptBlock{ Set-WinUtilTaskbaritem -value ($i / $count)}
 
         $result = switch ($Action) {
@@ -128,8 +132,10 @@
         if (-not $result) {
             $failedPackages += $Program
         }
+
+        Add-WinUtilSessionAction -Area "Programmi" -Text ($operation -f $appName) -Status $(if ($result) { "Success" } else { "Error" })
     }
 
-    Set-WinUtilProgressBar -label "$($Action) action done." -percent 100
+    Set-WinUtilProgressBar -label $(if ($Action -eq "Install") { "Installazione completata" } else { "Disinstallazione completata" }) -percent 100
     return $failedPackages
 }

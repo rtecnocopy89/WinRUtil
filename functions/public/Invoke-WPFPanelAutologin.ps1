@@ -9,4 +9,5 @@
     # Official Microsoft recommendation: https://learn.microsoft.com/en-us/sysinternals/downloads/autologon
     Invoke-WebRequest -Uri "https://live.sysinternals.com/Autologon.exe" -OutFile "$env:temp\autologin.exe"
     cmd /c "$env:temp\autologin.exe" /accepteula
+    Add-WinUtilSessionAction -Area "Configurazione" -Text "Accesso automatico (Sysinternals Autologon)" -Status "Info"
 }

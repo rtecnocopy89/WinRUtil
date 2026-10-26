@@ -129,28 +129,6 @@ $xaml
 '@
 "@)
 
-Update-Progress "Adding: autounattend.xml" 95
-$autounattendPath = "$workingdir\tools\autounattend.xml"
-if (Test-Path $autounattendPath) {
-    $autounattendRaw = Get-Content $autounattendPath -Raw
-    # Strip XML comments (<!-- ... -->, including multi-line)
-    $autounattendRaw = [regex]::Replace($autounattendRaw, '<!--.*?-->', '', [System.Text.RegularExpressions.RegexOptions]::Singleline)
-    # Drop blank lines and trim trailing whitespace per line
-    $autounattendXml = ($autounattendRaw -split "`r?`n" |
-        Where-Object { $_.Trim() -ne '' } |
-        ForEach-Object { $_.TrimEnd() }) -join "`r`n"
-    $autounattendXml = ConvertTo-XmlCharacterReference $autounattendXml
-} else {
-    # No answer file present: the Win11 ISO OOBE-bypass step degrades gracefully at runtime.
-    Write-Host "Note: tools\autounattend.xml not found - building without an embedded answer file."
-    $autounattendXml = ""
-}
-$script_content.Add(@"
-`$WinUtilAutounattendXml = @'
-$autounattendXml
-'@
-"@)
-
 $script_content.Add($(Get-Content "scripts\main.ps1"))
 
 Update-Progress "Removing temporary files" 99

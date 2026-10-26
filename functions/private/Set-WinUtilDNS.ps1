@@ -13,6 +13,7 @@
     #>
     param($DNSProvider)
     if($DNSProvider -eq "Default") {return}
+    $reportText = if ($DNSProvider -eq "DHCP") { "DNS - Imposta su automatico (DHCP)" } else { "DNS - Imposta su {0}" -f ($DNSProvider -replace "_", " ") }
     try {
         $Adapters = Get-NetAdapter | Where-Object {$_.Status -eq "Up"}
         Write-Host "Ensuring DNS is set to $DNSProvider on the following interfaces:"
@@ -26,8 +27,10 @@
                 Set-DnsClientServerAddress -InterfaceIndex $Adapter.ifIndex -ServerAddresses ("$($sync.configs.dns.$DNSProvider.Primary6)", "$($sync.configs.dns.$DNSProvider.Secondary6)")
             }
         }
+        Add-WinUtilSessionAction -Area "Ottimizzazione" -Text $reportText
     } catch {
         Write-Warning "Unable to set DNS Provider due to an unhandled exception."
         Write-Warning $psitem.Exception.StackTrace
+        Add-WinUtilSessionAction -Area "Ottimizzazione" -Text $reportText -Status "Error"
     }
 }

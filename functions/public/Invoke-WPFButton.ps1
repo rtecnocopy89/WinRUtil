@@ -73,6 +73,10 @@
         "WPFWifiCopyAll" {Invoke-WPFWifiCopyAll}
         "WPFWifiExport" {Invoke-WPFWifiExport}
         "WPFWifiImport" {Invoke-WPFWifiImport}
+        "WPFWifiQrSave" {Invoke-WPFWifiQrSave}
+        "WPFWifiQrClose" {Invoke-WPFWifiQrClose}
+        "WPFReportCreate" {Invoke-WPFReportCreate}
+        "WPFReportClear" {Invoke-WPFReportClear}
         "WPFSystemInfoRefresh" {Invoke-WPFSystemInfoRefresh}
         "WPFSystemInfoExport" {Invoke-WPFSystemInfoExport}
         "WPFCloseButton" {$sync.Form.Close(); Write-Host "Bye bye!"}

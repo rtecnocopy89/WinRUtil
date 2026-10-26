@@ -280,7 +280,10 @@ $commonKeyEvents = {
 
     # Handle key presses of single keys
     switch ($_.Key) {
-        "Escape" { $sync.SearchBar.Text = "" }
+        "Escape" {
+            $sync.SearchBar.Text = ""
+            if ($sync.WPFWifiQrOverlay.Visibility -eq "Visible") { Invoke-WPFWifiQrClose }
+        }
     }
     # Handle Alt key combinations for navigation
     if ($_.KeyboardDevice.Modifiers -eq "Alt") {
@@ -290,10 +293,10 @@ $commonKeyEvents = {
             "T" { Invoke-WPFButton "WPFTab2BT"; $keyEventArgs.Handled = $true } # Navigate to Tweaks tab
             "C" { Invoke-WPFButton "WPFTab3BT"; $keyEventArgs.Handled = $true } # Navigate to Config tab
             "U" { Invoke-WPFButton "WPFTab4BT"; $keyEventArgs.Handled = $true } # Navigate to Updates tab
-            "W" { Invoke-WPFButton "WPFTab5BT"; $keyEventArgs.Handled = $true } # Navigate to Win11ISO tab
             "P" { Invoke-WPFButton "WPFTab6BT"; $keyEventArgs.Handled = $true } # Navigate to Printers tab
             "S" { Invoke-WPFButton "WPFTab7BT"; $keyEventArgs.Handled = $true } # Navigate to System dashboard
             "F" { Invoke-WPFButton "WPFTab8BT"; $keyEventArgs.Handled = $true } # Navigate to Wi-Fi tab
+            "R" { Invoke-WPFButton "WPFTab5BT"; $keyEventArgs.Handled = $true } # Navigate to Report tab
         }
     }
     # Handle Ctrl key combinations for specific actions
@@ -533,60 +536,13 @@ $sync["FontScalingApplyButton"].Add_Click({
     Invoke-WPFPopup -Action "Hide" -Popups @("FontScaling")
 })
 
-# -- Win11ISO Tab button handlers ----------------------------------------------
-
-$sync["WPFTab5BT"].Add_Click({
-    $sync["Form"].Dispatcher.BeginInvoke([System.Windows.Threading.DispatcherPriority]::Background, [action]{ Invoke-WinUtilISOCheckExistingWork }) | Out-Null
+# Wi-Fi tab: the QR code button shown in each row of the network list
+$sync["WPFWifiList"].AddHandler([System.Windows.Controls.Primitives.ButtonBase]::ClickEvent, [System.Windows.RoutedEventHandler]{
+    param($list, $clickArgs)
+    if ($clickArgs.OriginalSource.Uid -eq "WifiQr") {
+        Show-WinUtilWifiQRCode -Network $clickArgs.OriginalSource.Tag
+    }
 })
-
-$sync["WPFWin11ISOBrowseButton"].Add_Click({
-    Write-Debug "WPFWin11ISOBrowseButton clicked"
-    Invoke-WinUtilISOBrowse
-})
-
-$sync["WPFWin11ISODownloadLink"].Add_Click({
-    Write-Debug "WPFWin11ISODownloadLink clicked"
-    Start-Process "https://www.microsoft.com/software-download/windows11"
-})
-
-$sync["WPFWin11ISOMountButton"].Add_Click({
-    Write-Debug "WPFWin11ISOMountButton clicked"
-    Invoke-WinUtilISOMountAndVerify
-})
-
-$sync["WPFWin11ISOModifyButton"].Add_Click({
-    Write-Debug "WPFWin11ISOModifyButton clicked"
-    Invoke-WinUtilISOModify
-})
-
-$sync["WPFWin11ISOChooseISOButton"].Add_Click({
-    Write-Debug "WPFWin11ISOChooseISOButton clicked"
-    $sync["WPFWin11ISOOptionUSB"].Visibility = "Collapsed"
-    Invoke-WinUtilISOExport
-})
-
-$sync["WPFWin11ISOChooseUSBButton"].Add_Click({
-    Write-Debug "WPFWin11ISOChooseUSBButton clicked"
-    $sync["WPFWin11ISOOptionUSB"].Visibility = "Visible"
-    Invoke-WinUtilISORefreshUSBDrives
-})
-
-$sync["WPFWin11ISORefreshUSBButton"].Add_Click({
-    Write-Debug "WPFWin11ISORefreshUSBButton clicked"
-    Invoke-WinUtilISORefreshUSBDrives
-})
-
-$sync["WPFWin11ISOWriteUSBButton"].Add_Click({
-    Write-Debug "WPFWin11ISOWriteUSBButton clicked"
-    Invoke-WinUtilISOWriteUSB
-})
-
-$sync["WPFWin11ISOCleanResetButton"].Add_Click({
-    Write-Debug "WPFWin11ISOCleanResetButton clicked"
-    Invoke-WinUtilISOCleanAndReset
-})
-
-# ------------------------------------------------------------------------------
 
 $sync["Form"].ShowDialog() | out-null
 Stop-Transcript

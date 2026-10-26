@@ -7,16 +7,16 @@
     #>
 
     if($sync.ProcessRunning) {
-        $msg = "[Invoke-WPFundoall] Install process is currently running."
-        [System.Windows.MessageBox]::Show($msg, "Winutil", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning)
+        $msg = "Attendi la fine dell'operazione in corso."
+        [System.Windows.MessageBox]::Show($msg, "WinRUtil", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning)
         return
     }
 
     $tweaks = $sync.selectedTweaks
 
     if ($tweaks.count -eq 0) {
-        $msg = "Please check the tweaks you wish to undo."
-        [System.Windows.MessageBox]::Show($msg, "Winutil", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning)
+        $msg = "Seleziona le ottimizzazioni da annullare."
+        [System.Windows.MessageBox]::Show($msg, "WinRUtil", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning)
         return
     }
 
@@ -32,12 +32,14 @@
 
 
         for ($i = 0; $i -lt $tweaks.Count; $i++) {
-            Set-WinUtilProgressBar -Label "Undoing $($tweaks[$i])" -Percent ($i / $tweaks.Count * 100)
+            $tweakName = $sync.configs.tweaks.($tweaks[$i]).Content
+            if (-not $tweakName) { $tweakName = $tweaks[$i] }
+            Set-WinUtilProgressBar -Label "Annullamento: $tweakName" -Percent ($i / $tweaks.Count * 100)
             Invoke-WinUtiltweaks $tweaks[$i] -undo $true
             Invoke-WPFUIThread -ScriptBlock { Set-WinUtilTaskbaritem -value ($i/$tweaks.Count) }
         }
 
-        Set-WinUtilProgressBar -Label "Undo Tweaks Finished" -Percent 100
+        Set-WinUtilProgressBar -Label "Annullamento completato" -Percent 100
         $sync.ProcessRunning = $false
         Invoke-WPFUIThread -ScriptBlock { Set-WinUtilTaskbaritem -state "None" -overlay "checkmark" }
         Write-Host "=================================="

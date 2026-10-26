@@ -44,7 +44,7 @@ function Get-WinRUtilWifiProfiles {
         the localized console output of "netsh wlan show profile ... key=clear".
         Works on Windows PowerShell 5.1+ and PowerShell 7. ASCII-only source.
     .OUTPUTS
-        Array of [PSCustomObject] with properties: Ssid, Password, Security, AutoConnect.
+        Array of [PSCustomObject] with properties: Ssid, Password, Security, AutoConnect, Hidden, CanShare.
     #>
     [CmdletBinding()]
     param()
@@ -83,6 +83,8 @@ function Get-WinRUtilWifiProfiles {
                 $keyMaterial    = $null
                 $hasKeyElement  = $false
                 $connectionMode = $null
+                $hidden         = $false
+                $encryption     = $null
 
                 # Primary path: parse as XML using namespace-agnostic local-name()
                 # XPath so the default v1 namespace (and nested v3/v4) do not matter.
@@ -101,6 +103,9 @@ function Get-WinRUtilWifiProfiles {
                     $authNode = $doc.SelectSingleNode("//*[local-name()='authentication']")
                     if ($authNode) { $authentication = $authNode.InnerText }
 
+                    $encNode = $doc.SelectSingleNode("//*[local-name()='encryption']")
+                    if ($encNode) { $encryption = $encNode.InnerText }
+
                     $keyNode = $doc.SelectSingleNode("//*[local-name()='keyMaterial']")
                     if ($keyNode) {
                         $hasKeyElement = $true
@@ -109,6 +114,10 @@ function Get-WinRUtilWifiProfiles {
 
                     $cmNode = $doc.SelectSingleNode("//*[local-name()='connectionMode']")
                     if ($cmNode) { $connectionMode = $cmNode.InnerText }
+
+                    # Networks that do not broadcast their SSID
+                    $hiddenNode = $doc.SelectSingleNode("//*[local-name()='nonBroadcast']")
+                    $hidden = $hiddenNode -and $hiddenNode.InnerText -match '^(true|1)$'
 
                     # transitionMode (WPA2<->WPA3 mixed) lives in the v4 namespace.
                     $transNode = $doc.SelectSingleNode("//*[local-name()='transitionMode']")
@@ -127,8 +136,10 @@ function Get-WinRUtilWifiProfiles {
                 # parsing failed for any reason (e.g. unexpected encoding).
                 if (-not $parsedXml) {
                     $transitionMode = $false
+                    $hidden = $raw -match '(?s)<nonBroadcast>\s*(true|1)\s*</nonBroadcast>'
                     if ($raw -match '(?s)<name>(.*?)</name>') { $ssid = $matches[1] }
                     if ($raw -match '(?s)<authentication>(.*?)</authentication>') { $authentication = $matches[1] }
+                    if ($raw -match '(?s)<encryption>(.*?)</encryption>') { $encryption = $matches[1] }
                     if ($raw -match '(?s)<keyMaterial>(.*?)</keyMaterial>') {
                         $hasKeyElement = $true
                         $keyMaterial = $matches[1]
@@ -170,7 +181,7 @@ function Get-WinRUtilWifiProfiles {
 
                 # Map the raw authentication token to a human-readable label.
                 $security = switch -Regex ($authUpper) {
-                    '^OPEN$'        { 'Aperta'; break }
+                    '^OPEN$'        { if ($hasKeyElement -and $encryption -match '^WEP$') { 'WEP' } else { 'Aperta' }; break }   # open-system WEP has a key
                     '^SHARED$'      { 'WEP'; break }            # legacy shared-key WEP
                     '^WPA3SAE$'     { if ($transitionMode) { 'WPA2/WPA3' } else { 'WPA3-SAE' }; break }
                     '^WPA3ENT.*'    { 'WPA3-Enterprise'; break }
@@ -201,6 +212,9 @@ function Get-WinRUtilWifiProfiles {
                     Password    = $password
                     Security    = $security
                     AutoConnect = $autoConnect
+                    Hidden      = [bool]$hidden
+                    # Enterprise (802.1X) networks use per-user credentials, which a Wi-Fi QR code cannot carry
+                    CanShare    = ($security -notmatch 'Enterprise') -and ($password -ne '' -or $security -in @('Aperta', 'OWE'))
                 })
             }
             catch {
@@ -422,9 +436,11 @@ function Invoke-WPFWifiExport {
         } else {
             Write-WinUtilWifiLog ("Esportati {0} profilo/i in {1}" -f $count, $dialog.FileName) -Level Success
             Write-WinUtilWifiLog "Il file contiene le password in chiaro: conservalo in un luogo sicuro." -Level Warning
+            Add-WinUtilSessionAction -Area "Wi-Fi" -Text ("Backup di {0} {1}" -f $count, $(if ($count -eq 1) { "profilo Wi-Fi" } else { "profili Wi-Fi" }))
         }
     } catch {
         Write-WinUtilWifiLog "Esportazione non riuscita: $($_.Exception.Message)" -Level Error
+        Add-WinUtilSessionAction -Area "Wi-Fi" -Text "Backup dei profili Wi-Fi" -Status "Error"
     }
 }
 
@@ -467,11 +483,254 @@ function Invoke-WPFWifiImport {
         } else {
             Write-WinUtilWifiLog ("Importate {0} rete/i su {1}." -f $imported, $results.Count) -Level Warning
         }
+
+        # One report line for the imported networks and one for those that failed
+        $importedNames = @($results | Where-Object { $_.Success } | ForEach-Object { $_.Name })
+        $failedNames = @($results | Where-Object { -not $_.Success } | ForEach-Object { $_.Name })
+        if ($importedNames.Count -gt 0) {
+            Add-WinUtilSessionAction -Area "Wi-Fi" -Text ("Configurazione {0}: {1}" -f $(if ($importedNames.Count -eq 1) { "della rete Wi-Fi" } else { "delle reti Wi-Fi" }), ($importedNames -join ", "))
+        }
+        if ($failedNames.Count -gt 0) {
+            Add-WinUtilSessionAction -Area "Wi-Fi" -Text ("Configurazione {0}: {1}" -f $(if ($failedNames.Count -eq 1) { "della rete Wi-Fi" } else { "delle reti Wi-Fi" }), ($failedNames -join ", ")) -Status "Error"
+        }
     } catch {
         Write-WinUtilWifiLog "Importazione non riuscita: $($_.Exception.Message)" -Level Error
+        Add-WinUtilSessionAction -Area "Wi-Fi" -Text "Importazione dei profili Wi-Fi" -Status "Error"
     } finally {
         [System.Windows.Input.Mouse]::OverrideCursor = $null
     }
 
     Invoke-WPFWifiRefresh
+}
+
+function Get-WinUtilWifiQRText {
+    <#
+        .SYNOPSIS
+            Returns the Wi-Fi configuration text that phone cameras recognize in a QR code
+            (WIFI:T:<type>;S:<ssid>;P:<password>;;), with \ ; , : and " escaped.
+        .PARAMETER Network
+            A network returned by Get-WinRUtilWifiProfiles.
+    #>
+    param(
+        [Parameter(Mandatory)]
+        $Network
+    )
+
+    $escape = { param([string]$value) $value -replace '([\\;,:"])', '\$1' }
+    $type = switch -Regex ($Network.Security) {
+        '^(Aperta|OWE)$' { 'nopass'; break }
+        '^WEP$' { 'WEP'; break }
+        default { 'WPA' }
+    }
+
+    $text = "WIFI:T:{0};S:{1};" -f $type, (& $escape $Network.Ssid)
+    if ($type -ne 'nopass') {
+        $text += "P:{0};" -f (& $escape $Network.Password)
+    }
+    if ($Network.Hidden) {
+        $text += "H:true;"
+    }
+    $text + ";"
+}
+
+function ConvertTo-WinUtilQRGeometry {
+    <#
+        .SYNOPSIS
+            Returns the dark modules of a QR code (see ConvertTo-WinUtilQRCode) as a frozen geometry,
+            one unit per module, without the quiet zone.
+    #>
+    param(
+        [Parameter(Mandatory)]
+        $QRCode
+    )
+
+    $size = $QRCode.Size
+    $modules = $QRCode.Modules
+    $geometry = [System.Windows.Media.StreamGeometry]::new()
+    $context = $geometry.Open()
+    try {
+        for ($y = 0; $y -lt $size; $y++) {
+            $x = 0
+            while ($x -lt $size) {
+                if (-not $modules[$y * $size + $x]) {
+                    $x++
+                    continue
+                }
+                # One rectangle for each horizontal run of dark modules
+                $start = $x
+                while ($x -lt $size -and $modules[$y * $size + $x]) { $x++ }
+                $context.BeginFigure([System.Windows.Point]::new($start, $y), $true, $true)
+                $context.LineTo([System.Windows.Point]::new($x, $y), $false, $false)
+                $context.LineTo([System.Windows.Point]::new($x, $y + 1), $false, $false)
+                $context.LineTo([System.Windows.Point]::new($start, $y + 1), $false, $false)
+            }
+        }
+    } finally {
+        $context.Close()
+    }
+    $geometry.FillRule = [System.Windows.Media.FillRule]::Nonzero
+    $geometry.Freeze()
+    $geometry
+}
+
+function ConvertTo-WinUtilWifiQRCard {
+    <#
+        .SYNOPSIS
+            Draws the QR code of a Wi-Fi network as a printable card with the network name and the password.
+        .PARAMETER QRCode
+            The QR code of the network (see ConvertTo-WinUtilQRCode).
+        .PARAMETER Network
+            The network the QR code connects to.
+        .OUTPUTS
+            A frozen 96 DPI bitmap.
+    #>
+    param(
+        [Parameter(Mandatory)]
+        $QRCode,
+        [Parameter(Mandatory)]
+        $Network
+    )
+
+    # Whole pixels per module keep the module edges sharp; the white margin is the 4-module quiet zone
+    $moduleSize = [math]::Max(6, [int][math]::Floor(400 / ($QRCode.Size + 8)))
+    $quietZone = 4 * $moduleSize
+    $qrSide = $QRCode.Size * $moduleSize
+    $width = $qrSide + 2 * $quietZone
+    $padding = 24
+
+    $culture = [System.Globalization.CultureInfo]::GetCultureInfo("it-IT")
+    $family = [System.Windows.Media.FontFamily]::new("Segoe UI")
+    $newText = {
+        param([string]$value, $weight, [double]$emSize, [string]$color)
+        $typeface = [System.Windows.Media.Typeface]::new($family, [System.Windows.FontStyles]::Normal, $weight, [System.Windows.FontStretches]::Normal)
+        $brush = [System.Windows.Media.SolidColorBrush]::new([System.Windows.Media.ColorConverter]::ConvertFromString($color))
+        $formatted = [System.Windows.Media.FormattedText]::new($value, $culture, [System.Windows.FlowDirection]::LeftToRight, $typeface, $emSize, $brush, 1.0)
+        $formatted.MaxTextWidth = $width - 2 * $padding
+        $formatted.TextAlignment = [System.Windows.TextAlignment]::Center
+        $formatted
+    }
+    $secret = if ($Network.Password) { "Password: $($Network.Password)" } else { "Rete aperta, senza password" }
+    $lines = @(
+        (& $newText $Network.Ssid ([System.Windows.FontWeights]::Bold) 22 "#111111")
+        (& $newText $secret ([System.Windows.FontWeights]::Normal) 16 "#333333")
+        (& $newText "Inquadra il codice con la fotocamera del telefono per collegarti alla rete Wi-Fi." ([System.Windows.FontWeights]::Normal) 12.5 "#666666")
+    )
+    $height = $quietZone + $qrSide + $quietZone + $padding
+    foreach ($line in $lines) {
+        $height += $line.Height + 6
+    }
+
+    $visual = [System.Windows.Media.DrawingVisual]::new()
+    $context = $visual.RenderOpen()
+    $context.DrawRectangle([System.Windows.Media.Brushes]::White, $null, [System.Windows.Rect]::new(0, 0, $width, $height))
+    $context.PushTransform([System.Windows.Media.MatrixTransform]::new($moduleSize, 0, 0, $moduleSize, $quietZone, $quietZone))
+    $context.DrawGeometry([System.Windows.Media.Brushes]::Black, $null, (ConvertTo-WinUtilQRGeometry -QRCode $QRCode))
+    $context.Pop()
+    $top = $quietZone + $qrSide + $quietZone
+    foreach ($line in $lines) {
+        $context.DrawText($line, [System.Windows.Point]::new($padding, $top))
+        $top += $line.Height + 6
+    }
+    $context.Close()
+
+    $bitmap = [System.Windows.Media.Imaging.RenderTargetBitmap]::new([int][math]::Ceiling($width), [int][math]::Ceiling($height), 96, 96, [System.Windows.Media.PixelFormats]::Pbgra32)
+    $bitmap.Render($visual)
+    $bitmap.Freeze()
+    $bitmap
+}
+
+function Show-WinUtilWifiQRCode {
+    <#
+        .SYNOPSIS
+            Shows, over the Wi-Fi tab, the QR code that connects a phone to the given network.
+        .PARAMETER Network
+            A network of the Wi-Fi list.
+    #>
+    param($Network)
+
+    if (-not $Network) {
+        return
+    }
+    if (-not $Network.CanShare) {
+        if ($Network.Security -match 'Enterprise') {
+            Write-WinUtilWifiLog "QR code non disponibile per $($Network.Ssid): le reti Enterprise (802.1X) usano credenziali personali." -Level Warning
+        } else {
+            Write-WinUtilWifiLog "QR code non disponibile per $($Network.Ssid): la password non risulta salvata su questo PC." -Level Warning
+        }
+        return
+    }
+
+    try {
+        $qr = ConvertTo-WinUtilQRCode -Text (Get-WinUtilWifiQRText -Network $Network)
+    } catch {
+        Write-WinUtilWifiLog "Impossibile creare il QR code: $($_.Exception.Message)" -Level Error
+        return
+    }
+
+    # White background with the 4-module quiet zone, then the dark modules
+    $side = $qr.Size + 8
+    $drawing = [System.Windows.Media.DrawingGroup]::new()
+    $drawing.Children.Add([System.Windows.Media.GeometryDrawing]::new([System.Windows.Media.Brushes]::White, $null, [System.Windows.Media.RectangleGeometry]::new([System.Windows.Rect]::new(0, 0, $side, $side))))
+    $symbol = [System.Windows.Media.DrawingGroup]::new()
+    $symbol.Transform = [System.Windows.Media.TranslateTransform]::new(4, 4)
+    $symbol.Children.Add([System.Windows.Media.GeometryDrawing]::new([System.Windows.Media.Brushes]::Black, $null, (ConvertTo-WinUtilQRGeometry -QRCode $qr)))
+    $drawing.Children.Add($symbol)
+    $drawing.Freeze()
+
+    $sync.WifiQrNetwork = $Network
+    $sync.WifiQrCode = $qr
+    $sync.WPFWifiQrImage.Source = [System.Windows.Media.DrawingImage]::new($drawing)
+    $sync.WPFWifiQrSsid.Text = $Network.Ssid
+    $sync.WPFWifiQrDetails.Text = if ($Network.Password) { "Sicurezza: $($Network.Security)" } else { "Rete aperta, senza password" }
+    $sync.WPFWifiQrOverlay.Visibility = "Visible"
+    Write-WinUtilWifiLog "QR code della rete $($Network.Ssid) pronto: inquadralo con la fotocamera del telefono."
+}
+
+function Invoke-WPFWifiQrSave {
+    <#
+        .SYNOPSIS
+            Saves the QR code shown in the Wi-Fi tab as a PNG card, with the network name and the password, ready to print.
+    #>
+    $network = $sync.WifiQrNetwork
+    $qr = $sync.WifiQrCode
+    if (-not $network -or -not $qr) {
+        return
+    }
+
+    $dialog = New-Object System.Windows.Forms.SaveFileDialog
+    $dialog.Title = "Salva il QR code della rete Wi-Fi"
+    $dialog.Filter = "Immagine PNG (*.png)|*.png"
+    $dialog.FileName = "WiFi-{0}.png" -f ($network.Ssid -replace '[\\/:*?"<>|]', '_')
+    $dialog.InitialDirectory = [Environment]::GetFolderPath('Desktop')
+    if ($dialog.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) {
+        return
+    }
+
+    try {
+        $encoder = [System.Windows.Media.Imaging.PngBitmapEncoder]::new()
+        $encoder.Frames.Add([System.Windows.Media.Imaging.BitmapFrame]::Create((ConvertTo-WinUtilWifiQRCard -QRCode $qr -Network $network)))
+        $stream = [System.IO.File]::Create($dialog.FileName)
+        try {
+            $encoder.Save($stream)
+        } finally {
+            $stream.Dispose()
+        }
+        Write-WinUtilWifiLog "QR code salvato: $($dialog.FileName)" -Level Success
+        if ($network.Password) {
+            Write-WinUtilWifiLog "L'immagine contiene la password della rete: condividila solo con chi deve collegarsi." -Level Warning
+        }
+    } catch {
+        Write-WinUtilWifiLog "Salvataggio del QR code non riuscito: $($_.Exception.Message)" -Level Error
+    }
+}
+
+function Invoke-WPFWifiQrClose {
+    <#
+        .SYNOPSIS
+            Closes the QR code shown in the Wi-Fi tab.
+    #>
+    $sync.WPFWifiQrOverlay.Visibility = "Collapsed"
+    $sync.WPFWifiQrImage.Source = $null
+    $sync.WifiQrNetwork = $null
+    $sync.WifiQrCode = $null
 }

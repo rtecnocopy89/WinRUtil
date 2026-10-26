@@ -86,8 +86,10 @@ function Invoke-WPFPrinterSpooler {
             try {
                 Restart-Service -Name Spooler -Force -ErrorAction Stop
                 Write-WinUtilPrinterLog "Spooler di stampa riavviato." -Level Success
+                Add-WinUtilSessionAction -Area "Stampanti" -Text "Riavvio dello spooler di stampa"
             } catch {
                 Write-WinUtilPrinterLog "Riavvio dello spooler non riuscito: $($_.Exception.Message)" -Level Error
+                Add-WinUtilSessionAction -Area "Stampanti" -Text "Riavvio dello spooler di stampa" -Status "Error"
             }
         }
         "ClearQueue" {
@@ -101,8 +103,10 @@ function Invoke-WPFPrinterSpooler {
                 }
                 Start-Service -Name Spooler -ErrorAction Stop
                 Write-WinUtilPrinterLog "Coda di stampa svuotata e spooler riavviato." -Level Success
+                Add-WinUtilSessionAction -Area "Stampanti" -Text "Svuotamento della coda di stampa"
             } catch {
                 Write-WinUtilPrinterLog "Svuotamento della coda non riuscito: $($_.Exception.Message)" -Level Error
+                Add-WinUtilSessionAction -Area "Stampanti" -Text "Svuotamento della coda di stampa" -Status "Error"
                 try { Start-Service -Name Spooler -ErrorAction SilentlyContinue } catch {}
             }
             Invoke-WPFPrinterRefresh
@@ -135,17 +139,21 @@ function Invoke-WPFPrinterDriver {
             }
 
             $inf = $dialog.FileName
+            $reportText = "Installazione del driver di stampa {0}" -f [System.IO.Path]::GetFileName($inf)
             Write-WinUtilPrinterLog "Installazione del driver da: $inf"
             try {
                 $output = & pnputil.exe /add-driver "$inf" /install 2>&1
                 $output | ForEach-Object { Write-WinUtilPrinterLog $_ }
                 if ($LASTEXITCODE -eq 0) {
                     Write-WinUtilPrinterLog "Driver installato correttamente." -Level Success
+                    Add-WinUtilSessionAction -Area "Stampanti" -Text $reportText
                 } else {
                     Write-WinUtilPrinterLog "pnputil ha restituito il codice $LASTEXITCODE." -Level Warning
+                    Add-WinUtilSessionAction -Area "Stampanti" -Text $reportText -Status "Error"
                 }
             } catch {
                 Write-WinUtilPrinterLog "Installazione del driver non riuscita: $($_.Exception.Message)" -Level Error
+                Add-WinUtilSessionAction -Area "Stampanti" -Text $reportText -Status "Error"
             }
             Invoke-WPFPrinterRefresh
         }
@@ -161,8 +169,10 @@ function Invoke-WPFPrinterDriver {
             try {
                 Remove-PrinterDriver -Name $driverName -ErrorAction Stop
                 Write-WinUtilPrinterLog "Driver '$driverName' rimosso." -Level Success
+                Add-WinUtilSessionAction -Area "Stampanti" -Text "Rimozione del driver di stampa $driverName"
             } catch {
                 Write-WinUtilPrinterLog "Impossibile rimuovere il driver (potrebbe essere ancora in uso): $($_.Exception.Message)" -Level Error
+                Add-WinUtilSessionAction -Area "Stampanti" -Text "Rimozione del driver di stampa $driverName" -Status "Error"
             }
             Invoke-WPFPrinterRefresh
         }

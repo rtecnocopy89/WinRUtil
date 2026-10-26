@@ -23,10 +23,11 @@
     Set-WinUtilTaskbaritem -state "None" -overlay "checkmark"
 
     Write-Host "Process complete. Please reboot your computer."
+    Add-WinUtilSessionAction -Area "Riparazione" -Text "Rete - Reimposta"
 
     $ButtonType = [System.Windows.MessageBoxButton]::OK
-    $MessageboxTitle = "Network Reset "
-    $Messageboxbody = ("Stock settings loaded.`n Please reboot your computer")
+    $MessageboxTitle = "WinRUtil - Rete"
+    $Messageboxbody = ("Le impostazioni di rete sono state ripristinate.`nRiavvia il computer per completare l'operazione.")
     $MessageIcon = [System.Windows.MessageBoxImage]::Information
 
     [System.Windows.MessageBox]::Show($Messageboxbody, $MessageboxTitle, $ButtonType, $MessageIcon)

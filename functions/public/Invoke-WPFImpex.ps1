@@ -47,13 +47,13 @@
                     $allConfs = ($sync.selectedApps + $sync.selectedTweaks + $sync.selectedToggles + $sync.selectedFeatures) | ForEach-Object { [string]$_ }
                     if (-not $allConfs) {
                         [System.Windows.MessageBox]::Show(
-                            "No settings are selected to export. Please select at least one app, tweak, toggle, or feature before exporting.",
-                            "Nothing to Export", "OK", "Warning")
+                            "Non hai selezionato nulla da esportare. Seleziona almeno un programma, un'ottimizzazione o una funzione di Windows prima di esportare.",
+                            "WinRUtil", "OK", "Warning")
                         return
                     }
                     $jsonFile = $allConfs | ConvertTo-Json
                     $jsonFile | Out-File $Config -Force
-                    "iex ""& { `$(irm https://raw.githubusercontent.com/rtecnocopy89/WinRUtil/main/winrutil.ps1) } -Config '$Config'""" | Set-Clipboard
+                    "iex ""& { `$(irm https://raw.githubusercontent.com/rtecnocopy89/WinRUtil/master/winrutil.ps1) } -Config '$Config'""" | Set-Clipboard
                 }
             } catch {
                 Write-Error "An error occurred while exporting: $_"
@@ -79,8 +79,8 @@
 
                     if (-not $flattenedJson) {
                         [System.Windows.MessageBox]::Show(
-                            "The selected file contains no settings to import. No changes have been made.",
-                            "Empty Configuration", "OK", "Warning")
+                            "Il file selezionato non contiene impostazioni da importare: nessuna modifica applicata.",
+                            "WinRUtil", "OK", "Warning")
                         return
                     }
 

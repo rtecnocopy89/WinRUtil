@@ -93,4 +93,17 @@
         }
 
     }
+
+    # Record the operation for the intervention report
+    $tweak = $sync.configs.tweaks.$CheckBox
+    if ($tweak.Content) {
+        $text = if ($tweak.Type -eq "Toggle") {
+            "{0} - {1}" -f $tweak.Content, $(if ($undo) { "Disattiva" } else { "Attiva" })
+        } elseif ($undo) {
+            "{0} (annullata)" -f $tweak.Content
+        } else {
+            $tweak.Content
+        }
+        Add-WinUtilSessionAction -Area "Ottimizzazione" -Text $text
+    }
 }

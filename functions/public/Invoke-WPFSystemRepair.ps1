@@ -16,4 +16,5 @@
 
     Write-Host "==> Finished System Repair"
     Set-WinUtilTaskbaritem -state "None" -overlay "checkmark"
+    Add-WinUtilSessionAction -Area "Riparazione" -Text "Controllo e riparazione del sistema (CHKDSK, SFC, DISM)"
 }

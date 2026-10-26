@@ -1,8 +1,8 @@
 ﻿{
   "WPFFeaturesdotnet": {
-    "Content": ".NET Framework (Versions 2, 3, 4) - Enable",
-    "Description": ".NET and .NET Framework is a developer platform made up of tools, programming languages, and libraries for building many different types of applications.",
-    "category": "Features",
+    "Content": ".NET Framework (versioni 2, 3, 4) - Attiva",
+    "Description": ".NET e .NET Framework sono una piattaforma di sviluppo, fatta di strumenti, linguaggi e librerie, che serve a molte applicazioni.",
+    "category": "Funzionalità di Windows",
     "panel": "1",
     "feature": [
       "NetFx4-AdvSrvs",
@@ -12,9 +12,9 @@
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
   "WPFFixesNTPPool": {
-    "Content": "NTP Server - Enable",
-    "Description": "Replaces the default Windows NTP server (time.windows.com) with pool.ntp.org for improved time synchronization accuracy and reliability.",
-    "category": "Fixes",
+    "Content": "Server NTP - Usa pool.ntp.org",
+    "Description": "Sostituisce il server NTP predefinito di Windows (time.windows.com) con pool.ntp.org, per una sincronizzazione dell'ora più precisa e affidabile.",
+    "category": "Riparazioni",
     "panel": "1",
     "Type": "Button",
     "ButtonWidth": "300",
@@ -22,9 +22,9 @@
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
   "WPFFeatureshyperv": {
-    "Content": "Hyper-V - Enable",
-    "Description": "Hyper-V is a hardware virtualization product developed by Microsoft that allows users to create and manage virtual machines.",
-    "category": "Features",
+    "Content": "Hyper-V - Attiva",
+    "Description": "Hyper-V è la piattaforma di virtualizzazione di Microsoft per creare e gestire macchine virtuali.",
+    "category": "Funzionalità di Windows",
     "panel": "1",
     "feature": [
       "Microsoft-Hyper-V-All"
@@ -35,9 +35,9 @@
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
   "WPFFeatureslegacymedia": {
-    "Content": "Legacy Media Components (WMP, DirectPlay) - Enable",
-    "Description": "Enables legacy programs from previous versions of Windows.",
-    "category": "Features",
+    "Content": "Componenti multimediali legacy (WMP, DirectPlay) - Attiva",
+    "Description": "Attiva i componenti richiesti dai programmi delle versioni precedenti di Windows.",
+    "category": "Funzionalità di Windows",
     "panel": "1",
     "feature": [
       "WindowsMediaPlayer",
@@ -49,9 +49,9 @@
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
   "WPFFeaturewsl": {
-    "Content": "Windows Subsystem for Linux (WSL) - Enable",
-    "Description": "Windows Subsystem for Linux is an optional feature of Windows that allows Linux programs to run natively on Windows without the need for a separate virtual machine or dual booting.",
-    "category": "Features",
+    "Content": "Sottosistema Windows per Linux (WSL) - Attiva",
+    "Description": "Il Sottosistema Windows per Linux permette di eseguire programmi Linux direttamente in Windows, senza macchina virtuale né doppio avvio.",
+    "category": "Funzionalità di Windows",
     "panel": "1",
     "feature": [
       "VirtualMachinePlatform",
@@ -61,9 +61,9 @@
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
   "WPFFeaturenfs": {
-    "Content": "Network File System (NFS) - Enable",
-    "Description": "Network File System (NFS) is a mechanism for storing files on a network.",
-    "category": "Features",
+    "Content": "Network File System (NFS) - Attiva",
+    "Description": "Network File System (NFS) è un sistema per accedere ai file condivisi in rete.",
+    "category": "Funzionalità di Windows",
     "panel": "1",
     "feature": [
       "ServicesForNFS-ClientOnly",
@@ -80,9 +80,9 @@
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
   "WPFFeatureRegBackup": {
-    "Content": "Registry Backup (Daily Task 12:30am) - Enable",
-    "Description": "Enables daily registry backup, previously disabled by Microsoft in Windows 10 1803.",
-    "category": "Features",
+    "Content": "Backup del registro (ogni giorno alle 00:30) - Attiva",
+    "Description": "Attiva il backup giornaliero del registro, disattivato da Microsoft a partire da Windows 10 1803.",
+    "category": "Funzionalità di Windows",
     "panel": "1",
     "feature": [],
     "InvokeScript": [
@@ -97,9 +97,9 @@
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
   "WPFFeatureEnableLegacyRecovery": {
-    "Content": "Legacy F8 Boot Recovery - Enable",
-    "Description": "Enables Advanced Boot Options screen that lets you start Windows in advanced troubleshooting modes.",
-    "category": "Features",
+    "Content": "Ripristino classico con F8 all'avvio - Attiva",
+    "Description": "Attiva la schermata Opzioni di avvio avanzate, che permette di avviare Windows nelle modalità di risoluzione dei problemi.",
+    "category": "Funzionalità di Windows",
     "panel": "1",
     "feature": [],
     "InvokeScript": [
@@ -108,9 +108,9 @@
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
   "WPFFeatureDisableLegacyRecovery": {
-    "Content": "Legacy F8 Boot Recovery - Disable",
-    "Description": "Disables Advanced Boot Options screen that lets you start Windows in advanced troubleshooting modes.",
-    "category": "Features",
+    "Content": "Ripristino classico con F8 all'avvio - Disattiva",
+    "Description": "Disattiva la schermata Opzioni di avvio avanzate, che permette di avviare Windows nelle modalità di risoluzione dei problemi.",
+    "category": "Funzionalità di Windows",
     "panel": "1",
     "feature": [],
     "InvokeScript": [
@@ -119,9 +119,9 @@
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
   "WPFFeaturesSandbox": {
-    "Content": "Windows Sandbox - Enable",
-    "Description": "Windows Sandbox is a lightweight virtual machine that provides a temporary desktop environment to safely run applications and programs in isolation.",
-    "category": "Features",
+    "Content": "Sandbox di Windows - Attiva",
+    "Description": "Sandbox di Windows è una macchina virtuale leggera che offre un desktop temporaneo per eseguire applicazioni in modo isolato e sicuro.",
+    "category": "Funzionalità di Windows",
     "panel": "1",
     "feature": [
       "Containers-DisposableClientVM"
@@ -129,8 +129,8 @@
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
   "WPFFeatureInstall": {
-    "Content": "Run Features",
-    "category": "Features",
+    "Content": "Attiva le funzionalità selezionate",
+    "category": "Funzionalità di Windows",
     "panel": "1",
     "Type": "Button",
     "ButtonWidth": "300",
@@ -138,8 +138,8 @@
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
   "WPFPanelAutologin": {
-    "Content": "AutoLogon - Run",
-    "category": "Fixes",
+    "Content": "Accesso automatico (AutoLogon) - Esegui",
+    "category": "Riparazioni",
     "panel": "1",
     "Type": "Button",
     "ButtonWidth": "300",
@@ -147,8 +147,8 @@
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
   "WPFFixesUpdate": {
-    "Content": "Windows Update - Reset",
-    "category": "Fixes",
+    "Content": "Windows Update - Reimposta",
+    "category": "Riparazioni",
     "panel": "1",
     "Type": "Button",
     "ButtonWidth": "300",
@@ -156,8 +156,8 @@
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
   "WPFFixesNetwork": {
-    "Content": "Network - Reset",
-    "category": "Fixes",
+    "Content": "Rete - Reimposta",
+    "category": "Riparazioni",
     "panel": "1",
     "Type": "Button",
     "ButtonWidth": "300",
@@ -165,8 +165,8 @@
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
   "WPFPanelDISM": {
-    "Content": "System Corruption Scan - Run",
-    "category": "Fixes",
+    "Content": "Controllo e riparazione del sistema - Esegui",
+    "category": "Riparazioni",
     "panel": "1",
     "Type": "Button",
     "ButtonWidth": "300",
@@ -174,8 +174,8 @@
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
   "WPFFixesWinget": {
-    "Content": "WinGet - Reinstall",
-    "category": "Fixes",
+    "Content": "WinGet - Reinstalla",
+    "category": "Riparazioni",
     "panel": "1",
     "Type": "Button",
     "ButtonWidth": "300",
@@ -183,8 +183,8 @@
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
   "WPFPanelControl": {
-    "Content": "Control Panel",
-    "category": "Legacy Windows Panels",
+    "Content": "Pannello di controllo",
+    "category": "Pannelli classici di Windows",
     "panel": "2",
     "Type": "Button",
     "ButtonWidth": "300",
@@ -194,8 +194,8 @@
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
   "WPFPanelComputer": {
-    "Content": "Computer Management",
-    "category": "Legacy Windows Panels",
+    "Content": "Gestione computer",
+    "category": "Pannelli classici di Windows",
     "panel": "2",
     "Type": "Button",
     "ButtonWidth": "300",
@@ -205,8 +205,8 @@
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
   "WPFPanelNetwork": {
-    "Content": "Network Connections",
-    "category": "Legacy Windows Panels",
+    "Content": "Connessioni di rete",
+    "category": "Pannelli classici di Windows",
     "panel": "2",
     "Type": "Button",
     "ButtonWidth": "300",
@@ -216,8 +216,8 @@
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
   "WPFPanelPower": {
-    "Content": "Power Panel",
-    "category": "Legacy Windows Panels",
+    "Content": "Opzioni risparmio energia",
+    "category": "Pannelli classici di Windows",
     "panel": "2",
     "Type": "Button",
     "ButtonWidth": "300",
@@ -227,8 +227,8 @@
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
   "WPFPanelPrinter": {
-    "Content": "Printer Panel",
-    "category": "Legacy Windows Panels",
+    "Content": "Dispositivi e stampanti",
+    "category": "Pannelli classici di Windows",
     "panel": "2",
     "Type": "Button",
     "ButtonWidth": "300",
@@ -238,8 +238,8 @@
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
   "WPFPanelRegion": {
-    "Content": "Region",
-    "category": "Legacy Windows Panels",
+    "Content": "Area geografica",
+    "category": "Pannelli classici di Windows",
     "panel": "2",
     "Type": "Button",
     "ButtonWidth": "300",
@@ -249,8 +249,8 @@
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
   "WPFPanelRestore": {
-    "Content": "Windows Restore",
-    "category": "Legacy Windows Panels",
+    "Content": "Ripristino configurazione di sistema",
+    "category": "Pannelli classici di Windows",
     "panel": "2",
     "Type": "Button",
     "ButtonWidth": "300",
@@ -260,8 +260,8 @@
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
   "WPFPanelSound": {
-    "Content": "Sound Settings",
-    "category": "Legacy Windows Panels",
+    "Content": "Audio",
+    "category": "Pannelli classici di Windows",
     "panel": "2",
     "Type": "Button",
     "ButtonWidth": "300",
@@ -271,8 +271,8 @@
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
   "WPFPanelSystem": {
-    "Content": "System Properties",
-    "category": "Legacy Windows Panels",
+    "Content": "Proprietà del sistema",
+    "category": "Pannelli classici di Windows",
     "panel": "2",
     "Type": "Button",
     "ButtonWidth": "300",
@@ -282,8 +282,8 @@
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
   "WPFPanelTimedate": {
-    "Content": "Time and Date",
-    "category": "Legacy Windows Panels",
+    "Content": "Data e ora",
+    "category": "Pannelli classici di Windows",
     "panel": "2",
     "Type": "Button",
     "ButtonWidth": "300",
@@ -293,8 +293,8 @@
     "link": "https://github.com/rtecnocopy89/WinRUtil"
   },
   "WPFWinUtilSSHServer": {
-    "Content": "OpenSSH Server - Enable",
-    "category": "Remote Access",
+    "Content": "Server OpenSSH - Attiva",
+    "category": "z__Accesso remoto",
     "panel": "2",
     "Type": "Button",
     "ButtonWidth": "300",

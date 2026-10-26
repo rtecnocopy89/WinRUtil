@@ -38,9 +38,9 @@
             "Config"   = "Configura"
             "Updates"  = "Aggiornamenti"
             "Printers" = "Stampanti"
-            "Win11ISO" = "Crea Win11"
             "System"   = "Sistema"
             "WiFi"     = "Password Wi-Fi"
+            "Report"   = "Rapporto di intervento"
         }
         $display = $titleMap[[string]$sync.currentTab]
         if (-not $display) { $display = $sync.currentTab }
@@ -57,6 +57,9 @@
     } elseif ($sync.currentTab -eq "System") {
         # Auto-populate the System dashboard when it is opened
         Invoke-WPFSystemInfoRefresh
+    } elseif ($sync.currentTab -eq "Report") {
+        # Show the operations recorded so far in this session
+        Update-WinUtilReportView
     }
 
     # Live CPU / memory values only while the System dashboard is visible

@@ -13,6 +13,7 @@
 
     Restart-Service w32time
     w32tm /resync
+    Add-WinUtilSessionAction -Area "Configurazione" -Text "Server NTP - Usa pool.ntp.org"
 
     Write-Host "================================="
     Write-Host "-- NTP Configuration Complete ---"

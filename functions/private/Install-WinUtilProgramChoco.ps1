@@ -116,6 +116,31 @@
         Invoke-WPFUIThread -ScriptBlock { Set-WinUtilTaskbaritem -state $progressState -value ($currentIndex / $totalPrograms) }
     }
 
+    function Add-ReportAction {
+        <#
+        .SYNOPSIS
+        Records the result of a Chocolatey operation for the intervention report.
+
+        .PARAMETER Program
+        The name of the Chocolatey package; the report shows the app name used in the Install tab.
+
+        .PARAMETER Operation
+        The description of the operation, with {0} in place of the app name.
+
+        .PARAMETER Succeeded
+        Whether the operation completed successfully.
+        #>
+
+        param (
+            [string]$Program,
+            [string]$Operation,
+            [bool]$Succeeded
+        )
+        $appName = ($sync.configs.applicationsHashtable.Values | Where-Object { $_.choco -eq $Program } | Select-Object -First 1).content
+        if (-not $appName) { $appName = $Program }
+        Add-WinUtilSessionAction -Area "Programmi" -Text ($Operation -f $appName) -Status $(if ($Succeeded) { "Success" } else { "Error" })
+    }
+
     function Install-ChocoPackage {
         <#
         .SYNOPSIS
@@ -159,13 +184,16 @@
                 else {
                     Write-Host "$Program installed successfully."
                 }
+                Add-ReportAction $Program "Installazione di {0}" $true
             }
             else {
                 Write-Host "Failed to install $Program."
+                Add-ReportAction $Program "Installazione di {0}" $false
             }
         }
         catch {
             Write-Host "Failed to install $Program due to an error: $_"
+            Add-ReportAction $Program "Installazione di {0}" $false
         }
         finally {
             Update-TaskbarProgress $currentIndex $totalPrograms
@@ -209,9 +237,11 @@
             try {
                 $uninstallStatusCode = Invoke-ChocoCommand "uninstall $chocoPackages -y"
                 Write-Host "$Program" $(if ($uninstallStatusCode -eq 0) { "uninstalled successfully." } else { "failed to uninstall." })
+                Add-ReportAction $Program "Disinstallazione di {0}" ($uninstallStatusCode -eq 0)
             }
             catch {
                 Write-Host "Failed to uninstall $Program due to an error: $_"
+                Add-ReportAction $Program "Disinstallazione di {0}" $false
             }
             finally {
                 Update-TaskbarProgress $currentIndex $totalPrograms
@@ -233,7 +263,10 @@
 
     for ($currentIndex = 0; $currentIndex -lt $totalPrograms; $currentIndex++) {
         $Program = $Programs[$currentIndex]
-        Set-WinUtilProgressBar -label "$Action $($Program)" -percent ($currentIndex / $totalPrograms * 100)
+        $appName = ($sync.configs.applicationsHashtable.Values | Where-Object { $_.choco -eq $Program } | Select-Object -First 1).content
+        if (-not $appName) { $appName = $Program }
+        $operation = if ($Action -eq "Install") { "Installazione di {0}" } else { "Disinstallazione di {0}" }
+        Set-WinUtilProgressBar -label ($operation -f $appName) -percent ($currentIndex / $totalPrograms * 100)
         Invoke-WPFUIThread -ScriptBlock { Set-WinUtilTaskbaritem -value ($currentIndex / $totalPrograms)}
 
         switch ($Action) {
@@ -248,7 +281,7 @@
             }
         }
     }
-    Set-WinUtilProgressBar -label "$($Action)ation done" -percent 100
+    Set-WinUtilProgressBar -label $(if ($Action -eq "Install") { "Installazione completata" } else { "Disinstallazione completata" }) -percent 100
     # Cleanup Output Files
     $outputFiles = @("$env:TEMP\Install-WinUtilProgramChoco.install-command.output.txt", "$env:TEMP\Install-WinUtilProgramChoco.uninstall-command.output.txt")
     foreach ($filePath in $outputFiles) {

@@ -91,16 +91,24 @@ $sync.selectedFeatures = [System.Collections.Generic.List[string]]::new()
 $sync.currentTab = "Install"
 $sync.selectedAppsStackPanel
 $sync.selectedAppsPopup
+# Operations performed in this session, listed in the intervention report
+$sync.SessionActions = [System.Collections.ArrayList]::Synchronized([System.Collections.ArrayList]::new())
 
 $dateTime = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
 
-# Set the path for the winutil directory
-$winutildir = "$env:LocalAppData\winutil"
+# Set the path for the WinRUtil data directory (preferences, logs and report settings)
+$winutildir = "$env:LocalAppData\WinRUtil"
+$legacydir = "$env:LocalAppData\winutil"
+if (-not (Test-Path $winutildir) -and (Test-Path "$legacydir\preferences.ini")) {
+    # Earlier versions shared the folder of the original WinUtil: keep the saved preferences
+    New-Item $winutildir -ItemType Directory -Force | Out-Null
+    Copy-Item "$legacydir\preferences.ini" $winutildir -ErrorAction SilentlyContinue
+}
 New-Item $winutildir -ItemType Directory -Force | Out-Null
 
 $logdir = "$winutildir\logs"
 New-Item $logdir -ItemType Directory -Force | Out-Null
-Start-Transcript -Path "$logdir\winutil_$dateTime.log" -Append -NoClobber | Out-Null
+Start-Transcript -Path "$logdir\winrutil_$dateTime.log" -Append -NoClobber | Out-Null
 
 # Set PowerShell window title
 $Host.UI.RawUI.WindowTitle = "WinRUtil (Admin)"

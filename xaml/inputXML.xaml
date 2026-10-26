@@ -871,6 +871,29 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
+        <Style x:Key="IconButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="4,2"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Opacity" Value="0.75"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Opacity" Value="1"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
         <Style TargetType="ProgressBar">
             <Setter Property="Foreground" Value="{DynamicResource ProgressBarForegroundColor}"/>
             <Setter Property="Background" Value="{DynamicResource ProgressBarBackgroundColor}"/>
@@ -1010,8 +1033,8 @@
                     </ToggleButton>
                     <ToggleButton Name="WPFTab5BT">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE753;" FontSize="15" Width="24" VerticalAlignment="Center" Foreground="{DynamicResource MainForegroundColor}"/>
-                            <TextBlock Text="Crea Win11" FontSize="14" VerticalAlignment="Center" Foreground="{DynamicResource MainForegroundColor}"/>
+                            <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE9F9;" FontSize="15" Width="24" VerticalAlignment="Center" Foreground="{DynamicResource MainForegroundColor}"/>
+                            <TextBlock Text="Rapporto" FontSize="14" VerticalAlignment="Center" Foreground="{DynamicResource MainForegroundColor}"/>
                         </StackPanel>
                     </ToggleButton>
                 </StackPanel>
@@ -1398,314 +1421,188 @@
                     </Grid>
                 </ScrollViewer>
             </TabItem>
-            <TabItem Header="Win11ISO" Visibility="Collapsed" Name="WPFTab5">
-                <Grid Name="Win11ISOPanel" Margin="{DynamicResource TabContentMargin}" Background="Transparent">
+            <TabItem Header="Report" Visibility="Collapsed" Name="WPFTab5">
+                <Grid Margin="{DynamicResource TabContentMargin}" Background="Transparent">
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>  <!-- Steps 1-4 -->
-                        <RowDefinition Height="*"/>     <!-- Log / Status -->
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <!-- Steps 1-4 -->
-                    <StackPanel Grid.Row="0">
+                    <!-- Toolbar -->
+                    <Border Grid.Row="0" Background="{DynamicResource GroupBorderBackgroundColor}" CornerRadius="12"
+                            BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="16,13" Margin="6,6,6,6">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Orientation="Vertical" VerticalAlignment="Center">
+                                <TextBlock Text="Rapporto di intervento" FontSize="{DynamicResource HeaderFontSize}" FontWeight="Bold"
+                                           Foreground="{DynamicResource MainForegroundColor}"/>
+                                <TextBlock Text="Prepara il rapporto da consegnare al cliente: dati del PC, operazioni eseguite con WinRUtil e note."
+                                           FontSize="12" Foreground="{DynamicResource MutedForegroundColor}" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                            </StackPanel>
+                            <Button Grid.Column="1" Name="WPFReportCreate" Content="Crea rapporto" MinWidth="128" Padding="12,0" VerticalAlignment="Center"/>
+                        </Grid>
+                    </Border>
 
-                            <!-- STEP 1 : Select Windows 11 ISO -->
-                            <Grid Name="WPFWin11ISOSelectSection" Margin="5" HorizontalAlignment="Left" MinWidth="{DynamicResource ButtonWidth}">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Margin="6,0,6,6">
 
-                                <!-- Left: File Selector -->
-                                <StackPanel Grid.Column="0" Margin="5,5,15,5">
-                                    <TextBlock FontSize="{DynamicResource FontSize}" FontWeight="Bold"
-                                               Foreground="{DynamicResource MainForegroundColor}" Margin="0,0,0,8">
-                                        Passo 1 - Seleziona la ISO di Windows 11
-                                    </TextBlock>
-                                    <TextBlock FontSize="{DynamicResource FontSize}" Foreground="{DynamicResource MainForegroundColor}"
-                                               TextWrapping="Wrap" Margin="0,0,0,6">
-                                        Sfoglia fino al file ISO di Windows 11 salvato sul computer. Sono supportate solo
-                                        le ISO ufficiali scaricate da Microsoft.
-                                    </TextBlock>
-                                    <TextBlock FontSize="{DynamicResource FontSize}" Foreground="{DynamicResource MainForegroundColor}"
-                                               TextWrapping="Wrap" Margin="0,0,0,12" FontStyle="Italic">
-                                        <Run FontWeight="Bold">NOTA:</Run> pensato solo per installazioni pulite e nuove di Windows.
-                                    </TextBlock>
+                            <!-- Intervention details -->
+                            <Border CornerRadius="14" Background="{DynamicResource GroupBorderBackgroundColor}"
+                                    BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="16,14" Margin="0,2,0,6">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                        <TextBlock Text="&#xE77B;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="{DynamicResource AccentColor}"
+                                                   VerticalAlignment="Center" Margin="0,0,9,0"/>
+                                        <TextBlock Text="DATI DELL'INTERVENTO" FontSize="11" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource MutedForegroundColor}" VerticalAlignment="Center"/>
+                                    </StackPanel>
                                     <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="16"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+                                        <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,0,12">
+                                            <TextBlock Text="Cliente" FontSize="12" Foreground="{DynamicResource MutedForegroundColor}" Margin="0,0,0,4"/>
+                                            <TextBox Name="WPFReportCustomer" BorderBrush="{DynamicResource BorderColor}"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="0" Grid.Column="2" Margin="0,0,0,12">
+                                            <TextBlock Text="Tecnico" FontSize="12" Foreground="{DynamicResource MutedForegroundColor}" Margin="0,0,0,4"/>
+                                            <TextBox Name="WPFReportTechnician" BorderBrush="{DynamicResource BorderColor}"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,0,12">
+                                            <TextBlock Text="Riferimento (n. lavoro, facoltativo)" FontSize="12" Foreground="{DynamicResource MutedForegroundColor}" Margin="0,0,0,4"/>
+                                            <TextBox Name="WPFReportReference" BorderBrush="{DynamicResource BorderColor}"/>
+                                        </StackPanel>
+                                    </Grid>
+                                    <TextBlock Text="Intestazione del rapporto (azienda, indirizzo, contatti)" FontSize="12"
+                                               Foreground="{DynamicResource MutedForegroundColor}" Margin="0,0,0,4"/>
+                                    <TextBox Name="WPFReportHeader" BorderBrush="{DynamicResource BorderColor}" AcceptsReturn="True"
+                                             TextWrapping="Wrap" Height="74" VerticalScrollBarVisibility="Auto" VerticalContentAlignment="Top"/>
+                                    <TextBlock Text="Il tecnico e l'intestazione vengono ricordati per i prossimi rapporti." FontSize="11"
+                                               Foreground="{DynamicResource MutedForegroundColor}" Margin="0,6,0,0"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Operations recorded in this session -->
+                            <Border CornerRadius="14" Background="{DynamicResource GroupBorderBackgroundColor}"
+                                    BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="16,14" Margin="0,0,0,6">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,12">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBox Grid.Column="0"
-                                                 Name="WPFWin11ISOPath"
-                                                 IsReadOnly="True"
-                                                 VerticalAlignment="Center"
-                                                 Padding="6,4"
-                                                 Margin="0,0,6,0"
-                                                 Text="Nessuna ISO selezionata..."
-                                                 Foreground="{DynamicResource MainForegroundColor}"
-                                                 Background="{DynamicResource MainBackgroundColor}"/>
-                                        <Button Grid.Column="1"
-                                                Name="WPFWin11ISOBrowseButton"
-                                                Content="Sfoglia"
-                                                Width="Auto" Padding="12,0"
-                                                Height="{DynamicResource ButtonHeight}"/>
+                                        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock Text="&#xE9D5;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="{DynamicResource AccentColor}"
+                                                       VerticalAlignment="Center" Margin="0,0,9,0"/>
+                                            <TextBlock Text="OPERAZIONI ESEGUITE IN QUESTA SESSIONE" FontSize="11" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource MutedForegroundColor}" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                        <Button Grid.Column="1" Name="WPFReportClear" Content="Svuota elenco" MinWidth="110" Padding="12,0" VerticalAlignment="Center"/>
                                     </Grid>
-                                    <TextBlock Name="WPFWin11ISOFileInfo"
-                                               FontSize="{DynamicResource FontSize}"
-                                               Foreground="{DynamicResource MainForegroundColor}"
-                                               Margin="0,8,0,0"
-                                               TextWrapping="Wrap"
-                                               Visibility="Collapsed"/>
-                                </StackPanel>
 
-                                <!-- Right: Download guidance -->
-                                <Border Grid.Column="1"
-                                        Background="{DynamicResource MainBackgroundColor}"
-                                        BorderBrush="{DynamicResource BorderColor}"
-                                        BorderThickness="1" CornerRadius="5"
-                                        Margin="5" Padding="15">
-                                    <StackPanel>
-                                        <TextBlock FontSize="{DynamicResource FontSize}" FontWeight="Bold"
-                                                   Foreground="{DynamicResource DangerColor}" Margin="0,0,0,10">
-                                            !!ATTENZIONE!! Devi usare una ISO ufficiale Microsoft
-                                        </TextBlock>
-                                        <TextBlock FontSize="{DynamicResource FontSize}"
-                                                   Foreground="{DynamicResource MainForegroundColor}"
-                                                   TextWrapping="Wrap" Margin="0,0,0,8">
-                                            Scarica la ISO di Windows 11 direttamente da Microsoft.com.
-                                            Le immagini di terze parti, pre-modificate o non ufficiali non sono supportate
-                                            e possono dare risultati difettosi.
-                                        </TextBlock>
-                                        <TextBlock FontSize="{DynamicResource FontSize}"
-                                                   Foreground="{DynamicResource MainForegroundColor}"
-                                                   TextWrapping="Wrap" Margin="0,0,0,6">
-                                            Nella pagina di download Microsoft, scegli:
-                                        </TextBlock>
-                                        <TextBlock FontSize="{DynamicResource FontSize}"
-                                                   Foreground="{DynamicResource MainForegroundColor}"
-                                                   TextWrapping="Wrap" Margin="12,0,0,12">
-                                            - Edizione : Windows 11
-                                            <LineBreak/>- Lingua : la lingua preferita
-                                            <LineBreak/>- Architettura : 64-bit (x64)
-                                        </TextBlock>
-                                        <Button Name="WPFWin11ISODownloadLink"
-                                                Content="Apri pagina download Microsoft"
-                                                HorizontalAlignment="Left"
-                                                Width="Auto" Padding="12,0"
-                                                Height="{DynamicResource ButtonHeight}"/>
-                                    </StackPanel>
-                                </Border>
-                            </Grid>
-
-                            <!-- STEP 2 : Mount and Verify ISO -->
-                            <Grid Name="WPFWin11ISOMountSection"
-                                  Margin="5"
-                                  Visibility="Collapsed"
-                                  HorizontalAlignment="Left" MinWidth="{DynamicResource ButtonWidth}">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-
-                                <StackPanel Grid.Column="0" Margin="0,0,20,0" VerticalAlignment="Top">
-                                    <TextBlock FontSize="{DynamicResource FontSize}" FontWeight="Bold"
-                                               Foreground="{DynamicResource MainForegroundColor}" Margin="0,0,0,8">
-                                        Passo 2 - Monta e verifica la ISO
-                                    </TextBlock>
-                                    <TextBlock FontSize="{DynamicResource FontSize}"
-                                               Foreground="{DynamicResource MainForegroundColor}"
-                                               TextWrapping="Wrap" Margin="0,0,0,12" MaxWidth="320">
-                                        Monta la ISO e verifica che contenga un install.wim di Windows 11
-                                        valido prima di applicare qualsiasi modifica.
-                                    </TextBlock>
-                                    <Button Name="WPFWin11ISOMountButton"
-                                            Content="Monta e verifica ISO"
-                                            HorizontalAlignment="Left"
-                                            Width="Auto" Padding="12,0"
-                                            Height="{DynamicResource ButtonHeight}"/>
-                                    <CheckBox Name="WPFWin11ISOInjectDrivers"
-                                              Content="Inietta i driver di sistema correnti"
-                                              FontSize="{DynamicResource FontSize}"
-                                              Foreground="{DynamicResource MainForegroundColor}"
-                                              IsChecked="False"
-                                              Margin="0,8,0,0"
-                                              ToolTip="Esporta tutti i driver di questo computer e li inietta in install.wim e boot.wim. Consigliato per sistemi con controller NVMe o di rete non supportati."/>
-                                </StackPanel>
-
-                                <!-- Verification results panel -->
-                                <Border Grid.Column="1"
-                                        Name="WPFWin11ISOVerifyResultPanel"
-                                        Background="{DynamicResource MainBackgroundColor}"
-                                        BorderBrush="{DynamicResource BorderColor}"
-                                        BorderThickness="1" CornerRadius="5"
-                                        Padding="12" Margin="0,0,0,0"
-                                        Visibility="Collapsed">
-                                    <StackPanel>
-                                        <TextBlock Name="WPFWin11ISOMountDriveLetter"
-                                                   FontSize="{DynamicResource FontSize}"
-                                                   Foreground="{DynamicResource MainForegroundColor}"
-                                                   Margin="0,0,0,4"/>
-                                        <TextBlock Name="WPFWin11ISOArchLabel"
-                                                   FontSize="{DynamicResource FontSize}"
-                                                   Foreground="{DynamicResource MainForegroundColor}"
-                                                   Margin="0,0,0,4"/>
-                                        <TextBlock FontSize="{DynamicResource FontSize}" FontWeight="Bold"
-                                                   Foreground="{DynamicResource MainForegroundColor}"
-                                                   Margin="0,6,0,4">
-                                            Seleziona edizione:
-                                        </TextBlock>
-                                        <ComboBox Name="WPFWin11ISOEditionComboBox"
-                                                  FontSize="{DynamicResource FontSize}"
-                                                  Foreground="{DynamicResource MainForegroundColor}"
-                                                  Background="{DynamicResource MainBackgroundColor}"
-                                                  HorizontalAlignment="Left"
-                                                  Margin="0,0,0,0"/>
-                                    </StackPanel>
-                                </Border>
-                            </Grid>
-
-                            <!-- STEP 3 : Modify install.wim -->
-                            <StackPanel Name="WPFWin11ISOModifySection"
-                                        Margin="5"
-                                        Visibility="Collapsed"
-                                        HorizontalAlignment="Left" MinWidth="{DynamicResource ButtonWidth}">
-                                <TextBlock FontSize="{DynamicResource FontSize}" FontWeight="Bold"
-                                           Foreground="{DynamicResource MainForegroundColor}" Margin="0,0,0,8">
-                                    Passo 3 - Modifica install.wim
-                                </TextBlock>
-                                <TextBlock FontSize="{DynamicResource FontSize}"
-                                           Foreground="{DynamicResource MainForegroundColor}"
-                                           TextWrapping="Wrap" Margin="0,0,0,12">
-                                    Il contenuto della ISO verrà estratto in una cartella di lavoro temporanea,
-                                    install.wim verrà modificato (componenti rimossi, ottimizzazioni applicate)
-                                    e il risultato verrà riassemblato. L'operazione può richiedere diversi minuti
-                                    a seconda dell'hardware.
-                                </TextBlock>
-                                <Button Name="WPFWin11ISOModifyButton"
-                                        Content="Avvia modifica e creazione ISO Windows"
-                                        HorizontalAlignment="Left"
-                                        Width="Auto" Padding="12,0"
-                                        Height="{DynamicResource ButtonHeight}"/>
-                            </StackPanel>
-
-                            <!-- STEP 4 : Output Options -->
-                            <StackPanel Name="WPFWin11ISOOutputSection"
-                                        Margin="5"
-                                        Visibility="Collapsed"
-                                        HorizontalAlignment="Left" MinWidth="{DynamicResource ButtonWidth}">
-                                <!-- Header row: title + Clean & Reset button -->
-                                <Grid Margin="0,0,0,12">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" FontSize="{DynamicResource FontSize}" FontWeight="Bold"
-                                               Foreground="{DynamicResource MainForegroundColor}"
-                                               VerticalAlignment="Center">
-                                        Passo 4 - Output: cosa vuoi fare con l'immagine modificata?
-                                    </TextBlock>
-                                    <Button Grid.Column="1"
-                                            Name="WPFWin11ISOCleanResetButton"
-                                            Content="Pulisci e reimposta"
-                                            Foreground="{DynamicResource DangerColor}"
-                                            Width="Auto" Padding="12,0"
-                                            Height="{DynamicResource ButtonHeight}"
-                                            ToolTip="Elimina la cartella di lavoro temporanea e riporta l'interfaccia al Passo 1"
-                                            Margin="12,0,0,0"/>
-                                </Grid>
-
-                                <!-- Choice prompt buttons -->
-                                <Grid Margin="0,0,0,12">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="16"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <Button Grid.Column="0"
-                                            Name="WPFWin11ISOChooseISOButton"
-                                            Content="Salva come file ISO"
-                                            HorizontalAlignment="Stretch"
-                                            Width="Auto" Padding="12,0"
-                                            Height="{DynamicResource ButtonHeight}"/>
-                                    <Button Grid.Column="2"
-                                            Name="WPFWin11ISOChooseUSBButton"
-                                            Content="Scrivi direttamente su unità USB (CANCELLA L'UNITÀ)"
-                                            Foreground="{DynamicResource DangerColor}"
-                                            HorizontalAlignment="Stretch"
-                                            Width="Auto" Padding="12,0"
-                                            Height="{DynamicResource ButtonHeight}"/>
-                                </Grid>
-
-                                <!-- USB write sub-panel (revealed on USB choice) -->
-                                <Border Name="WPFWin11ISOOptionUSB"
-                                        Style="{StaticResource BorderStyle}"
-                                        Visibility="Collapsed"
-                                        Margin="0,8,0,0">
-                                    <StackPanel>
-                                        <TextBlock FontSize="{DynamicResource FontSize}"
-                                                   Foreground="{DynamicResource MainForegroundColor}"
-                                                   TextWrapping="Wrap" Margin="0,0,0,8">
-                                            <Run FontWeight="Bold" Foreground="{DynamicResource DangerColor}">!! Tutti i dati sull'unità USB selezionata verranno cancellati definitivamente !!</Run>
-                                            <LineBreak/>
-                                            Seleziona qui sotto un'unità USB rimovibile, poi clicca Cancella e scrivi.
-                                        </TextBlock>
-                                        <!-- USB drive selector row -->
-                                        <Grid Margin="0,0,0,8">
+                                    <!-- The header row and the item rows share the widths of the time, section and result columns -->
+                                    <StackPanel Name="WPFReportActionsTable" Grid.IsSharedSizeScope="True" Visibility="Collapsed">
+                                        <Grid Margin="10,0,10,4">
                                             <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" SharedSizeGroup="ActTime"/>
+                                                <ColumnDefinition Width="Auto" SharedSizeGroup="ActArea"/>
                                                 <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto" SharedSizeGroup="ActResult"/>
                                             </Grid.ColumnDefinitions>
-                                            <ComboBox Grid.Column="0"
-                                                      Name="WPFWin11ISOUSBDriveComboBox"
-                                                      Foreground="{DynamicResource MainForegroundColor}"
-                                                      Background="{DynamicResource MainBackgroundColor}"
-                                                      VerticalAlignment="Center"
-                                                      Margin="0,0,6,0"/>
-                                            <Button Grid.Column="1"
-                                                    Name="WPFWin11ISORefreshUSBButton"
-                                                    Content="Aggiorna"
-                                                    Width="Auto" Padding="8,0"
-                                                    Height="{DynamicResource ButtonHeight}"/>
+                                            <TextBlock Grid.Column="0" Text="ORA" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource MutedForegroundColor}" Margin="0,0,24,0"/>
+                                            <TextBlock Grid.Column="1" Text="CATEGORIA" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource MutedForegroundColor}" Margin="0,0,24,0"/>
+                                            <TextBlock Grid.Column="2" Text="OPERAZIONE" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource MutedForegroundColor}" Margin="0,0,24,0"/>
+                                            <TextBlock Grid.Column="3" Text="ESITO" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource MutedForegroundColor}"/>
                                         </Grid>
-                                        <Button Name="WPFWin11ISOWriteUSBButton"
-                                                Content="Cancella e scrivi su USB"
-                                                Foreground="{DynamicResource DangerColor}"
-                                                HorizontalAlignment="Stretch"
-                                                Width="Auto" Padding="12,0"
-                                                Height="{DynamicResource ButtonHeight}"
-                                                Margin="0,0,0,10"/>
+                                        <ItemsControl Name="WPFReportActions" AlternationCount="2">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Name="ActRow" CornerRadius="6" Padding="10,6" Background="Transparent">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="Auto" SharedSizeGroup="ActTime"/>
+                                                                <ColumnDefinition Width="Auto" SharedSizeGroup="ActArea"/>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="Auto" SharedSizeGroup="ActResult"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <TextBlock Grid.Column="0" Text="{Binding Time}" FontSize="{DynamicResource FontSize}"
+                                                                       Foreground="{DynamicResource MutedForegroundColor}" Margin="0,0,24,0"/>
+                                                            <TextBlock Grid.Column="1" Text="{Binding Area}" FontSize="{DynamicResource FontSize}"
+                                                                       Foreground="{DynamicResource MutedForegroundColor}" Margin="0,0,24,0"/>
+                                                            <TextBlock Grid.Column="2" Text="{Binding Text}" FontSize="{DynamicResource FontSize}"
+                                                                       Foreground="{DynamicResource MainForegroundColor}" TextWrapping="Wrap" Margin="0,0,24,0"/>
+                                                            <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Top">
+                                                                <Ellipse Name="ActResultDot" Width="8" Height="8" Fill="{DynamicResource SuccessColor}"
+                                                                         VerticalAlignment="Center" Margin="0,0,7,0"/>
+                                                                <TextBlock Name="ActResultText" Text="{Binding Result}" FontSize="{DynamicResource FontSize}"
+                                                                           FontWeight="SemiBold" Foreground="{DynamicResource SuccessColor}"/>
+                                                            </StackPanel>
+                                                        </Grid>
+                                                    </Border>
+                                                    <DataTemplate.Triggers>
+                                                        <Trigger Property="ItemsControl.AlternationIndex" Value="1">
+                                                            <Setter TargetName="ActRow" Property="Background" Value="{DynamicResource DataGridAlternatingRowColor}"/>
+                                                        </Trigger>
+                                                        <DataTrigger Binding="{Binding Status}" Value="Error">
+                                                            <Setter TargetName="ActResultDot" Property="Fill" Value="{DynamicResource DangerColor}"/>
+                                                            <Setter TargetName="ActResultText" Property="Foreground" Value="{DynamicResource DangerColor}"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Status}" Value="Info">
+                                                            <Setter TargetName="ActResultDot" Property="Fill" Value="{DynamicResource MutedForegroundColor}"/>
+                                                            <Setter TargetName="ActResultText" Property="Foreground" Value="{DynamicResource MutedForegroundColor}"/>
+                                                        </DataTrigger>
+                                                    </DataTemplate.Triggers>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
                                     </StackPanel>
-                                </Border>
-                            </StackPanel>
+                                    <TextBlock Name="WPFReportActionsEmpty" FontSize="12" Foreground="{DynamicResource MutedForegroundColor}" TextWrapping="Wrap"
+                                               Text="Nessuna operazione registrata. Le operazioni fatte con WinRUtil (app installate, ottimizzazioni, riparazioni, stampanti, Wi-Fi) compaiono qui da sole."/>
+                                </StackPanel>
+                            </Border>
 
-                    </StackPanel>
+                            <!-- Notes -->
+                            <Border CornerRadius="14" Background="{DynamicResource GroupBorderBackgroundColor}"
+                                    BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="16,14" Margin="0,0,0,6">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                        <TextBlock Text="&#xE70B;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="{DynamicResource AccentColor}"
+                                                   VerticalAlignment="Center" Margin="0,0,9,0"/>
+                                        <TextBlock Text="NOTE PER IL CLIENTE" FontSize="11" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource MutedForegroundColor}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    <TextBox Name="WPFReportNotes" BorderBrush="{DynamicResource BorderColor}" AcceptsReturn="True" TextWrapping="Wrap"
+                                             Height="110" VerticalScrollBarVisibility="Auto" VerticalContentAlignment="Top"/>
+                                    <TextBlock Text="Per esempio: lavori fatti a mano, problemi riscontrati, consigli." FontSize="11"
+                                               Foreground="{DynamicResource MutedForegroundColor}" Margin="0,6,0,0"/>
+                                </StackPanel>
+                            </Border>
 
-                    <!-- Status Log (fills remaining height) -->
-                    <Grid Grid.Row="1" Margin="5">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0"
-                                   FontSize="{DynamicResource FontSize}" FontWeight="Bold"
-                                   Foreground="{DynamicResource MainForegroundColor}"
-                                   Margin="0,0,0,4">
-                            Registro attività
-                        </TextBlock>
-                        <TextBox Grid.Row="1"
-                                 Name="WPFWin11ISOStatusLog"
-                                 IsReadOnly="True"
-                                 TextWrapping="Wrap"
-                                 VerticalScrollBarVisibility="Visible"
-                                 VerticalAlignment="Stretch"
-                                 Padding="6"
-                                 Background="{DynamicResource MainBackgroundColor}"
-                                 Foreground="{DynamicResource MainForegroundColor}"
-                                 BorderBrush="{DynamicResource BorderColor}"
-                                 BorderThickness="1"
-                                 Text="Pronto. Seleziona una ISO di Windows 11 per iniziare."/>
-                    </Grid>
+                            <!-- Status log -->
+                            <Border CornerRadius="14" Background="{DynamicResource GroupBorderBackgroundColor}"
+                                    BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="14,12" Margin="0,0,0,6">
+                                <StackPanel>
+                                    <TextBlock Text="Registro attività" FontSize="{DynamicResource FontSize}" FontWeight="Bold"
+                                               Foreground="{DynamicResource MainForegroundColor}" Margin="0,0,0,6"/>
+                                    <TextBox Name="WPFReportLog" IsReadOnly="True" TextWrapping="Wrap" Height="70"
+                                             VerticalScrollBarVisibility="Auto" Background="Transparent"
+                                             Foreground="{DynamicResource MainForegroundColor}" BorderBrush="{DynamicResource BorderColor}"
+                                             BorderThickness="1" Padding="6"
+                                             Text="Pronto. Compila i dati e clicca 'Crea rapporto'."/>
+                                </StackPanel>
+                            </Border>
 
+                        </StackPanel>
+                    </ScrollViewer>
                 </Grid>
             </TabItem>
             <TabItem Header="Printers" Visibility="Collapsed" Name="WPFTab6">
@@ -2278,8 +2175,8 @@
                         <StackPanel Orientation="Vertical">
                             <TextBlock Text="Password Wi-Fi salvate" FontSize="{DynamicResource HeaderFontSize}" FontWeight="Bold"
                                        Foreground="{DynamicResource MainForegroundColor}" Margin="0,0,0,2"/>
-                            <TextBlock Text="Recupera le password delle reti Wi-Fi memorizzate su questo PC e trasferiscile su un altro PC." FontSize="12"
-                                       Foreground="{DynamicResource MutedForegroundColor}" Margin="0,0,0,12"/>
+                            <TextBlock Text="Recupera le password delle reti Wi-Fi salvate su questo PC, trasferiscile su un altro PC o condividile con un telefono tramite QR code." FontSize="12"
+                                       Foreground="{DynamicResource MutedForegroundColor}" TextWrapping="Wrap" Margin="0,0,0,12"/>
                             <WrapPanel Orientation="Horizontal">
                                 <Button Name="WPFWifiRefresh" Content="Scansiona reti Wi-Fi" Width="Auto" MinWidth="130" Margin="0,0,8,8" Padding="12,0"/>
                                 <Button Name="WPFWifiCopyAll" Content="Copia tutte" Width="Auto" MinWidth="110" Margin="0,0,8,8" Padding="12,0"/>
@@ -2342,6 +2239,23 @@
                                 </DataGridTemplateColumn>
                                 <DataGridTextColumn Header="Sicurezza" Binding="{Binding Security}" Width="*"/>
                                 <DataGridTextColumn Header="Auto" Binding="{Binding AutoConnect}" Width="Auto"/>
+                                <DataGridTemplateColumn Header="QR" Width="Auto">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <!-- Handled by the Click handler of WPFWifiList in main.ps1, which reads the network from Tag -->
+                                            <Button x:Name="WifiQrButton" Uid="WifiQr" Tag="{Binding}" Style="{StaticResource IconButtonStyle}"
+                                                    ToolTip="Mostra il QR code per collegare un telefono a questa rete">
+                                                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xED14;" FontSize="15"
+                                                           Foreground="{DynamicResource MainForegroundColor}"/>
+                                            </Button>
+                                            <DataTemplate.Triggers>
+                                                <DataTrigger Binding="{Binding CanShare}" Value="False">
+                                                    <Setter TargetName="WifiQrButton" Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </DataTemplate.Triggers>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
                             </DataGrid.Columns>
                         </DataGrid>
                     </Border>
@@ -2356,6 +2270,32 @@
                                      BorderThickness="1" Padding="6"
                                      Text="Pronto. Clicca 'Scansiona reti Wi-Fi' per elencare le reti salvate."/>
                         </StackPanel>
+                    </Border>
+
+                    <!-- QR code of the selected network, shown over the tab -->
+                    <Border Name="WPFWifiQrOverlay" Grid.Row="0" Grid.RowSpan="3" Visibility="Collapsed" Background="#99000000" CornerRadius="12" Margin="6">
+                        <Border Background="{DynamicResource MainBackgroundColor}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1"
+                                CornerRadius="14" Padding="22,18" Width="340" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <StackPanel>
+                                <TextBlock Text="Condividi la rete Wi-Fi" FontSize="{DynamicResource HeaderFontSize}" FontWeight="Bold"
+                                           Foreground="{DynamicResource MainForegroundColor}"/>
+                                <TextBlock Name="WPFWifiQrSsid" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource AccentColor}"
+                                           TextWrapping="Wrap" Margin="0,6,0,0"/>
+                                <TextBlock Name="WPFWifiQrDetails" FontSize="12" Foreground="{DynamicResource MutedForegroundColor}"
+                                           TextWrapping="Wrap" Margin="0,2,0,14"/>
+                                <Border Background="White" CornerRadius="8" HorizontalAlignment="Center" Padding="6">
+                                    <Image Name="WPFWifiQrImage" Width="236" Height="236" Stretch="Uniform" RenderOptions.EdgeMode="Aliased"/>
+                                </Border>
+                                <TextBlock Text="Inquadra il codice con la fotocamera del telefono: si collega alla rete senza digitare la password."
+                                           FontSize="12" Foreground="{DynamicResource MutedForegroundColor}" TextWrapping="Wrap"
+                                           TextAlignment="Center" Margin="0,14,0,16"/>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                    <Button Name="WPFWifiQrSave" Content="Salva immagine" Width="Auto" MinWidth="130" Padding="12,0" Margin="0,0,8,0"
+                                            ToolTip="Salva il QR code con il nome della rete e la password, pronto da stampare"/>
+                                    <Button Name="WPFWifiQrClose" Content="Chiudi" Width="Auto" MinWidth="90" Padding="12,0"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
                     </Border>
                 </Grid>
             </TabItem>

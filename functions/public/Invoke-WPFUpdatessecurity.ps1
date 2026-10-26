@@ -44,4 +44,5 @@
     Write-Host "================================="
     Write-Host "-- Updates Set to Recommended ---"
     Write-Host "================================="
+    Add-WinUtilSessionAction -Area "Aggiornamenti" -Text "Windows Update - Applica impostazioni di sicurezza"
 }
