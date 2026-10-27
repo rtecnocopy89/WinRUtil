@@ -5,12 +5,11 @@
     GitHub         : https://github.com/rtecnocopy89/WinRUtil
     Copyright      : (c) 2026 rtecnocopy89 - (c) 2022 CT Tech Group LLC
     Based on       : ChrisTitusTech/winutil (MIT)
-    Version        : 26.10.26
+    Version        : 26.10.27
 #>
 
 param (
     [string]$Config,
-    [ValidateSet("Standard", "Minimal", "Advanced")]
     [string]$Preset,
     [switch]$Run,
     [switch]$Noui,
@@ -22,6 +21,12 @@ if ($Config) {
 }
 
 if ($Preset) {
+    # Checked here rather than with ValidateSet: "irm | iex" runs the param block as plain
+    # variable declarations, and ValidateSet rejects their empty default value
+    if ($Preset -notin "Standard", "Minimal", "Advanced") {
+        Write-Host "Unknown preset '$Preset', use Standard, Minimal or Advanced" -ForegroundColor Red
+        return
+    }
     $PARAM_PRESET = $Preset
 }
 
@@ -86,7 +91,7 @@ Add-Type -AssemblyName System.Windows.Forms
 # Variable to sync between runspaces
 $sync = [Hashtable]::Synchronized(@{})
 $sync.PSScriptRoot = $PSScriptRoot
-$sync.version = "26.10.26"
+$sync.version = "26.10.27"
 $sync.configs = @{}
 $sync.Buttons = [System.Collections.Generic.List[PSObject]]::new()
 $sync.preferences = @{}

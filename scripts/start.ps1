@@ -10,7 +10,6 @@
 
 param (
     [string]$Config,
-    [ValidateSet("Standard", "Minimal", "Advanced")]
     [string]$Preset,
     [switch]$Run,
     [switch]$Noui,
@@ -22,6 +21,12 @@ if ($Config) {
 }
 
 if ($Preset) {
+    # Checked here rather than with ValidateSet: "irm | iex" runs the param block as plain
+    # variable declarations, and ValidateSet rejects their empty default value
+    if ($Preset -notin "Standard", "Minimal", "Advanced") {
+        Write-Host "Unknown preset '$Preset', use Standard, Minimal or Advanced" -ForegroundColor Red
+        return
+    }
     $PARAM_PRESET = $Preset
 }
 
