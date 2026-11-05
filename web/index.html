@@ -202,7 +202,24 @@ td.nw{white-space:nowrap}
 .modal{position:fixed;inset:0;display:none;place-items:center;background:rgba(0,0,0,.55);z-index:40;backdrop-filter:blur(3px)}
 .modal.on{display:grid}
 .modal .card{width:min(460px,calc(100% - 32px));padding:22px;max-height:calc(100vh - 40px);overflow:auto}
-.modal .card.lg{width:min(920px,calc(100% - 32px))}
+/* finestra grande: intestazione e pulsanti fissi, solo l'elenco scorre */
+.modal .card.lg{width:min(980px,calc(100% - 32px));max-height:calc(100vh - 32px);display:flex;flex-direction:column;overflow:hidden;padding:20px 22px}
+.mhead{display:flex;align-items:flex-start;gap:12px;flex:0 0 auto}
+.mhead h4{margin:0 0 4px}
+.mhead p{margin:0 0 12px;font-size:13px}
+.mx{margin-left:auto;flex:0 0 32px;width:32px;height:32px;border-radius:8px;border:1px solid var(--line2);background:none;color:var(--mu);cursor:pointer;display:grid;place-items:center}
+.mx:hover{color:var(--tx);border-color:rgba(255,255,255,.3)}
+.mx svg{width:16px;height:16px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round}
+.mlist{flex:1 1 auto;min-height:140px;overflow:auto;border:1px solid var(--line);border-radius:12px;background:var(--glass)}
+.mlist table{table-layout:fixed}
+.mlist th{position:sticky;top:0;z-index:1;background:#121724}
+.mlist td,.mlist th{padding:9px 12px}
+.mlist td{overflow-wrap:anywhere}
+.mlist .note{margin:0;font-size:11.5px;color:var(--mu2)}
+.mlist input[type=checkbox],#updAll{width:16px;height:16px;accent-color:var(--accent);cursor:pointer;margin:0}
+.mfoot{flex:0 0 auto;display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:flex-end;padding-top:14px;margin-top:14px;border-top:1px solid var(--line)}
+.mfoot .count{margin-right:auto}
+@media (max-width:640px){.modal .card.lg{padding:16px}}
 .modal h4{margin:0 0 8px;font-size:17px}
 .modal p{margin:0 0 18px;color:var(--mu)}
 .qr{background:#fff;border-radius:12px;padding:10px;width:300px;max-width:100%;margin:6px auto 14px;display:block}
@@ -408,10 +425,11 @@ td.nw{white-space:nowrap}
     <div class="row" style="justify-content:flex-end"><button type="button" class="btn ghost sm" id="qrSave">Salva come immagine</button><button type="button" class="btn primary sm" id="qrClose">Chiudi</button></div>
   </div></div>
   <div class="modal" id="updModal" role="dialog" aria-modal="true" aria-labelledby="updTitle"><div class="card lg">
-    <h4 id="updTitle">Aggiorna applicazioni</h4>
-    <p id="updStatus"></p>
-    <div class="card tcard tscroll"><table><thead><tr><th style="width:34px"><input type="checkbox" id="updAll" aria-label="Seleziona tutte"></th><th>Applicazione</th><th>Installata</th><th>Disponibile</th><th>Esito</th></tr></thead><tbody id="updBody"></tbody></table></div>
-    <div class="row" style="justify-content:flex-end;margin-top:14px"><span class="count" id="updCount" style="margin-right:auto"></span><button type="button" class="btn ghost sm" id="updRefresh">Cerca di nuovo</button><button type="button" class="btn ghost sm" id="updClose">Chiudi</button><button type="button" class="btn primary sm" id="updStart">Aggiorna selezionate</button></div>
+    <div class="mhead"><div><h4 id="updTitle">Aggiorna applicazioni</h4><p id="updStatus"></p></div>
+      <button type="button" class="mx" id="updX" aria-label="Chiudi"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="mlist"><table><colgroup><col style="width:44px"><col><col style="width:17%"><col style="width:17%"><col style="width:20%"></colgroup>
+      <thead><tr><th><input type="checkbox" id="updAll" aria-label="Seleziona tutte"></th><th>Applicazione</th><th>Installata</th><th>Disponibile</th><th>Esito</th></tr></thead><tbody id="updBody"></tbody></table></div>
+    <div class="mfoot"><span class="count" id="updCount"></span><button type="button" class="btn ghost sm" id="updRefresh">Cerca di nuovo</button><button type="button" class="btn ghost sm" id="updClose">Chiudi</button><button type="button" class="btn primary sm" id="updStart">Aggiorna selezionate</button></div>
   </div></div>
   <div class="toast" id="toast"></div>
 </div>
@@ -634,8 +652,8 @@ td.nw{white-space:nowrap}
       cb.addEventListener('change', function () { if (cb.checked) updSel[u.id] = true; else delete updSel[u.id]; updCount(); });
       td.appendChild(cb); tr.appendChild(td);
       var n = el('td'); n.appendChild(el('div', '', u.name)); var sm = el('div', 'note', u.id); sm.style.margin = '0'; n.appendChild(sm); tr.appendChild(n);
-      tr.appendChild(el('td', 'nw c-mu', u.version || '?')); tr.appendChild(el('td', 'nw', u.available));
-      var r = results && results[u.id]; tr.appendChild(el('td', 'nw ' + (r ? (LEVEL[r.l] || '') : ''), r ? r.t : ''));
+      tr.appendChild(el('td', 'c-mu', u.version || '?')); tr.appendChild(el('td', '', u.available));
+      var r = results && results[u.id]; tr.appendChild(el('td', r ? (LEVEL[r.l] || '') : '', r ? r.t : ''));
       tb.appendChild(tr);
     });
     updCount();
@@ -655,6 +673,7 @@ td.nw{white-space:nowrap}
   $('btnUpdates').addEventListener('click', openUpdates);
   $('updRefresh').addEventListener('click', function () { loadUpdates(true); });
   $('updClose').addEventListener('click', function () { $('updModal').classList.remove('on'); });
+  $('updX').addEventListener('click', function () { $('updModal').classList.remove('on'); });
   $('updAll').addEventListener('change', function () { var v = this.checked; updList.forEach(function (u) { if (!updDone[u.id]) { if (v) updSel[u.id] = true; else delete updSel[u.id]; } }); renderUpdates(lastResults); });
   var lastResults = null;
   $('updStart').addEventListener('click', function () {
