@@ -14823,6 +14823,21 @@ td.nw{white-space:nowrap}
 .form label.full{grid-column:1/-1}
 .fld{width:100%;padding:9px 12px;border:1px solid var(--line2);border-radius:9px;background:rgba(7,9,15,.6);color:var(--tx);outline:none;font-weight:400;resize:vertical}
 
+/* sicurezza: riquadro con bordo sfumato luminoso */
+.cta{position:relative;padding:1.5px;border-radius:16px;background:linear-gradient(137deg,var(--accent) 0%,var(--indigo) 100%);filter:drop-shadow(0 0 18px rgba(61,245,160,.22));transition:filter .3s var(--ease);max-width:860px}
+.cta:hover,.cta:focus-within{filter:drop-shadow(0 0 28px rgba(61,245,160,.55))}
+.cta .in{background:#0d1119;border-radius:14.5px;padding:22px 24px;display:flex;gap:20px;align-items:flex-start}
+.cta .shield{width:44px;height:44px;flex:0 0 44px;stroke:var(--accent);fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.cta h3{margin:0 0 6px;font-size:18px}
+.cta p{margin:0 0 14px;color:var(--mu)}
+.cta ul{margin:0 0 18px;padding-left:18px;color:var(--mu);font-size:13px}
+.cta ul li{margin:3px 0}
+.go{border:0;border-radius:9px;padding:10px 18px;font-weight:700;background:var(--accent);color:#07090F;cursor:pointer;box-shadow:0 8px 24px -12px var(--glow);transition:transform .2s var(--ease),box-shadow .2s var(--ease)}
+.go:hover{transform:translateY(-1px);box-shadow:0 10px 28px -10px var(--glow)}
+.go:focus-visible{outline:2px solid #fff;outline-offset:3px}
+.go:disabled{opacity:.45;cursor:not-allowed;transform:none}
+@media (max-width:600px){.cta .in{flex-direction:column;padding:18px}}
+
 /* activity dock */
 .dock{position:fixed;left:0;right:0;bottom:0;z-index:20;border-top:1px solid var(--line2);background:rgba(11,14,22,.92);backdrop-filter:blur(14px);transform:translateY(100%);transition:transform .35s var(--ease)}
 .dock.on{transform:none}
@@ -14887,6 +14902,7 @@ td.nw{white-space:nowrap}
       <button type="button" class="nav" data-v="prn" title="Alt+P"><svg viewBox="0 0 24 24"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/></svg>Stampanti</button>
       <button type="button" class="nav" data-v="wifi" title="Alt+F"><svg viewBox="0 0 24 24"><path d="M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M2 9a15 15 0 0 1 20 0"/><circle cx="12" cy="19.5" r="1"/></svg>Wi-Fi</button>
       <button type="button" class="nav" data-v="rep" title="Alt+R"><svg viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>Rapporto</button>
+      <button type="button" class="nav" data-v="sec" title="Alt+B"><svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>Sicurezza</button>
       <div class="foot">
         <p>Selezioni di app, ottimizzazioni e funzionalit&agrave;:</p>
         <div class="row" style="gap:6px"><button type="button" class="btn ghost sm" id="btnSelExport" style="flex:1">Esporta</button><button type="button" class="btn ghost sm" id="btnSelImport" style="flex:1">Importa</button></div>
@@ -15010,6 +15026,24 @@ td.nw{white-space:nowrap}
         </div>
         <div class="sec"><h3>Operazioni eseguite <span class="n" id="repN"></span></h3>
           <div class="card tcard"><table><thead><tr><th>Ora</th><th>Categoria</th><th>Operazione</th><th>Esito</th></tr></thead><tbody id="repBody"></tbody></table></div></div>
+      </section>
+
+      <!-- SICUREZZA -->
+      <section class="view" id="v-sec">
+        <div class="head"><div><h2>Sicurezza</h2><p>Controllo del PC per chi usa l'home banking.</p></div></div>
+        <div class="cta"><div class="in">
+          <svg class="shield" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
+          <div>
+            <h3>Controllo sicurezza home banking</h3>
+            <p>CyberRSecurityCheck verifica se il PC &egrave; stato manomesso, ad esempio con IBAN sostituiti durante i bonifici. Non modifica nulla e dura 3-10 minuti.</p>
+            <ul>
+              <li>Si apre in una finestra separata, con il rapporto finale da consegnare al cliente.</li>
+              <li>Viene scaricato da GitHub e avviato solo se l'impronta SHA256 corrisponde a quella pubblicata.</li>
+              <li>I rapporti restano in <span class="pw">%LOCALAPPDATA%\CyberRSecurityCheck\Report</span>.</li>
+            </ul>
+            <button type="button" class="go" id="btnCyber">Avvia controllo</button>
+          </div>
+        </div></div>
       </section>
     </main>
   </div>
@@ -15533,7 +15567,7 @@ td.nw{white-space:nowrap}
   }
   var FREE = { btnSysRefresh: 1, btnWifiRefresh: 1, btnWifiCopy: 1, btnPrnRefresh: 1, qrClose: 1, updClose: 1, btnSelExport: 1, btnSelImport: 1 };
   function setBusy(b) {
-    document.querySelectorAll('main .btn, .tg, main select, .side .foot .btn, .modal .btn').forEach(function (x) { if (!FREE[x.id] && x.closest('#modal') === null) x.disabled = b; });
+    document.querySelectorAll('main .btn, main .go, .tg, main select, .side .foot .btn, .modal .btn').forEach(function (x) { if (!FREE[x.id] && x.closest('#modal') === null) x.disabled = b; });
     if (!b) { $('btnPrnRemove').disabled = !prnSel; if (loaded.tg) loadToggles(); }
     updCount();
   }
@@ -15566,9 +15600,10 @@ td.nw{white-space:nowrap}
   $('btnLog').addEventListener('click', function () { var o = $('dock').classList.toggle('open'); $('btnLog').textContent = o ? 'Nascondi' : 'Dettagli'; if (o) $('log').scrollTop = $('log').scrollHeight; });
   $('btnDockClose').addEventListener('click', function () { if (!running) $('dock').classList.remove('on', 'open'); $('btnLog').textContent = 'Dettagli'; });
   $('btnClassic').addEventListener('click', function () { run('/api/classic', {}); });
+  $('btnCyber').addEventListener('click', function () { run('/api/cyber', {}); });
 
   /* ---------- scorciatoie da tastiera (come la versione classica) ---------- */
-  var KEYS = { s: 'sys', i: 'inst', t: 'tw', a: 'appx', c: 'cfg', u: 'upd', p: 'prn', f: 'wifi', r: 'rep' };
+  var KEYS = { s: 'sys', i: 'inst', t: 'tw', a: 'appx', c: 'cfg', u: 'upd', p: 'prn', f: 'wifi', r: 'rep', b: 'sec' };
   window.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') {
       if ($('modal').classList.contains('on')) { $('mNo').click(); return; }
@@ -15632,6 +15667,14 @@ function Show-WinRUtilWebFileDialog {
         if ($Mode -eq 'Open' -and $Multi) { return @($dlg.FileNames) }
         return @($dlg.FileName)
     } finally { $owner.Close(); $owner.Dispose(); $dlg.Dispose() }
+}
+
+function Test-WinRUtilSha256 {
+    # Confronta l'impronta SHA256 di un file con il contenuto di un file .sha256 ("<impronta>  <nome>")
+    param([string]$Path, [string]$ShaText)
+    $expected = (([string]$ShaText).Trim() -split '\s+')[0]
+    if ($expected -notmatch '^[0-9a-fA-F]{64}$' -or -not (Test-Path -LiteralPath $Path)) { return $false }
+    return ((Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash -ieq $expected)
 }
 
 function New-RWebSessionState {
@@ -15949,6 +15992,35 @@ $script:RWebTasks = @{
         Write-Host "Report salvato: $($f[0])"
         if (-not $isText) { Start-Process -FilePath $f[0] }
     }
+    cyber = {
+        # CyberRSecurityCheck (stesso autore): scaricato nella sua cartella abituale, cosi' i rapporti restano
+        # nello stesso posto, verificato con l'impronta SHA256 pubblicata e avviato come file
+        $dir = Join-Path $env:LOCALAPPDATA 'CyberRSecurityCheck'
+        New-Item -ItemType Directory -Path $dir -Force | Out-Null
+        $file = Join-Path $dir 'cyberrsecuritycheck.ps1'
+        $tmp = "$file.download"
+        $base = 'https://raw.githubusercontent.com/rtecnocopy89/CyberRSecurityCheck/main/cyberrsecuritycheck.ps1'
+        [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+        Set-WinUtilProgressbar -Label 'Download di CyberRSecurityCheck' -Percent 20
+        try {
+            Invoke-WebRequest -Uri $base -OutFile $tmp -UseBasicParsing -ErrorAction Stop
+            $sha = [string](Invoke-WebRequest -Uri "$base.sha256" -UseBasicParsing -ErrorAction Stop).Content
+        } catch {
+            Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
+            throw "Download di CyberRSecurityCheck non riuscito: controlla la connessione a Internet. ($($_.Exception.Message))"
+        }
+        Set-WinUtilProgressbar -Label 'Verifica dell''impronta SHA256' -Percent 70
+        if (-not (Test-WinRUtilSha256 -Path $tmp -ShaText $sha)) {
+            Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
+            throw 'Il file scaricato non corrisponde all''impronta SHA256 pubblicata: non e'' stato avviato. Riprova tra qualche minuto.'
+        }
+        Move-Item -LiteralPath $tmp -Destination $file -Force
+        Write-Host ("Impronta verificata: {0}" -f (($sha.Trim() -split '\s+')[0]))
+        $exe = (Get-Process -Id $PID).Path
+        Start-Process -FilePath $exe -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$file`"")
+        Add-WinUtilSessionAction -Area 'Sicurezza' -Text 'Controllo di sicurezza con CyberRSecurityCheck' -Status 'Info'
+        Write-Host 'CyberRSecurityCheck avviato in una nuova finestra. I rapporti sono in %LOCALAPPDATA%\CyberRSecurityCheck\Report.'
+    }
     classic = {
         # Niente download ed esecuzione sulla riga di comando di un nuovo PowerShell: gli antivirus lo bloccano.
         # Il file della versione classica si scarica qui e si avvia come file.
@@ -15973,7 +16045,7 @@ $script:RWebTasks = @{
     }
 }
 
-$script:RWebStrictKinds = @('printer', 'combo', 'wifiexport', 'wifiimport', 'wifiqrsave', 'report', 'sysexport', 'classic')
+$script:RWebStrictKinds = @('printer', 'combo', 'wifiexport', 'wifiimport', 'wifiqrsave', 'report', 'sysexport', 'classic', 'cyber')
 
 $script:RWebQueries = @{
     system   = '$r = Get-WinUtilSystemReport; $r.Disks = @($r.Disks | ForEach-Object { [pscustomobject]$_ }); [pscustomobject]$r'
@@ -16337,6 +16409,7 @@ function Invoke-RWebRequest {
             if ($m -in @('Winget', 'Choco')) { $sync.preferences.packagemanager = [PackageManagers]$m; try { Set-Preferences -save } catch { } }
             Send-RWebJson $Ctx @{ ok = $true }
         }
+        'POST /api/cyber' { & $start 'cyber' 'Avvio di CyberRSecurityCheck' @{} }
         'POST /api/classic' { & $start 'classic' 'Apertura della versione classica' @{ LocalFile = $st.ClassicFile } }
         'POST /api/exit' { Send-RWebJson $Ctx @{ ok = $true }; if ($st.Phase -ne 'running') { $st.Quit = $true } }
         default { Send-RWebJson $Ctx @{ error = 'not found' } 404 }

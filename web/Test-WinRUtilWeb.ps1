@@ -59,7 +59,7 @@ Assert 'Pagina senza risorse esterne (solo le icone dei siti delle app)' {
 }
 $server = [IO.File]::ReadAllText((Join-Path $PSScriptRoot 'server.ps1'))
 Assert 'Tutte le sezioni della versione classica nella barra laterale' {
-    @('sys', 'inst', 'tw', 'appx', 'cfg', 'upd', 'prn', 'wifi', 'rep' | Where-Object { $html -notlike "*data-v=""$_""*" -or $html -notlike "*id=""v-$_""*" }).Count -eq 0
+    @('sys', 'inst', 'tw', 'appx', 'cfg', 'upd', 'prn', 'wifi', 'rep', 'sec' | Where-Object { $html -notlike "*data-v=""$_""*" -or $html -notlike "*id=""v-$_""*" }).Count -eq 0
 }
 Assert 'Ogni chiamata della pagina ha il suo percorso nel server' {
     $routes = @([regex]::Matches($server, "'(GET|POST) (/api/[a-z/]+)'") | ForEach-Object { "$($_.Groups[1].Value) $($_.Groups[2].Value)" })
@@ -84,6 +84,27 @@ Assert 'Versione classica aperta da file, senza irm | iex sulla riga di comando 
     $c = $script:RWebTasks['classic'].ToString()
     $c -match "'-File'" -and $c -notmatch '\|\s*iex|Invoke-Expression|-Command' -and $server -notmatch '\|\s*iex'
 }
+Assert 'CyberRSecurityCheck avviato da file solo dopo la verifica SHA256' {
+    $c = $script:RWebTasks['cyber'].ToString()
+    $c -match "'-File'" -and $c -match 'Test-WinRUtilSha256' -and $c -match '\.sha256' -and $c -notmatch '\|\s*iex|Invoke-Expression|-Command' -and
+    $c.IndexOf('Test-WinRUtilSha256') -lt $c.IndexOf('Start-Process') -and $script:RWebStrictKinds -contains 'cyber'
+}
+$shaFile = Join-Path $winutildir 'prova-sha.txt'
+[IO.File]::WriteAllText($shaFile, 'contenuto di prova')
+$shaGood = (Get-FileHash -LiteralPath $shaFile -Algorithm SHA256).Hash.ToLower() + '  prova-sha.txt'
+Assert 'Impronta SHA256: accetta il file giusto' { Test-WinRUtilSha256 -Path $shaFile -ShaText $shaGood }
+Assert 'Impronta SHA256: rifiuta file modificati, impronte vuote o non valide' {
+    -not (Test-WinRUtilSha256 -Path $shaFile -ShaText ('0' * 64)) -and -not (Test-WinRUtilSha256 -Path $shaFile -ShaText '') -and
+    -not (Test-WinRUtilSha256 -Path $shaFile -ShaText '<html>404</html>') -and -not (Test-WinRUtilSha256 -Path (Join-Path $winutildir 'manca.txt') -ShaText $shaGood)
+}
+try {
+    [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+    $crsUrl = 'https://raw.githubusercontent.com/rtecnocopy89/CyberRSecurityCheck/main/cyberrsecuritycheck.ps1'
+    $crsTmp = Join-Path $winutildir 'crs.ps1'
+    Invoke-WebRequest -Uri $crsUrl -OutFile $crsTmp -UseBasicParsing -ErrorAction Stop
+    $crsSha = [string](Invoke-WebRequest -Uri "$crsUrl.sha256" -UseBasicParsing -ErrorAction Stop).Content
+    Assert 'CyberRSecurityCheck pubblicato su GitHub con impronta corrispondente' { Test-WinRUtilSha256 -Path $crsTmp -ShaText $crsSha }
+} catch { Write-Host "  NOTA  GitHub non raggiungibile, impronta di CyberRSecurityCheck non verificata: $($_.Exception.Message)" -ForegroundColor DarkYellow }
 Assert 'Pagina con script protetto da nonce (CSP)' { $html -like '*<script nonce="__NONCE__">*' -and ([regex]::Matches($html, '<script')).Count -eq 1 }
 foreach ($f in @('index.html', 'server.ps1', 'main.ps1')) {
     Assert "$f solo ASCII (il file unico deve essere ASCII)" { @([IO.File]::ReadAllBytes((Join-Path $PSScriptRoot $f)) | Where-Object { $_ -gt 127 }).Count -eq 0 }

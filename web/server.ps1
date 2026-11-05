@@ -46,6 +46,14 @@ function Show-WinRUtilWebFileDialog {
     } finally { $owner.Close(); $owner.Dispose(); $dlg.Dispose() }
 }
 
+function Test-WinRUtilSha256 {
+    # Confronta l'impronta SHA256 di un file con il contenuto di un file .sha256 ("<impronta>  <nome>")
+    param([string]$Path, [string]$ShaText)
+    $expected = (([string]$ShaText).Trim() -split '\s+')[0]
+    if ($expected -notmatch '^[0-9a-fA-F]{64}$' -or -not (Test-Path -LiteralPath $Path)) { return $false }
+    return ((Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash -ieq $expected)
+}
+
 function New-RWebSessionState {
     # Stesse funzioni e variabili della versione classica, con la barra di avanzamento collegata alla pagina
     $iss = [System.Management.Automation.Runspaces.InitialSessionState]::CreateDefault()
@@ -361,6 +369,35 @@ $script:RWebTasks = @{
         Write-Host "Report salvato: $($f[0])"
         if (-not $isText) { Start-Process -FilePath $f[0] }
     }
+    cyber = {
+        # CyberRSecurityCheck (stesso autore): scaricato nella sua cartella abituale, cosi' i rapporti restano
+        # nello stesso posto, verificato con l'impronta SHA256 pubblicata e avviato come file
+        $dir = Join-Path $env:LOCALAPPDATA 'CyberRSecurityCheck'
+        New-Item -ItemType Directory -Path $dir -Force | Out-Null
+        $file = Join-Path $dir 'cyberrsecuritycheck.ps1'
+        $tmp = "$file.download"
+        $base = 'https://raw.githubusercontent.com/rtecnocopy89/CyberRSecurityCheck/main/cyberrsecuritycheck.ps1'
+        [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+        Set-WinUtilProgressbar -Label 'Download di CyberRSecurityCheck' -Percent 20
+        try {
+            Invoke-WebRequest -Uri $base -OutFile $tmp -UseBasicParsing -ErrorAction Stop
+            $sha = [string](Invoke-WebRequest -Uri "$base.sha256" -UseBasicParsing -ErrorAction Stop).Content
+        } catch {
+            Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
+            throw "Download di CyberRSecurityCheck non riuscito: controlla la connessione a Internet. ($($_.Exception.Message))"
+        }
+        Set-WinUtilProgressbar -Label 'Verifica dell''impronta SHA256' -Percent 70
+        if (-not (Test-WinRUtilSha256 -Path $tmp -ShaText $sha)) {
+            Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
+            throw 'Il file scaricato non corrisponde all''impronta SHA256 pubblicata: non e'' stato avviato. Riprova tra qualche minuto.'
+        }
+        Move-Item -LiteralPath $tmp -Destination $file -Force
+        Write-Host ("Impronta verificata: {0}" -f (($sha.Trim() -split '\s+')[0]))
+        $exe = (Get-Process -Id $PID).Path
+        Start-Process -FilePath $exe -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$file`"")
+        Add-WinUtilSessionAction -Area 'Sicurezza' -Text 'Controllo di sicurezza con CyberRSecurityCheck' -Status 'Info'
+        Write-Host 'CyberRSecurityCheck avviato in una nuova finestra. I rapporti sono in %LOCALAPPDATA%\CyberRSecurityCheck\Report.'
+    }
     classic = {
         # Niente download ed esecuzione sulla riga di comando di un nuovo PowerShell: gli antivirus lo bloccano.
         # Il file della versione classica si scarica qui e si avvia come file.
@@ -385,7 +422,7 @@ $script:RWebTasks = @{
     }
 }
 
-$script:RWebStrictKinds = @('printer', 'combo', 'wifiexport', 'wifiimport', 'wifiqrsave', 'report', 'sysexport', 'classic')
+$script:RWebStrictKinds = @('printer', 'combo', 'wifiexport', 'wifiimport', 'wifiqrsave', 'report', 'sysexport', 'classic', 'cyber')
 
 $script:RWebQueries = @{
     system   = '$r = Get-WinUtilSystemReport; $r.Disks = @($r.Disks | ForEach-Object { [pscustomobject]$_ }); [pscustomobject]$r'
@@ -749,6 +786,7 @@ function Invoke-RWebRequest {
             if ($m -in @('Winget', 'Choco')) { $sync.preferences.packagemanager = [PackageManagers]$m; try { Set-Preferences -save } catch { } }
             Send-RWebJson $Ctx @{ ok = $true }
         }
+        'POST /api/cyber' { & $start 'cyber' 'Avvio di CyberRSecurityCheck' @{} }
         'POST /api/classic' { & $start 'classic' 'Apertura della versione classica' @{ LocalFile = $st.ClassicFile } }
         'POST /api/exit' { Send-RWebJson $Ctx @{ ok = $true }; if ($st.Phase -ne 'running') { $st.Quit = $true } }
         default { Send-RWebJson $Ctx @{ error = 'not found' } 404 }
