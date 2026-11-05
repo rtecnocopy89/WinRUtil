@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WinRUtil</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2307090F'/%3E%3Cpath d='M7 9l3.5 14L16 12l5.5 11L25 9' stroke='%233DF5A0' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#07090F; --bg2:#0B0E16; --elev:#121724; --glass:rgba(22,27,38,.55); --glass2:rgba(255,255,255,.04);
+  --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.14);
+  --tx:#F8FAFC; --mu:#8A93A6; --mu2:#667085;
+  --accent:#3DF5A0; --accent2:#2BD389; --glow:rgba(61,245,160,.4); --indigo:#5E6AD2;
+  --ok:#3DF5A0; --warn:#F5A623; --bad:#EF4444;
+  --radius:14px; --ease:cubic-bezier(.16,1,.3,1);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;color:var(--tx);font:14px/1.5 "Inter","Segoe UI Variable Text","Segoe UI",system-ui,Arial,sans-serif;-webkit-font-smoothing:antialiased;
+  background:radial-gradient(1100px 600px at 85% -10%,rgba(94,106,210,.16),transparent 60%),radial-gradient(900px 520px at -10% 110%,rgba(61,245,160,.08),transparent 60%),linear-gradient(180deg,var(--bg2),var(--bg))}
+button,input,select{font:inherit}
+.app{min-height:100%;display:flex;flex-direction:column}
+
+/* header */
+.top{display:flex;align-items:center;gap:14px;padding:14px 24px;border-bottom:1px solid var(--line);background:rgba(7,9,15,.72);backdrop-filter:blur(10px);position:sticky;top:0;z-index:10}
+.brand{display:flex;align-items:center;gap:12px}
+.brand h1{font-size:17px;margin:0;font-weight:700;letter-spacing:.2px}
+.brand h1 span{color:var(--accent)}
+.brand small{display:block;color:var(--mu);font-size:12px;margin-top:1px}
+.top .meta{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;border:1px solid var(--line2);color:var(--mu);font-size:12px;background:var(--glass2)}
+.chip i{width:7px;height:7px;border-radius:50%;background:var(--ok);display:inline-block;box-shadow:0 0 8px var(--glow)}
+
+/* layout */
+.shell{flex:1;display:grid;grid-template-columns:230px 1fr;min-height:0}
+@media (max-width:860px){.shell{grid-template-columns:1fr}.side{position:static!important;flex-direction:row!important;overflow-x:auto;height:auto!important}.side .foot{display:none}}
+.side{position:sticky;top:61px;height:calc(100vh - 61px);display:flex;flex-direction:column;gap:4px;padding:18px 12px;border-right:1px solid var(--line)}
+.nav{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:10px;border:1px solid transparent;background:none;color:var(--mu);cursor:pointer;text-align:left;font-weight:500;white-space:nowrap;transition:all .2s var(--ease)}
+.nav svg{width:18px;height:18px;flex:0 0 18px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.nav:hover{color:var(--tx);background:var(--glass2)}
+.nav.on{color:var(--tx);background:rgba(61,245,160,.08);border-color:rgba(61,245,160,.25);box-shadow:inset 3px 0 0 var(--accent)}
+.nav.on svg{stroke:var(--accent)}
+.side .foot{margin-top:auto;color:var(--mu2);font-size:12px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--glass2)}
+.side .foot p{margin:0 0 10px}
+main{min-width:0;padding:26px 28px 150px;max-width:1240px;width:100%}
+.view{display:none;animation:fade .3s var(--ease)}
+.view.on{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.head h2{font-size:24px;margin:0 0 4px;font-weight:700;letter-spacing:-.2px}
+.head p{margin:0;color:var(--mu);max-width:680px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+
+/* buttons */
+.btn{min-width:110px;position:relative;cursor:pointer;padding:10px 18px;border:0;border-radius:9px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);
+  background:radial-gradient(ellipse at bottom,rgba(71,81,92,1) 0%,rgba(11,21,30,1) 45%);color:rgba(255,255,255,.8);font-weight:600;letter-spacing:.2px;transition:all 1s var(--ease)}
+.btn::before{content:"";width:70%;height:1px;position:absolute;bottom:0;left:15%;background:linear-gradient(90deg,rgba(255,255,255,0) 0%,rgba(255,255,255,1) 50%,rgba(255,255,255,0) 100%);opacity:.2;transition:all 1s var(--ease)}
+.btn:hover{color:#fff;transform:scale(1.04) translateY(-2px)}
+.btn:hover::before{opacity:1}
+.btn:active{transform:scale(.97)}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.btn.primary{background:radial-gradient(ellipse at bottom,rgba(61,245,160,.85) 0%,rgba(8,34,26,1) 58%);color:#fff;box-shadow:inset 0 0 0 1px rgba(61,245,160,.35),0 8px 24px -12px var(--glow)}
+.btn.danger{background:radial-gradient(ellipse at bottom,rgba(239,68,68,.85) 0%,rgba(40,14,18,1) 55%);color:#fff;box-shadow:inset 0 0 0 1px rgba(248,113,113,.35)}
+.btn.ghost{background:transparent;box-shadow:inset 0 0 0 1px var(--line2)}
+.btn.sm{min-width:0;padding:7px 12px;font-size:13px}
+
+/* cards */
+.card{background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.01)),var(--glass);border:1px solid var(--line);border-radius:var(--radius);padding:18px;position:relative;overflow:hidden;box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
+.card h3{margin:0 0 10px;font-size:14px;font-weight:650;display:flex;align-items:center;gap:8px;color:var(--tx)}
+.card h3 svg{width:16px;height:16px;stroke:var(--accent);fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.grid{display:grid;gap:14px}
+.g3{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;font-size:13px}
+.kv span{color:var(--mu)}.kv b{font-weight:500;text-align:right;word-break:break-word}
+.big{font-size:22px;font-weight:700;letter-spacing:-.3px;margin:2px 0 8px}
+.pill{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.3px;padding:2px 9px;border-radius:999px;border:1px solid currentColor}
+.sec{margin-top:24px}
+.sec>h3{font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:var(--mu);margin:0 0 10px;font-weight:650;display:flex;gap:8px;align-items:center}
+.sec>h3 .n{color:var(--mu2);font-weight:500}
+
+/* progress bar */
+.bar{width:100%;background:rgba(236,236,238,.1);height:8px;border-radius:7px;overflow:hidden}
+.bar>i{display:block;width:0;height:100%;border-radius:7px;background:linear-gradient(90deg,#fff,var(--accent));transition:width .5s var(--ease);box-shadow:0 0 12px var(--glow)}
+.bar.warn>i{background:linear-gradient(90deg,#fff,var(--warn));box-shadow:none}
+.bar.indet>i{animation:loading 5s cubic-bezier(.4,1.01,1,1) infinite}
+@keyframes loading{0%{width:0%}50%{width:100%}100%{width:0%}}
+
+/* toolbar */
+.tool{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--glass2);position:sticky;top:72px;z-index:4;backdrop-filter:blur(10px)}
+.search{flex:1;min-width:200px;padding:9px 12px;border:1px solid var(--line2);border-radius:9px;background:rgba(7,9,15,.6);color:var(--tx);outline:none}
+.search:focus{border-color:rgba(61,245,160,.5);box-shadow:0 0 0 3px rgba(61,245,160,.12)}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:9px;overflow:hidden}
+.seg button{border:0;background:none;color:var(--mu);padding:8px 12px;cursor:pointer;font-weight:600;font-size:13px}
+.seg button.on{background:rgba(61,245,160,.14);color:var(--accent)}
+select{background:var(--elev);color:var(--tx);border:1px solid var(--line2);border-radius:8px;padding:8px 10px}
+.count{color:var(--mu);font-size:13px;white-space:nowrap}
+.count b{color:var(--accent)}
+
+/* selectable items */
+.items{display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+.items.wide{grid-template-columns:repeat(auto-fill,minmax(360px,1fr))}
+.it{display:flex;gap:11px;align-items:flex-start;padding:11px 13px;border:1px solid var(--line);border-radius:11px;background:var(--glass2);cursor:pointer;transition:border-color .2s var(--ease),background .2s var(--ease)}
+.it:hover{border-color:var(--line2);background:rgba(255,255,255,.06)}
+.it.sel{border-color:rgba(61,245,160,.45);background:rgba(61,245,160,.07)}
+.it input{position:absolute;opacity:0;pointer-events:none}
+.box{flex:0 0 18px;width:18px;height:18px;border-radius:5px;border:1.5px solid var(--line2);margin-top:1px;display:grid;place-items:center;transition:all .2s var(--ease)}
+.it.sel .box{background:var(--accent);border-color:var(--accent);box-shadow:0 0 10px var(--glow)}
+.box svg{width:12px;height:12px;stroke:#07090F;stroke-width:3;fill:none;opacity:0}
+.it.sel .box svg{opacity:1}
+.it .t{font-weight:600;font-size:13.5px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.it .d{color:var(--mu);font-size:12.5px;margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.foss{font-size:10px;font-weight:800;color:var(--accent);border:1px solid rgba(61,245,160,.4);border-radius:5px;padding:0 5px}
+.it a{color:var(--mu2);margin-left:auto;font-size:12px;text-decoration:none}
+.it a:hover{color:var(--accent)}
+
+/* switches */
+.sw{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:11px 13px;border:1px solid var(--line);border-radius:11px;background:var(--glass2)}
+.sw .t{font-weight:600;font-size:13.5px}.sw .d{color:var(--mu);font-size:12.5px}
+.tg{position:relative;flex:0 0 44px;width:44px;height:24px;border-radius:999px;background:rgba(255,255,255,.12);border:0;cursor:pointer;transition:background .25s var(--ease)}
+.tg::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .25s var(--ease)}
+.tg.on{background:var(--accent);box-shadow:0 0 12px var(--glow)}
+.tg.on::after{transform:translateX(20px);background:#07090F}
+.tg:disabled{opacity:.5;cursor:wait}
+
+details.adv{margin-top:24px;border:1px solid rgba(245,166,35,.35);border-radius:12px;background:rgba(245,166,35,.04);padding:0 14px}
+details.adv summary{cursor:pointer;padding:13px 0;color:#f8d38b;font-weight:650}
+details.adv .items{padding-bottom:14px}
+.note{color:var(--mu);font-size:12.5px;margin:8px 0 0}
+.warnbox{display:flex;gap:10px;padding:11px 14px;border-radius:11px;border:1px solid rgba(245,166,35,.35);background:rgba(245,166,35,.08);color:#f8d38b;font-size:13px;margin-bottom:12px}
+
+/* updates */
+.upd{display:flex;flex-direction:column;gap:12px}
+.upd p{margin:0;color:var(--mu);flex:1}
+.upd.rec{border-color:rgba(61,245,160,.35)}
+.upd.rec::after{content:"Consigliata";position:absolute;top:16px;right:16px;font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--accent);border:1px solid rgba(61,245,160,.35);padding:2px 8px;border-radius:999px}
+
+/* wifi table */
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+th{color:var(--mu);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+tr:last-child td{border-bottom:0}
+.pw{font-family:"Cascadia Mono",Consolas,monospace;font-size:13px}
+.ib{border:1px solid var(--line2);background:none;color:var(--mu);border-radius:7px;padding:4px 8px;cursor:pointer;font-size:12px;margin-left:6px}
+.ib:hover{color:var(--accent);border-color:rgba(61,245,160,.4)}
+
+/* activity dock */
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:20;border-top:1px solid var(--line2);background:rgba(11,14,22,.92);backdrop-filter:blur(14px);transform:translateY(100%);transition:transform .35s var(--ease)}
+.dock.on{transform:none}
+.dock .in{max-width:1240px;margin:0 auto;padding:12px 24px;display:grid;grid-template-columns:1fr auto;gap:8px 16px;align-items:center}
+.dock .ti{font-weight:650;display:flex;gap:10px;align-items:center;min-width:0}
+.dock .ti span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dock .lb{color:var(--mu);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--glow);flex:0 0 9px;animation:pulse 1.4s ease-in-out infinite}
+.dot.done{animation:none}.dot.err{background:var(--bad);box-shadow:none;animation:none}
+@keyframes pulse{50%{opacity:.35}}
+.dock .bar{grid-column:1/-1}
+.log{grid-column:1/-1;display:none;height:220px;overflow:auto;background:#05070c;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:12px/1.6 "Cascadia Mono",Consolas,monospace}
+.dock.open .log{display:block}
+.log div{white-space:pre-wrap;word-break:break-word;color:#94a3b8}
+.log .warn{color:#fcd34d}.log .error{color:#fca5a5}.log .ok{color:#86efac}.log .head{color:#e5e7eb;font-weight:700;margin-top:6px}
+.log .tm{color:var(--mu2);margin-right:8px}
+
+/* modal + toast */
+.modal{position:fixed;inset:0;display:none;place-items:center;background:rgba(0,0,0,.55);z-index:40;backdrop-filter:blur(3px)}
+.modal.on{display:grid}
+.modal .card{width:min(460px,calc(100% - 32px));padding:22px}
+.modal h4{margin:0 0 8px;font-size:17px}
+.modal p{margin:0 0 18px;color:var(--mu)}
+.toast{position:fixed;right:20px;top:76px;z-index:50;display:flex;flex-direction:column;gap:8px}
+.toast div{padding:10px 14px;border-radius:10px;border:1px solid var(--line2);background:var(--elev);box-shadow:0 12px 30px -12px rgba(0,0,0,.6);font-size:13px;max-width:360px;animation:fade .3s var(--ease)}
+.toast .e{border-color:rgba(239,68,68,.5)}
+.empty{color:var(--mu);padding:20px;text-align:center}
+.skel{height:14px;border-radius:6px;background:linear-gradient(90deg,rgba(255,255,255,.04),rgba(255,255,255,.09),rgba(255,255,255,.04));background-size:200% 100%;animation:sh 1.4s infinite;margin:8px 0}
+@keyframes sh{to{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <svg width="34" height="34" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#0B0E16" stroke="rgba(61,245,160,.35)"/><path d="M7 9l3.5 14L16 12l5.5 11L25 9" stroke="#3DF5A0" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div><h1>Win<span>R</span>Util</h1><small>Toolkit per Windows</small></div>
+    </div>
+    <div class="meta">
+      <span class="chip" id="chipPc"><i></i><span>PC</span></span>
+      <span class="chip"><i></i><span>Amministratore</span></span>
+      <span class="chip" id="chipVer">v</span>
+    </div>
+  </header>
+
+  <div class="shell">
+    <nav class="side" aria-label="Sezioni">
+      <button type="button" class="nav on" data-v="sys"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>Sistema</button>
+      <button type="button" class="nav" data-v="inst"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>Installa</button>
+      <button type="button" class="nav" data-v="tw"><svg viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>Ottimizza</button>
+      <button type="button" class="nav" data-v="cfg"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Configura</button>
+      <button type="button" class="nav" data-v="upd"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>Aggiornamenti</button>
+      <button type="button" class="nav" data-v="wifi"><svg viewBox="0 0 24 24"><path d="M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M2 9a15 15 0 0 1 20 0"/><circle cx="12" cy="19.5" r="1"/></svg>Wi-Fi</button>
+      <div class="foot"><p>Stampanti, App di Windows e Rapporto sono nella versione classica.</p><button type="button" class="btn ghost sm" id="btnClassic">Apri versione classica</button></div>
+    </nav>
+
+    <main>
+      <!-- SISTEMA -->
+      <section class="view on" id="v-sys">
+        <div class="head"><div><h2>Sistema</h2><p>Riepilogo di hardware, Windows e rete di questo PC.</p></div><button type="button" class="btn sm" id="btnSysRefresh">Aggiorna</button></div>
+        <div class="grid g3" id="sysGrid"></div>
+      </section>
+
+      <!-- INSTALLA -->
+      <section class="view" id="v-inst">
+        <div class="head"><div><h2>Installa applicazioni</h2><p>Seleziona le app e installale o aggiornale in un clic.</p></div></div>
+        <div class="tool">
+          <input class="search" id="appSearch" type="search" placeholder="Cerca un'applicazione..." aria-label="Cerca applicazioni">
+          <div class="seg" id="mgrSeg"><button type="button" data-m="Winget" class="on">WinGet</button><button type="button" data-m="Choco">Chocolatey</button></div>
+          <span class="count" id="appCount"><b>0</b> selezionate</span>
+          <button type="button" class="btn ghost sm" id="btnAppClear">Azzera</button>
+          <button type="button" class="btn sm" id="btnUpgradeAll">Aggiorna tutte</button>
+          <button type="button" class="btn danger sm" id="btnUninstall">Disinstalla</button>
+          <button type="button" class="btn primary sm" id="btnInstall">Installa / Aggiorna</button>
+        </div>
+        <div id="appList"></div>
+      </section>
+
+      <!-- OTTIMIZZA -->
+      <section class="view" id="v-tw">
+        <div class="head"><div><h2>Ottimizza</h2><p>Privacy, prestazioni e pulizia. Ogni ottimizzazione si puo' annullare.</p></div>
+          <div class="row"><button type="button" class="btn ghost sm" data-preset="Standard">Preset Standard</button><button type="button" class="btn ghost sm" data-preset="Minimal">Preset Minimo</button><button type="button" class="btn ghost sm" data-preset="Advanced">Preset Avanzato</button><button type="button" class="btn ghost sm" data-preset="">Azzera</button></div></div>
+        <div class="tool">
+          <span class="count" id="twCount"><b>0</b> selezionate</span>
+          <label class="count">DNS <select id="dnsSel" aria-label="DNS"></select></label>
+          <span style="flex:1"></span>
+          <button type="button" class="btn ghost sm" id="btnTwUndo">Annulla selezionate</button>
+          <button type="button" class="btn primary sm" id="btnTwRun">Applica selezionate</button>
+        </div>
+        <div class="sec"><h3>Ottimizzazioni consigliate <span class="n" id="nEss"></span></h3><div class="items wide" id="twEss"></div></div>
+        <details class="adv"><summary>Ottimizzazioni avanzate: usare con attenzione</summary><div class="items wide" id="twAdv"></div></details>
+        <div class="sec"><h3>Piano energetico <span class="n">non per i portatili</span></h3><div class="row" id="perfRow"></div></div>
+        <div class="sec"><h3>Preferenze di Windows <span class="n">si applicano subito</span></h3><div class="items wide" id="twPref"></div></div>
+      </section>
+
+      <!-- CONFIGURA -->
+      <section class="view" id="v-cfg">
+        <div class="head"><div><h2>Configura</h2><p>Funzionalita' di Windows, correzioni e pannelli classici.</p></div></div>
+        <div class="sec"><h3>Funzionalita' di Windows</h3><div class="items wide" id="featList"></div>
+          <div class="row" style="margin-top:12px"><button type="button" class="btn primary sm" id="btnFeat">Installa selezionate</button><span class="note">Alcune funzionalita' richiedono il riavvio.</span></div></div>
+        <div class="sec"><h3>Correzioni</h3><div class="row" id="fixRow"></div></div>
+        <div class="sec"><h3>Pannelli classici</h3><div class="row" id="panelRow"></div></div>
+        <div class="sec"><h3>Accesso remoto</h3><div class="row" id="remoteRow"></div></div>
+      </section>
+
+      <!-- AGGIORNAMENTI -->
+      <section class="view" id="v-upd">
+        <div class="head"><div><h2>Aggiornamenti di Windows</h2><p>Scegli come Windows Update installa gli aggiornamenti.</p></div></div>
+        <div class="grid g3">
+          <article class="card upd rec"><h3>Impostazioni predefinite</h3><p>Windows installa tutti gli aggiornamenti in automatico, come da fabbrica.</p><div><button type="button" class="btn primary sm" data-btn="WPFUpdatesdefault" data-label="Aggiornamenti: impostazioni predefinite">Ripristina predefinite</button></div></article>
+          <article class="card upd"><h3>Solo sicurezza</h3><p>Installa gli aggiornamenti di sicurezza e rimanda quelli delle funzionalita'.</p><div><button type="button" class="btn sm" data-btn="WPFUpdatessecurity" data-label="Aggiornamenti: solo sicurezza">Imposta solo sicurezza</button></div></article>
+          <article class="card upd"><h3>Disattiva</h3><p>Blocca tutti gli aggiornamenti. Sconsigliato: il PC resta senza correzioni di sicurezza.</p><div><button type="button" class="btn danger sm" data-btn="WPFUpdatesdisable" data-label="Aggiornamenti: disattivati" data-confirm="Si fermano i servizi di aggiornamento e si cancellano gli aggiornamenti scaricati. Il PC non ricevera' aggiornamenti di sicurezza finche' non ripristini le impostazioni predefinite. Continuare?">Disattiva aggiornamenti</button></div></article>
+        </div>
+      </section>
+
+      <!-- WIFI -->
+      <section class="view" id="v-wifi">
+        <div class="head"><div><h2>Reti Wi-Fi salvate</h2><p>Password delle reti memorizzate su questo PC. Restano solo qui.</p></div>
+          <div class="row"><button type="button" class="btn ghost sm" id="btnWifiCopy">Copia tutto</button><button type="button" class="btn sm" id="btnWifiRefresh">Aggiorna</button></div></div>
+        <div class="card" style="padding:6px 6px"><table><thead><tr><th>Rete</th><th>Password</th><th>Sicurezza</th><th>Automatica</th></tr></thead><tbody id="wifiBody"></tbody></table></div>
+      </section>
+    </main>
+  </div>
+
+  <div class="dock" id="dock" aria-live="polite">
+    <div class="in">
+      <div class="ti"><i class="dot" id="dockDot"></i><span id="dockTitle">Operazione in corso</span></div>
+      <div class="row"><span class="lb" id="dockLabel"></span><button type="button" class="btn ghost sm" id="btnLog">Dettagli</button><button type="button" class="btn ghost sm" id="btnDockClose">Chiudi</button></div>
+      <div class="bar" id="dockBar"><i id="dockFill"></i></div>
+      <div class="log" id="log"></div>
+    </div>
+  </div>
+  <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle"><div class="card"><h4 id="mTitle">Confermi?</h4><p id="mText"></p><div class="row" style="justify-content:flex-end"><button type="button" class="btn ghost sm" id="mNo">Annulla</button><button type="button" class="btn primary sm" id="mYes">Continua</button></div></div></div>
+  <div class="toast" id="toast"></div>
+</div>
+
+<script nonce="__NONCE__">
+(function () {
+  'use strict';
+  var token = (location.hash || '').replace(/^#/, '');
+  history.replaceState(null, '', location.pathname);
+  var $ = function (id) { return document.getElementById(id); };
+  var cat = null, mgr = 'Winget', selApps = {}, selTw = {}, selFeat = {}, toggles = {}, logIndex = 0, running = false, pollT = null, wifi = [];
+
+  function api(method, path, body) {
+    return fetch(path, { method: method, cache: 'no-store', headers: { 'X-Token': token, 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined })
+      .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j && j.error ? j.error : 'HTTP ' + r.status); return j; }); });
+  }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function toast(msg, err) { var d = el('div', err ? 'e' : '', msg); $('toast').appendChild(d); setTimeout(function () { d.remove(); }, 4200); }
+  function confirmBox(title, text) {
+    return new Promise(function (ok) {
+      $('mTitle').textContent = title; $('mText').textContent = text; $('modal').classList.add('on'); $('mYes').focus();
+      function done(v) { $('modal').classList.remove('on'); $('mYes').onclick = $('mNo').onclick = null; ok(v); }
+      $('mYes').onclick = function () { done(true); }; $('mNo').onclick = function () { done(false); };
+    });
+  }
+  var CHECK = '<svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg>';
+  var MASK = new Array(9).join(String.fromCharCode(8226));
+
+  /* ---------- navigazione ---------- */
+  var loaded = {};
+  document.querySelectorAll('.nav').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('.nav').forEach(function (x) { x.classList.toggle('on', x === b); });
+      var v = b.getAttribute('data-v');
+      document.querySelectorAll('.view').forEach(function (x) { x.classList.toggle('on', x.id === 'v-' + v); });
+      window.scrollTo(0, 0);
+      if (v === 'wifi' && !loaded.wifi) { loaded.wifi = true; loadWifi(false); }
+      if (v === 'tw' && !loaded.tg) { loaded.tg = true; loadToggles(); }
+    });
+  });
+
+  /* ---------- avvio ---------- */
+  api('GET', '/api/info').then(function (i) {
+    $('chipPc').lastChild.textContent = i.pc; $('chipVer').textContent = 'v' + i.version;
+    setMgr(i.manager === 'Choco' ? 'Choco' : 'Winget', false);
+    return api('GET', '/api/catalog');
+  }).then(function (c) { cat = c; renderApps(); renderTweaks(); renderConfig(); loadSystem(false); poll(); })
+    .catch(function () { document.body.innerHTML = '<p style="padding:40px;color:#fca5a5">Sessione non valida: riavviare WinRUtil.</p>'; });
+
+  /* ---------- sistema ---------- */
+  function sysCard(title, icon, rows, extra) {
+    var c = el('article', 'card');
+    var h = el('h3'); h.innerHTML = icon; h.appendChild(document.createTextNode(title)); c.appendChild(h);
+    if (extra) extra(c);
+    var kv = el('div', 'kv');
+    rows.forEach(function (r) { if (r[1] == null || r[1] === '') return; kv.appendChild(el('span', '', r[0])); kv.appendChild(el('b', '', String(r[1]))); });
+    c.appendChild(kv); return c;
+  }
+  function barEl(pct, warn) { var b = el('div', 'bar' + (warn ? ' warn' : '')), i = el('i'); b.appendChild(i); setTimeout(function () { i.style.width = Math.max(2, Math.min(100, pct || 0)) + '%'; }, 50); return b; }
+  var IC = {
+    win: '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8"/><rect x="13" y="3" width="8" height="8"/><rect x="3" y="13" width="8" height="8"/><rect x="13" y="13" width="8" height="8"/></svg>',
+    hw: '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/></svg>',
+    cpu: '<svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/></svg>',
+    ram: '<svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="10" rx="1"/><path d="M6 17v3M10 17v3M14 17v3M18 17v3"/></svg>',
+    disk: '<svg viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/></svg>',
+    gpu: '<svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="9" cy="12" r="2.5"/><path d="M15 10h4M15 14h4"/></svg>',
+    net: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>',
+    bat: '<svg viewBox="0 0 24 24"><rect x="2" y="7" width="18" height="10" rx="2"/><path d="M22 11v2"/></svg>'
+  };
+  function loadSystem(refresh) {
+    var g = $('sysGrid');
+    if (!g.children.length || refresh) { g.textContent = ''; for (var i = 0; i < 6; i++) { var c = el('div', 'card'); c.appendChild(el('div', 'skel')); c.appendChild(el('div', 'skel')); c.appendChild(el('div', 'skel')); g.appendChild(c); } }
+    api('GET', '/api/system' + (refresh ? '?refresh=1' : '')).then(function (r) {
+      if (r.loading) { setTimeout(function () { loadSystem(false); }, 900); return; }
+      var s = r.data || {}; g.textContent = '';
+      g.appendChild(sysCard('Windows', IC.win, [['Versione', s.OSBuild], ['Nome PC', s.Hostname], ['Installato il', s.InstallDate], ['Acceso da', s.Uptime]], function (c) {
+        c.appendChild(el('div', 'big', s.OSCaption || 'Windows'));
+        var p = el('span', 'pill', s.ActivationText || ''); p.style.color = s.ActivationColor || '#8A93A6'; var w = el('div'); w.style.marginBottom = '10px'; w.appendChild(p); c.appendChild(w);
+      }));
+      g.appendChild(sysCard('Hardware', IC.hw, [['Produttore', s.Manufacturer], ['Modello', s.Model], ['Numero di serie', s.Serial], ['BIOS', s.Bios], ['Secure Boot', s.SecureBoot], ['TPM', s.Tpm]]));
+      g.appendChild(sysCard('Processore', IC.cpu, [['Core', s.CpuCores], ['Frequenza', s.CpuClock], ['Carico', s.CpuLoad]], function (c) { c.appendChild(el('div', 'big', s.CpuName || '')); c.appendChild(barEl(s.CpuLoadPct, s.CpuLoadPct >= 90)); c.lastChild.style.margin = '0 0 10px'; }));
+      g.appendChild(sysCard('Memoria', IC.ram, [['Libera', s.RamFree], ['Moduli', s.RamModules]], function (c) { c.appendChild(el('div', 'big', s.RamText || '')); c.appendChild(barEl(s.RamUsedPct, s.RamUsedPct >= 90)); c.lastChild.style.margin = '0 0 10px'; }));
+      g.appendChild(sysCard('Archiviazione', IC.disk, [], function (c) {
+        var hp = el('span', 'pill', s.DiskHealthText || ''); hp.style.color = s.DiskHealthColor || '#8A93A6'; var w = el('div'); w.style.marginBottom = '10px'; w.appendChild(hp); c.appendChild(w);
+        (s.Disks || []).forEach(function (d) { var r = el('div'); r.style.margin = '0 0 10px'; var t = el('div', 'kv'); t.appendChild(el('span', '', d.Label)); t.appendChild(el('b', '', d.Text)); r.appendChild(t); r.appendChild(barEl(d.UsedPct, d.Warn)); r.lastChild.style.marginTop = '5px'; c.appendChild(r); });
+      }));
+      g.appendChild(sysCard('Scheda video', IC.gpu, [['Memoria', s.GpuVram], ['Driver', s.GpuDriver], ['Risoluzione', s.GpuResolution]], function (c) { c.appendChild(el('div', 'big', s.GpuName || '')); }));
+      g.appendChild(sysCard('Rete', IC.net, [['Stato', s.NetStatus], ['Scheda', s.NetAdapter], ['Indirizzo IP', s.NetIp], ['MAC', s.NetMac]]));
+      if (s.HasBattery) g.appendChild(sysCard('Batteria', IC.bat, [['Stato', s.BatteryStatus], ['Usura', s.BatteryHealth]], function (c) { c.appendChild(el('div', 'big', s.BatteryCharge || '')); c.appendChild(barEl(s.BatteryPct, s.BatteryPct <= 20)); c.lastChild.style.margin = '0 0 10px'; }));
+    }).catch(function (e) { g.textContent = ''; g.appendChild(el('div', 'empty', 'Informazioni non disponibili: ' + e.message)); });
+  }
+  $('btnSysRefresh').addEventListener('click', function () { loadSystem(true); });
+
+  /* ---------- elementi selezionabili ---------- */
+  function selItem(o, store, onChange) {
+    var lab = el('label', 'it' + (store[o.id] ? ' sel' : ''));
+    var inp = el('input'); inp.type = 'checkbox'; inp.checked = !!store[o.id]; lab.appendChild(inp);
+    var bx = el('span', 'box'); bx.innerHTML = CHECK; lab.appendChild(bx);
+    var tx = el('div'); tx.style.minWidth = '0'; tx.style.flex = '1';
+    var t = el('div', 't', o.name); if (o.foss) t.appendChild(el('span', 'foss', 'FOSS')); tx.appendChild(t);
+    if (o.desc) { var d = el('div', 'd', o.desc); d.title = o.desc; tx.appendChild(d); }
+    lab.appendChild(tx);
+    inp.addEventListener('change', function () { if (inp.checked) store[o.id] = true; else delete store[o.id]; lab.classList.toggle('sel', inp.checked); onChange(); });
+    lab._set = function (v) { inp.checked = v; lab.classList.toggle('sel', v); };
+    return lab;
+  }
+  function groupBy(arr, key) { var m = {}, order = []; arr.forEach(function (x) { var k = x[key] || 'Altro'; if (!m[k]) { m[k] = []; order.push(k); } m[k].push(x); }); return order.sort().map(function (k) { return [k, m[k]]; }); }
+
+  /* ---------- installa ---------- */
+  var CAT_IT = { 'Browsers': 'Browser', 'Communications': 'Comunicazione', 'Development': 'Sviluppo', 'Document': 'Documenti', 'Games': 'Giochi', 'Microsoft Tools': 'Strumenti Microsoft', 'Multimedia Tools': 'Multimedia', 'Pro Tools': 'Strumenti professionali', 'Selfhosted Tools': 'Self-hosted', 'Utilities': 'Utilita\'' };
+  function appCount() { $('appCount').innerHTML = '<b>' + Object.keys(selApps).length + '</b> selezionate'; }
+  function renderApps() {
+    var q = ($('appSearch').value || '').toLowerCase(), box = $('appList'); box.textContent = '';
+    var list = cat.apps.filter(function (a) { return !q || (a.name + ' ' + a.desc).toLowerCase().indexOf(q) >= 0; });
+    if (!list.length) { box.appendChild(el('div', 'empty', 'Nessuna applicazione trovata.')); return; }
+    groupBy(list, 'cat').forEach(function (g) {
+      var s = el('div', 'sec'), h = el('h3', '', CAT_IT[g[0]] || g[0]); h.appendChild(el('span', 'n', String(g[1].length))); s.appendChild(h);
+      var it = el('div', 'items');
+      g[1].sort(function (a, b) { return a.name.localeCompare(b.name); }).forEach(function (a) { it.appendChild(selItem(a, selApps, appCount)); });
+      s.appendChild(it); box.appendChild(s);
+    });
+  }
+  var st; $('appSearch').addEventListener('input', function () { clearTimeout(st); st = setTimeout(renderApps, 150); });
+  function setMgr(m, save) { mgr = m; document.querySelectorAll('#mgrSeg button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-m') === m); }); if (save) api('POST', '/api/manager', { manager: m }); }
+  document.querySelectorAll('#mgrSeg button').forEach(function (b) { b.addEventListener('click', function () { setMgr(b.getAttribute('data-m'), true); }); });
+  $('btnAppClear').addEventListener('click', function () { selApps = {}; renderApps(); appCount(); });
+  $('btnInstall').addEventListener('click', function () { run('/api/apps', { ids: Object.keys(selApps), manager: mgr, action: 'Install' }); });
+  $('btnUninstall').addEventListener('click', function () {
+    var n = Object.keys(selApps).length; if (!n) { toast('Seleziona almeno un\'applicazione.', true); return; }
+    confirmBox('Disinstallare ' + n + ' applicazioni?', 'Le applicazioni selezionate verranno rimosse dal PC.').then(function (ok) { if (ok) run('/api/apps', { ids: Object.keys(selApps), manager: mgr, action: 'Uninstall' }); });
+  });
+  $('btnUpgradeAll').addEventListener('click', function () { run('/api/upgrade', { manager: mgr }); });
+
+  /* ---------- ottimizza ---------- */
+  var twEls = {};
+  function twCount() { $('twCount').innerHTML = '<b>' + Object.keys(selTw).length + '</b> selezionate'; }
+  function renderTweaks() {
+    var ess = $('twEss'), adv = $('twAdv'), pref = $('twPref'), perf = $('perfRow');
+    var plain = cat.tweaks.filter(function (t) { return !t.type; });
+    plain.filter(function (t) { return !t.advanced; }).forEach(function (t) { var e = selItem(t, selTw, twCount); twEls[t.id] = e; ess.appendChild(e); });
+    $('nEss').textContent = String(plain.filter(function (t) { return !t.advanced; }).length);
+    var wb = el('div', 'warnbox', 'Queste modifiche sono profonde: applicarle solo se sai cosa fanno. Il punto di ripristino e\' consigliato.'); wb.style.gridColumn = '1/-1'; adv.appendChild(wb);
+    plain.filter(function (t) { return t.advanced; }).forEach(function (t) { var e = selItem(t, selTw, twCount); twEls[t.id] = e; adv.appendChild(e); });
+    cat.tweaks.filter(function (t) { return t.type === 'Button'; }).forEach(function (t) {
+      var b = el('button', 'btn sm', t.name); b.type = 'button'; b.title = t.desc || '';
+      if (t.id === 'WPFAddUltPerf' || t.id === 'WPFRemoveUltPerf') perf.appendChild(b);
+      else if (t.advanced) { adv.appendChild(b); b.style.justifySelf = 'start'; } else perf.appendChild(b);
+      b.addEventListener('click', function () { run('/api/button', { id: t.id, label: t.name }); });
+    });
+    cat.tweaks.filter(function (t) { return t.type === 'Toggle'; }).forEach(function (t) {
+      var r = el('div', 'sw'), tx = el('div'); tx.appendChild(el('div', 't', t.name)); if (t.desc) tx.appendChild(el('div', 'd', t.desc)); r.appendChild(tx);
+      var b = el('button', 'tg'); b.type = 'button'; b.setAttribute('role', 'switch'); b.setAttribute('aria-label', t.name); b.disabled = true; b.id = 'tg_' + t.id; r.appendChild(b);
+      b.addEventListener('click', function () {
+        var on = !b.classList.contains('on');
+        api('POST', '/api/toggle', { id: t.id, on: on }).then(function () { b.classList.toggle('on', on); b.setAttribute('aria-checked', on); startPoll(); }).catch(function (e) { toast(e.message, true); });
+      });
+      pref.appendChild(r);
+    });
+    var ds = $('dnsSel'); cat.dns.forEach(function (d) { var o = el('option', '', d === 'Default' ? 'Non cambiare' : (d === 'DHCP' ? 'Automatico (DHCP)' : (d === 'Fastest' ? 'Il piu\' veloce (misurato ora)' : d.replace(/_/g, ' ')))); o.value = d; ds.appendChild(o); });
+    document.querySelectorAll('[data-preset]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var p = b.getAttribute('data-preset'), ids = p ? (cat.presets[p] || []) : [];
+        selTw = {}; ids.forEach(function (i) { if (twEls[i]) selTw[i] = true; });
+        Object.keys(twEls).forEach(function (i) { twEls[i]._set(!!selTw[i]); }); twCount();
+      });
+    });
+  }
+  function loadToggles() {
+    api('GET', '/api/toggles').then(function (t) { toggles = t; Object.keys(t).forEach(function (k) { var b = $('tg_' + k); if (b) { b.classList.toggle('on', !!t[k]); b.setAttribute('aria-checked', !!t[k]); b.disabled = false; } }); })
+      .catch(function () { document.querySelectorAll('.tg').forEach(function (b) { b.disabled = false; }); });
+  }
+  $('btnTwRun').addEventListener('click', function () { run('/api/tweaks', { ids: Object.keys(selTw), undo: false, dns: $('dnsSel').value }); });
+  $('btnTwUndo').addEventListener('click', function () { run('/api/tweaks', { ids: Object.keys(selTw), undo: true, dns: 'Default' }); });
+
+  /* ---------- configura ---------- */
+  function renderConfig() {
+    cat.features.forEach(function (f) {
+      if (!f.type) { $('featList').appendChild(selItem(f, selFeat, function () { })); return; }
+      var row = /riparaz|fixes/i.test(f.cat) ? 'fixRow' : (/pannelli|panels/i.test(f.cat) ? 'panelRow' : 'remoteRow');
+      var b = el('button', 'btn sm', f.name); b.type = 'button'; b.title = f.desc || '';
+      b.addEventListener('click', function () { run('/api/button', { id: f.id, label: f.name }); });
+      $(row).appendChild(b);
+    });
+  }
+  $('btnFeat').addEventListener('click', function () { run('/api/features', { ids: Object.keys(selFeat) }); });
+  document.querySelectorAll('[data-btn]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var go = function () { run('/api/button', { id: b.getAttribute('data-btn'), label: b.getAttribute('data-label') }); };
+      var c = b.getAttribute('data-confirm');
+      if (c) confirmBox('Sei sicuro?', c).then(function (ok) { if (ok) go(); }); else go();
+    });
+  });
+
+  /* ---------- wifi ---------- */
+  function loadWifi(refresh) {
+    var tb = $('wifiBody'); tb.innerHTML = '<tr><td colspan="4"><div class="skel"></div><div class="skel"></div></td></tr>';
+    (function ask(r) {
+      api('GET', '/api/wifi' + (r ? '?refresh=1' : '')).then(function (x) {
+        if (x.loading) { setTimeout(function () { ask(false); }, 700); return; }
+        wifi = x.data || []; tb.textContent = '';
+        if (!wifi.length) { var tr = el('tr'), td = el('td', 'empty', 'Nessuna rete Wi-Fi salvata.'); td.colSpan = 4; tr.appendChild(td); tb.appendChild(tr); return; }
+        wifi.forEach(function (w) {
+          var tr = el('tr'); tr.appendChild(el('td', '', w.ssid));
+          var td = el('td'), pw = el('span', 'pw', w.password ? MASK : '(nessuna)'); td.appendChild(pw);
+          if (w.password) {
+            var eye = el('button', 'ib', 'Mostra'); eye.type = 'button';
+            eye.addEventListener('click', function () { var s = eye.textContent === 'Mostra'; pw.textContent = s ? w.password : MASK; eye.textContent = s ? 'Nascondi' : 'Mostra'; });
+            var cp = el('button', 'ib', 'Copia'); cp.type = 'button';
+            cp.addEventListener('click', function () { copy(w.password, 'Password copiata.'); });
+            td.appendChild(eye); td.appendChild(cp);
+          }
+          tr.appendChild(td); tr.appendChild(el('td', '', w.security)); tr.appendChild(el('td', '', w.auto)); tb.appendChild(tr);
+        });
+      }).catch(function (e) { tb.innerHTML = ''; toast(e.message, true); });
+    })(refresh);
+  }
+  function copy(text, msg) {
+    var done = function () { toast(msg); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fallback); else fallback();
+    function fallback() { var t = el('textarea'); t.value = text; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); done(); } catch (e) { toast('Copia non riuscita.', true); } t.remove(); }
+  }
+  $('btnWifiRefresh').addEventListener('click', function () { loadWifi(true); });
+  $('btnWifiCopy').addEventListener('click', function () {
+    if (!wifi.length) { toast('Nessuna rete da copiare.', true); return; }
+    copy('Rete\tPassword\tSicurezza\n' + wifi.map(function (w) { return w.ssid + '\t' + w.password + '\t' + w.security; }).join('\n'), 'Elenco copiato negli appunti.');
+  });
+
+  /* ---------- operazioni e attivita' ---------- */
+  function run(path, body) {
+    if (running) { toast('Attendi la fine dell\'operazione in corso.', true); return; }
+    api('POST', path, body).then(function () { running = true; setBusy(true); $('dock').classList.add('on'); startPoll(); })
+      .catch(function (e) { toast(e.message, true); });
+  }
+  function setBusy(b) { document.querySelectorAll('main .btn, .tg').forEach(function (x) { if (x.id !== 'btnSysRefresh' && x.id !== 'btnWifiRefresh' && x.id !== 'btnWifiCopy') x.disabled = b; }); if (!b && loaded.tg) loadToggles(); }
+  function startPoll() { clearTimeout(pollT); poll(); }
+  function poll() {
+    api('GET', '/api/status?since=' + logIndex).then(function (s) {
+      var box = $('log'), atBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 30;
+      (s.log || []).forEach(function (l) { var d = el('div', l.c || ''); d.appendChild(el('span', 'tm', l.t)); d.appendChild(document.createTextNode(l.m)); box.appendChild(d); });
+      logIndex = s.logIndex; if (atBottom) box.scrollTop = box.scrollHeight;
+      if (s.phase === 'running' || s.phase === 'done') $('dock').classList.add('on');
+      $('dockTitle').textContent = s.title || 'Operazione';
+      $('dockLabel').textContent = s.phase === 'running' ? (s.label || '') : (s.error ? 'Terminata con errori' : 'Completata');
+      $('dockFill').style.width = (s.phase === 'running' ? Math.max(4, s.percent) : 100) + '%';
+      $('dockBar').classList.toggle('indet', s.phase === 'running' && s.percent <= 0);
+      $('dockDot').className = 'dot' + (s.phase === 'running' ? '' : (s.error ? ' err' : ' done'));
+      var was = running; running = s.phase === 'running';
+      if (was && !running) { setBusy(false); toast(s.error ? 'Operazione terminata con errori: vedi Dettagli.' : 'Operazione completata.', !!s.error); }
+      if (running && !was) setBusy(true);
+      pollT = setTimeout(poll, running ? 600 : 4000);
+    }).catch(function () { pollT = setTimeout(poll, 2000); });
+  }
+  $('btnLog').addEventListener('click', function () { var o = $('dock').classList.toggle('open'); $('btnLog').textContent = o ? 'Nascondi' : 'Dettagli'; if (o) $('log').scrollTop = $('log').scrollHeight; });
+  $('btnDockClose').addEventListener('click', function () { if (!running) $('dock').classList.remove('on', 'open'); $('btnLog').textContent = 'Dettagli'; });
+  $('btnClassic').addEventListener('click', function () { api('POST', '/api/classic').then(function () { toast('Avvio della versione classica...'); }); });
+  window.addEventListener('keydown', function (e) { if (e.key === 'Escape' && $('modal').classList.contains('on')) $('mNo').click(); });
+})();
+</script>
+</body>
+</html>

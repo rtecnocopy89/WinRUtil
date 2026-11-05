@@ -1,5 +1,6 @@
 param (
     [switch]$Run,
+    [switch]$RunWeb,
     [string]$Arguments
 )
 
@@ -75,6 +76,7 @@ $excludedFiles += @(
     '.\.github\CODEOWNERS',
     '.\LICENSE',
     "$preprocessingFilePath",
+    '.\web\index.html',
     '*.png',
     '.\.preprocessor_hashes.json'
 )
@@ -90,6 +92,7 @@ Update-Progress "Adding: Version" 10
 $script_content.Add($(Get-Content "scripts\start.ps1").replace('#{replaceme}',"$(Get-Date -Format yy.MM.dd)"))
 
 Update-Progress "Adding: Functions" 20
+$sharedStart = $script_content.Count
 Get-ChildItem "functions" -Recurse -File | ForEach-Object {
     $script_content.Add($(Get-Content $psitem.FullName))
     }
@@ -116,6 +119,8 @@ $($jsonAsObject | ConvertTo-Json -Depth 10)
     $sync.configs.$($psitem.BaseName) = $json | ConvertFrom-Json
     $script_content.Add($(Write-Output "`$sync.configs.$($psitem.BaseName) = @'`r`n$json`r`n'@ `| ConvertFrom-Json" ))
 }
+
+$sharedEnd = $script_content.Count
 
 # Read the entire XAML file as a single string, preserving line breaks
 $xaml = ConvertTo-XmlCharacterReference (Get-Content "$workingdir\xaml\inputXML.xaml" -Raw)
@@ -160,6 +165,43 @@ try {
     exit 1
 }
 Write-Progress -Activity "Validating" -Completed
+
+# Variante con interfaccia HTML: stesse funzioni e configurazioni, server locale + pagina al posto della finestra WPF
+Update-Progress -Activity "Compiling" -StatusMessage "Building winrutil-web.ps1" -Percent 0
+$webName = "winrutil-web.ps1"
+$web_content = [System.Collections.Generic.List[string]]::new()
+$web_content.Add(([string]$script_content[0]).Replace('WinRUtil/master/winrutil.ps1', 'WinRUtil/master/winrutil-web.ps1'))
+for ($i = $sharedStart; $i -lt $sharedEnd; $i++) { $web_content.Add([string]$script_content[$i]) }
+$webHtml = Get-Content "$workingdir\web\index.html" -Raw
+if ($webHtml -match "(?m)^'@") { Write-Warning "web\index.html contains a line starting with '@"; exit 1 }
+$web_content.Add(@"
+`$WinRUtilWebHtml = @'
+$webHtml
+'@
+"@)
+$web_content.Add((Get-Content "$workingdir\web\server.ps1" -Raw))
+$web_content.Add((Get-Content "$workingdir\web\main.ps1" -Raw))
+[System.IO.File]::WriteAllText((Join-Path $workingdir $webName), ($web_content -join "`r`n"), $utf8NoBom)
+$nonAsciiWeb = @(Select-String -LiteralPath (Join-Path $workingdir $webName) -Pattern '[^\x00-\x7F]' -CaseSensitive -Encoding utf8)
+if ($nonAsciiWeb.Count -gt 0) {
+    Write-Warning "$webName must be pure ASCII (web\index.html, web\server.ps1, web\main.ps1). Found on:"
+    $nonAsciiWeb | Select-Object -First 10 | ForEach-Object { Write-Host "  line $($_.LineNumber): $($_.Line.Trim())" -ForegroundColor Red }
+    exit 1
+}
+try {
+    Get-Command -Syntax ".\$webName" | Out-Null
+} catch {
+    Write-Warning "Syntax Validation for '$webName' has failed"
+    Write-Host "$($Error[0])" -ForegroundColor Red
+    exit 1
+}
+Write-Progress -Activity "Compiling" -Completed
+
+if ($RunWeb) {
+    Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+    & ".\$webName" $Arguments
+    return
+}
 
 if ($run) {
     Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass

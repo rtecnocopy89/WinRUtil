@@ -22,6 +22,16 @@ irm https://raw.githubusercontent.com/rtecnocopy89/WinRUtil/master/winrutil.ps1 
 
 > Se PowerShell non è elevato, WinRUtil tenterà automaticamente di riavviarsi come Amministratore.
 
+### Variante con interfaccia web
+
+Stesse funzioni, interfaccia HTML in una finestra Edge/Chrome dedicata (solo locale, codice di accesso casuale a ogni avvio):
+
+```powershell
+irm https://raw.githubusercontent.com/rtecnocopy89/WinRUtil/master/winrutil-web.ps1 | iex
+```
+
+Sezioni: Sistema, Installa, Ottimizza, Configura, Aggiornamenti e Wi-Fi. Stampanti, App di Windows e Rapporto restano nella versione classica, che si apre dalla barra laterale. La versione classica non cambia.
+
 ## Funzionalità
 
 - **Sistema** — panoramica di Windows e attivazione, hardware (con Secure Boot, TPM e BitLocker), processore e memoria aggiornati in tempo reale, dischi (con stato di salute), grafica, rete, batteria e cronologia degli aggiornamenti di Windows con l'esito di ognuno (anche quelli non riusciti, con il codice di errore), con esportazione del report in HTML (pronto da stampare o salvare in PDF) o in testo.
@@ -68,6 +78,8 @@ git clone https://github.com/rtecnocopy89/WinRUtil
 cd WinRUtil
 .\Compile.ps1          # produce winrutil.ps1
 .\Compile.ps1 -Run     # compila e avvia
+.\Compile.ps1 -RunWeb  # compila e avvia la variante web (produce anche winrutil-web.ps1)
+pwsh -File .\web\Test-WinRUtilWeb.ps1   # test della variante web (non modifica il sistema)
 ```
 
 Il file `winrutil.ps1` generato è ASCII puro, così funziona sia con `irm | iex` sia come file locale in Windows PowerShell 5.1 e PowerShell 7. I caratteri accentati in XAML e JSON vengono convertiti automaticamente; nel codice PowerShell vanno scritti con `[char]` (es. `"Modalit$([char]0x00E0)"`). La compilazione si interrompe se trova caratteri non ASCII.
