@@ -30,7 +30,7 @@ Stesse funzioni, interfaccia HTML in una finestra Edge/Chrome dedicata (solo loc
 irm https://raw.githubusercontent.com/rtecnocopy89/WinRUtil/master/winrutil-web.ps1 | iex
 ```
 
-Sezioni: Sistema, Installa, Ottimizza, Configura, Aggiornamenti e Wi-Fi. Stampanti, App di Windows e Rapporto restano nella versione classica, che si apre dalla barra laterale. La versione classica non cambia.
+Ha tutte le sezioni della versione classica: Sistema, Installa, Ottimizza, App di Windows, Configura, Aggiornamenti, Stampanti, Wi-Fi e Rapporto. Ci sono anche le icone delle app, il QR code Wi-Fi, l'aggiornamento delle sole app scelte, le scorciatoie da tastiera e l'esportazione e importazione delle selezioni. La versione classica non cambia e si apre dalla barra laterale: viene scaricata come file e avviata da file, senza `irm | iex` su un nuovo PowerShell, che gli antivirus bloccano.
 
 ## Funzionalità
 

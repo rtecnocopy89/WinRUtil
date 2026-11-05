@@ -14675,7 +14675,7 @@ $WinRUtilWebHtml = @'
 html,body{height:100%}
 body{margin:0;color:var(--tx);font:14px/1.5 "Inter","Segoe UI Variable Text","Segoe UI",system-ui,Arial,sans-serif;-webkit-font-smoothing:antialiased;
   background:radial-gradient(1100px 600px at 85% -10%,rgba(94,106,210,.16),transparent 60%),radial-gradient(900px 520px at -10% 110%,rgba(61,245,160,.08),transparent 60%),linear-gradient(180deg,var(--bg2),var(--bg))}
-button,input,select{font:inherit}
+button,input,select,textarea{font:inherit}
 .app{min-height:100%;display:flex;flex-direction:column}
 
 /* header */
@@ -14691,14 +14691,15 @@ button,input,select{font:inherit}
 /* layout */
 .shell{flex:1;display:grid;grid-template-columns:230px 1fr;min-height:0}
 @media (max-width:860px){.shell{grid-template-columns:1fr}.side{position:static!important;flex-direction:row!important;overflow-x:auto;height:auto!important}.side .foot{display:none}}
-.side{position:sticky;top:61px;height:calc(100vh - 61px);display:flex;flex-direction:column;gap:4px;padding:18px 12px;border-right:1px solid var(--line)}
-.nav{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:10px;border:1px solid transparent;background:none;color:var(--mu);cursor:pointer;text-align:left;font-weight:500;white-space:nowrap;transition:all .2s var(--ease)}
+.side{position:sticky;top:61px;height:calc(100vh - 61px);display:flex;flex-direction:column;gap:3px;padding:16px 12px;border-right:1px solid var(--line);overflow-y:auto}
+.nav{display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:10px;border:1px solid transparent;background:none;color:var(--mu);cursor:pointer;text-align:left;font-weight:500;white-space:nowrap;transition:all .2s var(--ease)}
 .nav svg{width:18px;height:18px;flex:0 0 18px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .nav:hover{color:var(--tx);background:var(--glass2)}
 .nav.on{color:var(--tx);background:rgba(61,245,160,.08);border-color:rgba(61,245,160,.25);box-shadow:inset 3px 0 0 var(--accent)}
 .nav.on svg{stroke:var(--accent)}
-.side .foot{margin-top:auto;color:var(--mu2);font-size:12px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--glass2)}
-.side .foot p{margin:0 0 10px}
+.side .foot{margin-top:auto;color:var(--mu2);font-size:12px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--glass2);display:flex;flex-direction:column;gap:8px}
+.side .foot p{margin:0}
+.side .foot .btn{width:100%}
 main{min-width:0;padding:26px 28px 150px;max-width:1240px;width:100%}
 .view{display:none;animation:fade .3s var(--ease)}
 .view.on{display:block}
@@ -14726,6 +14727,7 @@ main{min-width:0;padding:26px 28px 150px;max-width:1240px;width:100%}
 .card{background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.01)),var(--glass);border:1px solid var(--line);border-radius:var(--radius);padding:18px;position:relative;overflow:hidden;box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
 .card h3{margin:0 0 10px;font-size:14px;font-weight:650;display:flex;align-items:center;gap:8px;color:var(--tx)}
 .card h3 svg{width:16px;height:16px;stroke:var(--accent);fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.card.wide{grid-column:1/-1}
 .grid{display:grid;gap:14px}
 .g3{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
 .kv{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;font-size:13px}
@@ -14734,7 +14736,8 @@ main{min-width:0;padding:26px 28px 150px;max-width:1240px;width:100%}
 .pill{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.3px;padding:2px 9px;border-radius:999px;border:1px solid currentColor}
 .sec{margin-top:24px}
 .sec>h3{font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:var(--mu);margin:0 0 10px;font-weight:650;display:flex;gap:8px;align-items:center}
-.sec>h3 .n{color:var(--mu2);font-weight:500}
+.sec>h3 .n{color:var(--mu2);font-weight:500;text-transform:none;letter-spacing:0}
+.c-ok{color:var(--ok)}.c-warn{color:var(--warn)}.c-bad{color:#f87171}.c-mu{color:var(--mu)}
 
 /* progress bar */
 .bar{width:100%;background:rgba(236,236,238,.1);height:8px;border-radius:7px;overflow:hidden}
@@ -14746,13 +14749,17 @@ main{min-width:0;padding:26px 28px 150px;max-width:1240px;width:100%}
 /* toolbar */
 .tool{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--glass2);position:sticky;top:72px;z-index:4;backdrop-filter:blur(10px)}
 .search{flex:1;min-width:200px;padding:9px 12px;border:1px solid var(--line2);border-radius:9px;background:rgba(7,9,15,.6);color:var(--tx);outline:none}
-.search:focus{border-color:rgba(61,245,160,.5);box-shadow:0 0 0 3px rgba(61,245,160,.12)}
+.search:focus,.fld:focus{border-color:rgba(61,245,160,.5);box-shadow:0 0 0 3px rgba(61,245,160,.12)}
 .seg{display:inline-flex;border:1px solid var(--line2);border-radius:9px;overflow:hidden}
 .seg button{border:0;background:none;color:var(--mu);padding:8px 12px;cursor:pointer;font-weight:600;font-size:13px}
 .seg button.on{background:rgba(61,245,160,.14);color:var(--accent)}
 select{background:var(--elev);color:var(--tx);border:1px solid var(--line2);border-radius:8px;padding:8px 10px}
 .count{color:var(--mu);font-size:13px;white-space:nowrap}
 .count b{color:var(--accent)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:-4px 0 14px}
+.cchip{border:1px solid var(--line2);background:var(--glass2);color:var(--mu);border-radius:999px;padding:5px 12px;font-size:12.5px;font-weight:600;cursor:pointer;transition:all .2s var(--ease)}
+.cchip:hover{color:var(--tx)}
+.cchip.on{color:var(--accent);border-color:rgba(61,245,160,.45);background:rgba(61,245,160,.1)}
 
 /* selectable items */
 .items{display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
@@ -14768,8 +14775,10 @@ select{background:var(--elev);color:var(--tx);border:1px solid var(--line2);bord
 .it .t{font-weight:600;font-size:13.5px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .it .d{color:var(--mu);font-size:12.5px;margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .foss{font-size:10px;font-weight:800;color:var(--accent);border:1px solid rgba(61,245,160,.4);border-radius:5px;padding:0 5px}
-.it a{color:var(--mu2);margin-left:auto;font-size:12px;text-decoration:none}
-.it a:hover{color:var(--accent)}
+.tag{font-size:10px;font-weight:700;color:var(--mu);border:1px solid var(--line2);border-radius:5px;padding:0 5px}
+.ico{position:relative;flex:0 0 22px;width:22px;height:22px;border-radius:6px;background:rgba(255,255,255,.07);display:grid;place-items:center;overflow:hidden}
+.ico b{font-size:11.5px;font-weight:800;color:var(--accent)}
+.ico img{position:absolute;inset:2px;width:18px;height:18px;object-fit:contain}
 
 /* switches */
 .sw{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:11px 13px;border:1px solid var(--line);border-radius:11px;background:var(--glass2)}
@@ -14792,14 +14801,27 @@ details.adv .items{padding-bottom:14px}
 .upd.rec{border-color:rgba(61,245,160,.35)}
 .upd.rec::after{content:"Consigliata";position:absolute;top:16px;right:16px;font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--accent);border:1px solid rgba(61,245,160,.35);padding:2px 8px;border-radius:999px}
 
-/* wifi table */
+/* tables */
 table{width:100%;border-collapse:collapse}
 th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
 th{color:var(--mu);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.5px}
 tr:last-child td{border-bottom:0}
+tr.pick{cursor:pointer}
+tr.pick:hover td{background:rgba(255,255,255,.03)}
+tr.pick.sel td{background:rgba(61,245,160,.07)}
+td.nw{white-space:nowrap}
 .pw{font-family:"Cascadia Mono",Consolas,monospace;font-size:13px}
 .ib{border:1px solid var(--line2);background:none;color:var(--mu);border-radius:7px;padding:4px 8px;cursor:pointer;font-size:12px;margin-left:6px}
 .ib:hover{color:var(--accent);border-color:rgba(61,245,160,.4)}
+.ib:disabled{opacity:.4;cursor:not-allowed}
+.tcard{padding:6px}
+.tscroll{overflow:auto;max-height:52vh}
+
+/* forms */
+.form{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+.form label{display:flex;flex-direction:column;gap:5px;font-size:12.5px;color:var(--mu);font-weight:600}
+.form label.full{grid-column:1/-1}
+.fld{width:100%;padding:9px 12px;border:1px solid var(--line2);border-radius:9px;background:rgba(7,9,15,.6);color:var(--tx);outline:none;font-weight:400;resize:vertical}
 
 /* activity dock */
 .dock{position:fixed;left:0;right:0;bottom:0;z-index:20;border-top:1px solid var(--line2);background:rgba(11,14,22,.92);backdrop-filter:blur(14px);transform:translateY(100%);transition:transform .35s var(--ease)}
@@ -14807,7 +14829,7 @@ tr:last-child td{border-bottom:0}
 .dock .in{max-width:1240px;margin:0 auto;padding:12px 24px;display:grid;grid-template-columns:1fr auto;gap:8px 16px;align-items:center}
 .dock .ti{font-weight:650;display:flex;gap:10px;align-items:center;min-width:0}
 .dock .ti span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.dock .lb{color:var(--mu);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dock .lb{color:var(--mu);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:420px}
 .dot{width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--glow);flex:0 0 9px;animation:pulse 1.4s ease-in-out infinite}
 .dot.done{animation:none}.dot.err{background:var(--bad);box-shadow:none;animation:none}
 @keyframes pulse{50%{opacity:.35}}
@@ -14821,15 +14843,22 @@ tr:last-child td{border-bottom:0}
 /* modal + toast */
 .modal{position:fixed;inset:0;display:none;place-items:center;background:rgba(0,0,0,.55);z-index:40;backdrop-filter:blur(3px)}
 .modal.on{display:grid}
-.modal .card{width:min(460px,calc(100% - 32px));padding:22px}
+.modal .card{width:min(460px,calc(100% - 32px));padding:22px;max-height:calc(100vh - 40px);overflow:auto}
+.modal .card.lg{width:min(920px,calc(100% - 32px))}
 .modal h4{margin:0 0 8px;font-size:17px}
 .modal p{margin:0 0 18px;color:var(--mu)}
+.qr{background:#fff;border-radius:12px;padding:10px;width:300px;max-width:100%;margin:6px auto 14px;display:block}
+.qr svg{display:block;width:100%;height:auto;shape-rendering:crispEdges}
+.qrt{text-align:center}
+.qrt b{display:block;font-size:18px}
 .toast{position:fixed;right:20px;top:76px;z-index:50;display:flex;flex-direction:column;gap:8px}
 .toast div{padding:10px 14px;border-radius:10px;border:1px solid var(--line2);background:var(--elev);box-shadow:0 12px 30px -12px rgba(0,0,0,.6);font-size:13px;max-width:360px;animation:fade .3s var(--ease)}
 .toast .e{border-color:rgba(239,68,68,.5)}
 .empty{color:var(--mu);padding:20px;text-align:center}
 .skel{height:14px;border-radius:6px;background:linear-gradient(90deg,rgba(255,255,255,.04),rgba(255,255,255,.09),rgba(255,255,255,.04));background-size:200% 100%;animation:sh 1.4s infinite;margin:8px 0}
 @keyframes sh{to{background-position:-200% 0}}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.2);border-top-color:var(--accent);border-radius:50%;animation:rot 1s linear infinite;vertical-align:-2px;margin-right:8px}
+@keyframes rot{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -14849,45 +14878,57 @@ tr:last-child td{border-bottom:0}
 
   <div class="shell">
     <nav class="side" aria-label="Sezioni">
-      <button type="button" class="nav on" data-v="sys"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>Sistema</button>
-      <button type="button" class="nav" data-v="inst"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>Installa</button>
-      <button type="button" class="nav" data-v="tw"><svg viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>Ottimizza</button>
-      <button type="button" class="nav" data-v="cfg"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Configura</button>
-      <button type="button" class="nav" data-v="upd"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>Aggiornamenti</button>
-      <button type="button" class="nav" data-v="wifi"><svg viewBox="0 0 24 24"><path d="M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M2 9a15 15 0 0 1 20 0"/><circle cx="12" cy="19.5" r="1"/></svg>Wi-Fi</button>
-      <div class="foot"><p>Stampanti, App di Windows e Rapporto sono nella versione classica.</p><button type="button" class="btn ghost sm" id="btnClassic">Apri versione classica</button></div>
+      <button type="button" class="nav on" data-v="sys" title="Alt+S"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>Sistema</button>
+      <button type="button" class="nav" data-v="inst" title="Alt+I"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>Installa</button>
+      <button type="button" class="nav" data-v="tw" title="Alt+T"><svg viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>Ottimizza</button>
+      <button type="button" class="nav" data-v="appx" title="Alt+A"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 17.5h7M17.5 14v7"/></svg>App di Windows</button>
+      <button type="button" class="nav" data-v="cfg" title="Alt+C"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Configura</button>
+      <button type="button" class="nav" data-v="upd" title="Alt+U"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>Aggiornamenti</button>
+      <button type="button" class="nav" data-v="prn" title="Alt+P"><svg viewBox="0 0 24 24"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/></svg>Stampanti</button>
+      <button type="button" class="nav" data-v="wifi" title="Alt+F"><svg viewBox="0 0 24 24"><path d="M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M2 9a15 15 0 0 1 20 0"/><circle cx="12" cy="19.5" r="1"/></svg>Wi-Fi</button>
+      <button type="button" class="nav" data-v="rep" title="Alt+R"><svg viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>Rapporto</button>
+      <div class="foot">
+        <p>Selezioni di app, ottimizzazioni e funzionalit&agrave;:</p>
+        <div class="row" style="gap:6px"><button type="button" class="btn ghost sm" id="btnSelExport" style="flex:1">Esporta</button><button type="button" class="btn ghost sm" id="btnSelImport" style="flex:1">Importa</button></div>
+        <input type="file" id="selFile" accept=".json,application/json" hidden>
+        <button type="button" class="btn ghost sm" id="btnClassic">Apri versione classica</button>
+      </div>
     </nav>
 
     <main>
       <!-- SISTEMA -->
       <section class="view on" id="v-sys">
-        <div class="head"><div><h2>Sistema</h2><p>Riepilogo di hardware, Windows e rete di questo PC.</p></div><button type="button" class="btn sm" id="btnSysRefresh">Aggiorna</button></div>
+        <div class="head"><div><h2>Sistema</h2><p>Riepilogo di hardware, Windows e rete di questo PC.</p></div>
+          <div class="row"><button type="button" class="btn ghost sm" id="btnSysExport">Esporta report</button><button type="button" class="btn sm" id="btnSysRefresh">Aggiorna</button></div></div>
         <div class="grid g3" id="sysGrid"></div>
       </section>
 
       <!-- INSTALLA -->
       <section class="view" id="v-inst">
-        <div class="head"><div><h2>Installa applicazioni</h2><p>Seleziona le app e installale o aggiornale in un clic.</p></div></div>
+        <div class="head"><div><h2>Installa applicazioni</h2><p>Seleziona le app e installale o aggiornale in un clic.</p></div>
+          <div class="row"><button type="button" class="btn sm" id="btnUpdates">Aggiorna applicazioni</button></div></div>
         <div class="tool">
-          <input class="search" id="appSearch" type="search" placeholder="Cerca un'applicazione..." aria-label="Cerca applicazioni">
+          <input class="search" id="appSearch" type="search" placeholder="Cerca un'applicazione... (Ctrl+F)" aria-label="Cerca applicazioni">
           <div class="seg" id="mgrSeg"><button type="button" data-m="Winget" class="on">WinGet</button><button type="button" data-m="Choco">Chocolatey</button></div>
           <span class="count" id="appCount"><b>0</b> selezionate</span>
+          <button type="button" class="btn ghost sm" id="btnAppInstalled">Seleziona installate</button>
           <button type="button" class="btn ghost sm" id="btnAppClear">Azzera</button>
-          <button type="button" class="btn sm" id="btnUpgradeAll">Aggiorna tutte</button>
           <button type="button" class="btn danger sm" id="btnUninstall">Disinstalla</button>
           <button type="button" class="btn primary sm" id="btnInstall">Installa / Aggiorna</button>
         </div>
+        <div class="chips" id="appChips"></div>
         <div id="appList"></div>
       </section>
 
       <!-- OTTIMIZZA -->
       <section class="view" id="v-tw">
-        <div class="head"><div><h2>Ottimizza</h2><p>Privacy, prestazioni e pulizia. Ogni ottimizzazione si puo' annullare.</p></div>
+        <div class="head"><div><h2>Ottimizza</h2><p>Privacy, prestazioni e pulizia. Ogni ottimizzazione si pu&ograve; annullare.</p></div>
           <div class="row"><button type="button" class="btn ghost sm" data-preset="Standard">Preset Standard</button><button type="button" class="btn ghost sm" data-preset="Minimal">Preset Minimo</button><button type="button" class="btn ghost sm" data-preset="Advanced">Preset Avanzato</button><button type="button" class="btn ghost sm" data-preset="">Azzera</button></div></div>
         <div class="tool">
           <span class="count" id="twCount"><b>0</b> selezionate</span>
           <label class="count">DNS <select id="dnsSel" aria-label="DNS"></select></label>
           <span style="flex:1"></span>
+          <button type="button" class="btn ghost sm" id="btnTwApplied">Seleziona gi&agrave; applicate</button>
           <button type="button" class="btn ghost sm" id="btnTwUndo">Annulla selezionate</button>
           <button type="button" class="btn primary sm" id="btnTwRun">Applica selezionate</button>
         </div>
@@ -14897,11 +14938,26 @@ tr:last-child td{border-bottom:0}
         <div class="sec"><h3>Preferenze di Windows <span class="n">si applicano subito</span></h3><div class="items wide" id="twPref"></div></div>
       </section>
 
+      <!-- APP DI WINDOWS -->
+      <section class="view" id="v-appx">
+        <div class="head"><div><h2>App di Windows</h2><p>Rimuovi le app preinstallate per tutti gli utenti, anche per i profili creati in seguito, oppure reinstallale.</p></div></div>
+        <div class="tool">
+          <span class="count" id="axCount"><b>0</b> selezionate</span>
+          <span class="count" id="axState"></span>
+          <span style="flex:1"></span>
+          <button type="button" class="btn ghost sm" id="btnAxInstalled">Seleziona installate</button>
+          <button type="button" class="btn ghost sm" id="btnAxClear">Azzera</button>
+          <button type="button" class="btn sm" id="btnAxInstall">Reinstalla selezionate</button>
+          <button type="button" class="btn danger sm" id="btnAxRemove">Rimuovi selezionate</button>
+        </div>
+        <div id="axList"></div>
+      </section>
+
       <!-- CONFIGURA -->
       <section class="view" id="v-cfg">
-        <div class="head"><div><h2>Configura</h2><p>Funzionalita' di Windows, correzioni e pannelli classici.</p></div></div>
-        <div class="sec"><h3>Funzionalita' di Windows</h3><div class="items wide" id="featList"></div>
-          <div class="row" style="margin-top:12px"><button type="button" class="btn primary sm" id="btnFeat">Installa selezionate</button><span class="note">Alcune funzionalita' richiedono il riavvio.</span></div></div>
+        <div class="head"><div><h2>Configura</h2><p>Funzionalit&agrave; di Windows, correzioni e pannelli classici.</p></div></div>
+        <div class="sec"><h3>Funzionalit&agrave; di Windows</h3><div class="items wide" id="featList"></div>
+          <div class="row" style="margin-top:12px"><button type="button" class="btn primary sm" id="btnFeat">Installa selezionate</button><span class="note">Alcune funzionalit&agrave; richiedono il riavvio.</span></div></div>
         <div class="sec"><h3>Correzioni</h3><div class="row" id="fixRow"></div></div>
         <div class="sec"><h3>Pannelli classici</h3><div class="row" id="panelRow"></div></div>
         <div class="sec"><h3>Accesso remoto</h3><div class="row" id="remoteRow"></div></div>
@@ -14912,16 +14968,48 @@ tr:last-child td{border-bottom:0}
         <div class="head"><div><h2>Aggiornamenti di Windows</h2><p>Scegli come Windows Update installa gli aggiornamenti.</p></div></div>
         <div class="grid g3">
           <article class="card upd rec"><h3>Impostazioni predefinite</h3><p>Windows installa tutti gli aggiornamenti in automatico, come da fabbrica.</p><div><button type="button" class="btn primary sm" data-btn="WPFUpdatesdefault" data-label="Aggiornamenti: impostazioni predefinite">Ripristina predefinite</button></div></article>
-          <article class="card upd"><h3>Solo sicurezza</h3><p>Installa gli aggiornamenti di sicurezza e rimanda quelli delle funzionalita'.</p><div><button type="button" class="btn sm" data-btn="WPFUpdatessecurity" data-label="Aggiornamenti: solo sicurezza">Imposta solo sicurezza</button></div></article>
-          <article class="card upd"><h3>Disattiva</h3><p>Blocca tutti gli aggiornamenti. Sconsigliato: il PC resta senza correzioni di sicurezza.</p><div><button type="button" class="btn danger sm" data-btn="WPFUpdatesdisable" data-label="Aggiornamenti: disattivati" data-confirm="Si fermano i servizi di aggiornamento e si cancellano gli aggiornamenti scaricati. Il PC non ricevera' aggiornamenti di sicurezza finche' non ripristini le impostazioni predefinite. Continuare?">Disattiva aggiornamenti</button></div></article>
+          <article class="card upd"><h3>Solo sicurezza</h3><p>Installa gli aggiornamenti di sicurezza e rimanda quelli delle funzionalit&agrave;.</p><div><button type="button" class="btn sm" data-btn="WPFUpdatessecurity" data-label="Aggiornamenti: solo sicurezza">Imposta solo sicurezza</button></div></article>
+          <article class="card upd"><h3>Disattiva</h3><p>Blocca tutti gli aggiornamenti. Sconsigliato: il PC resta senza correzioni di sicurezza.</p><div><button type="button" class="btn danger sm" data-btn="WPFUpdatesdisable" data-label="Aggiornamenti: disattivati" data-confirm="Si fermano i servizi di aggiornamento e si cancellano gli aggiornamenti scaricati. Il PC non ricever&agrave; aggiornamenti di sicurezza finch&eacute; non ripristini le impostazioni predefinite. Continuare?">Disattiva aggiornamenti</button></div></article>
+        </div>
+      </section>
+
+      <!-- STAMPANTI -->
+      <section class="view" id="v-prn">
+        <div class="head"><div><h2>Stampanti</h2><p>Stampanti installate, driver e coda di stampa.</p></div><button type="button" class="btn sm" id="btnPrnRefresh">Aggiorna</button></div>
+        <div class="card tcard"><table><thead><tr><th>Stampante</th><th>Driver</th><th>Porta</th><th>Stato</th><th>In coda</th></tr></thead><tbody id="prnBody"></tbody></table></div>
+        <div class="row" style="margin-top:14px">
+          <button type="button" class="btn sm" id="btnPrnDriver">Installa driver (.inf)</button>
+          <button type="button" class="btn ghost sm" id="btnPrnRemove">Rimuovi driver</button>
+          <button type="button" class="btn ghost sm" id="btnPrnRestart">Riavvia spooler</button>
+          <button type="button" class="btn danger sm" id="btnPrnClear">Svuota coda</button>
+          <span class="note" id="prnHint" style="margin:0">Per rimuovere un driver, seleziona prima la stampante.</span>
         </div>
       </section>
 
       <!-- WIFI -->
       <section class="view" id="v-wifi">
-        <div class="head"><div><h2>Reti Wi-Fi salvate</h2><p>Password delle reti memorizzate su questo PC. Restano solo qui.</p></div>
-          <div class="row"><button type="button" class="btn ghost sm" id="btnWifiCopy">Copia tutto</button><button type="button" class="btn sm" id="btnWifiRefresh">Aggiorna</button></div></div>
-        <div class="card" style="padding:6px 6px"><table><thead><tr><th>Rete</th><th>Password</th><th>Sicurezza</th><th>Automatica</th></tr></thead><tbody id="wifiBody"></tbody></table></div>
+        <div class="head"><div><h2>Reti Wi-Fi salvate</h2><p>Password delle reti memorizzate su questo PC. Con il QR code il telefono si collega senza digitare la password.</p></div>
+          <div class="row"><button type="button" class="btn ghost sm" id="btnWifiImport">Importa</button><button type="button" class="btn ghost sm" id="btnWifiExport">Esporta (.zip)</button><button type="button" class="btn ghost sm" id="btnWifiCopy">Copia tutto</button><button type="button" class="btn sm" id="btnWifiRefresh">Aggiorna</button></div></div>
+        <div class="card tcard"><table><thead><tr><th>Rete</th><th>Password</th><th>Sicurezza</th><th>Automatica</th><th></th></tr></thead><tbody id="wifiBody"></tbody></table></div>
+        <p class="note">L'esportazione crea un file .zip con le password in chiaro, da importare su un altro PC.</p>
+      </section>
+
+      <!-- RAPPORTO -->
+      <section class="view" id="v-rep">
+        <div class="head"><div><h2>Rapporto di intervento</h2><p>Pagina da stampare o salvare in PDF con i dati del PC e le operazioni eseguite con WinRUtil.</p></div>
+          <div class="row"><button type="button" class="btn ghost sm" id="btnRepClear">Svuota elenco</button><button type="button" class="btn primary sm" id="btnRepCreate">Crea rapporto</button></div></div>
+        <div class="card">
+          <div class="form">
+            <label>Cliente<input class="fld" id="repCustomer" maxlength="200" autocomplete="off"></label>
+            <label>Riferimento (es. n. ticket)<input class="fld" id="repReference" maxlength="200" autocomplete="off"></label>
+            <label>Tecnico<input class="fld" id="repTechnician" maxlength="200" autocomplete="off"></label>
+            <label class="full">Intestazione (la tua azienda: nome sulla prima riga, poi indirizzo e contatti)<textarea class="fld" id="repHeader" rows="3" maxlength="1000"></textarea></label>
+            <label class="full">Note<textarea class="fld" id="repNotes" rows="3" maxlength="4000"></textarea></label>
+          </div>
+          <p class="note">Tecnico e intestazione vengono ricordati per i prossimi rapporti.</p>
+        </div>
+        <div class="sec"><h3>Operazioni eseguite <span class="n" id="repN"></span></h3>
+          <div class="card tcard"><table><thead><tr><th>Ora</th><th>Categoria</th><th>Operazione</th><th>Esito</th></tr></thead><tbody id="repBody"></tbody></table></div></div>
       </section>
     </main>
   </div>
@@ -14935,6 +15023,19 @@ tr:last-child td{border-bottom:0}
     </div>
   </div>
   <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle"><div class="card"><h4 id="mTitle">Confermi?</h4><p id="mText"></p><div class="row" style="justify-content:flex-end"><button type="button" class="btn ghost sm" id="mNo">Annulla</button><button type="button" class="btn primary sm" id="mYes">Continua</button></div></div></div>
+  <div class="modal" id="qrModal" role="dialog" aria-modal="true" aria-labelledby="qrTitle"><div class="card">
+    <h4 id="qrTitle">QR code della rete Wi-Fi</h4>
+    <div class="qr" id="qrBox"></div>
+    <div class="qrt"><b id="qrSsid"></b><span class="note" id="qrInfo"></span></div>
+    <p class="note" style="text-align:center;margin:10px 0 18px">Inquadralo con la fotocamera del telefono per collegarti. Chi lo inquadra ottiene la password: mostralo solo a chi deve collegarsi.</p>
+    <div class="row" style="justify-content:flex-end"><button type="button" class="btn ghost sm" id="qrSave">Salva come immagine</button><button type="button" class="btn primary sm" id="qrClose">Chiudi</button></div>
+  </div></div>
+  <div class="modal" id="updModal" role="dialog" aria-modal="true" aria-labelledby="updTitle"><div class="card lg">
+    <h4 id="updTitle">Aggiorna applicazioni</h4>
+    <p id="updStatus"></p>
+    <div class="card tcard tscroll"><table><thead><tr><th style="width:34px"><input type="checkbox" id="updAll" aria-label="Seleziona tutte"></th><th>Applicazione</th><th>Installata</th><th>Disponibile</th><th>Esito</th></tr></thead><tbody id="updBody"></tbody></table></div>
+    <div class="row" style="justify-content:flex-end;margin-top:14px"><span class="count" id="updCount" style="margin-right:auto"></span><button type="button" class="btn ghost sm" id="updRefresh">Cerca di nuovo</button><button type="button" class="btn ghost sm" id="updClose">Chiudi</button><button type="button" class="btn primary sm" id="updStart">Aggiorna selezionate</button></div>
+  </div></div>
   <div class="toast" id="toast"></div>
 </div>
 
@@ -14944,55 +15045,76 @@ tr:last-child td{border-bottom:0}
   var token = (location.hash || '').replace(/^#/, '');
   history.replaceState(null, '', location.pathname);
   var $ = function (id) { return document.getElementById(id); };
-  var cat = null, mgr = 'Winget', selApps = {}, selTw = {}, selFeat = {}, toggles = {}, logIndex = 0, running = false, pollT = null, wifi = [];
+  var cat = null, mgr = 'Winget', selApps = {}, selTw = {}, selFeat = {}, selAx = {}, appCats = {}, toggles = {}, logIndex = 0, running = false, pollT = null, wifi = [];
+  var afterRun = null, curKind = '', loaded = {};
 
   function api(method, path, body) {
     return fetch(path, { method: method, cache: 'no-store', headers: { 'X-Token': token, 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined })
       .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j && j.error ? j.error : 'HTTP ' + r.status); return j; }); });
   }
+  /* letture lente: il server risponde "loading" finche' non ha finito */
+  function query(path, refresh, every) {
+    return new Promise(function (ok, ko) {
+      (function ask(r) {
+        api('GET', path + (path.indexOf('?') < 0 ? '?' : '&') + (r ? 'refresh=1' : 'refresh=0')).then(function (x) {
+          if (x.loading) { setTimeout(function () { ask(false); }, every || 800); return; }
+          if (x.error) { ko(new Error(x.error)); return; }
+          ok(x.data);
+        }).catch(ko);
+      })(refresh);
+    });
+  }
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
-  function toast(msg, err) { var d = el('div', err ? 'e' : '', msg); $('toast').appendChild(d); setTimeout(function () { d.remove(); }, 4200); }
-  function confirmBox(title, text) {
+  function toast(msg, err) { var d = el('div', err ? 'e' : '', msg); $('toast').appendChild(d); setTimeout(function () { d.remove(); }, 4500); }
+  function confirmBox(title, text, yes) {
     return new Promise(function (ok) {
-      $('mTitle').textContent = title; $('mText').textContent = text; $('modal').classList.add('on'); $('mYes').focus();
+      $('mTitle').textContent = title; $('mText').textContent = text; $('mYes').textContent = yes || 'Continua'; $('modal').classList.add('on'); $('mYes').focus();
       function done(v) { $('modal').classList.remove('on'); $('mYes').onclick = $('mNo').onclick = null; ok(v); }
       $('mYes').onclick = function () { done(true); }; $('mNo').onclick = function () { done(false); };
     });
   }
+  function emptyRow(tb, cols, text) { var tr = el('tr'), td = el('td', 'empty', text); td.colSpan = cols; tr.appendChild(td); tb.appendChild(tr); }
+  function skelRow(tb, cols) { tb.innerHTML = ''; var tr = el('tr'), td = el('td'); td.colSpan = cols; td.appendChild(el('div', 'skel')); td.appendChild(el('div', 'skel')); tr.appendChild(td); tb.appendChild(tr); }
   var CHECK = '<svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg>';
   var MASK = new Array(9).join(String.fromCharCode(8226));
+  var LEVEL = { Success: 'c-ok', Warning: 'c-warn', Danger: 'c-bad', Error: 'c-bad', Muted: 'c-mu', Running: 'c-mu', Info: 'c-mu' };
 
   /* ---------- navigazione ---------- */
-  var loaded = {};
-  document.querySelectorAll('.nav').forEach(function (b) {
-    b.addEventListener('click', function () {
-      document.querySelectorAll('.nav').forEach(function (x) { x.classList.toggle('on', x === b); });
-      var v = b.getAttribute('data-v');
-      document.querySelectorAll('.view').forEach(function (x) { x.classList.toggle('on', x.id === 'v-' + v); });
-      window.scrollTo(0, 0);
-      if (v === 'wifi' && !loaded.wifi) { loaded.wifi = true; loadWifi(false); }
-      if (v === 'tw' && !loaded.tg) { loaded.tg = true; loadToggles(); }
-    });
-  });
+  function show(v) {
+    document.querySelectorAll('.nav').forEach(function (x) { x.classList.toggle('on', x.getAttribute('data-v') === v); });
+    document.querySelectorAll('.view').forEach(function (x) { x.classList.toggle('on', x.id === 'v-' + v); });
+    window.scrollTo(0, 0);
+    if (v === 'wifi' && !loaded.wifi) { loaded.wifi = true; loadWifi(false); }
+    if (v === 'tw' && !loaded.tg) { loaded.tg = true; loadToggles(); }
+    if (v === 'appx' && !loaded.ax) { loaded.ax = true; loadAppx(false); }
+    if (v === 'prn' && !loaded.prn) { loaded.prn = true; loadPrinters(false); }
+    if (v === 'rep') { loadReport(!loaded.rep); loaded.rep = true; }
+  }
+  document.querySelectorAll('.nav').forEach(function (b) { b.addEventListener('click', function () { show(b.getAttribute('data-v')); }); });
+  function current() { var o = document.querySelector('.view.on'); return o ? o.id.substring(2) : ''; }
 
   /* ---------- avvio ---------- */
   api('GET', '/api/info').then(function (i) {
     $('chipPc').lastChild.textContent = i.pc; $('chipVer').textContent = 'v' + i.version;
     setMgr(i.manager === 'Choco' ? 'Choco' : 'Winget', false);
     return api('GET', '/api/catalog');
-  }).then(function (c) { cat = c; renderApps(); renderTweaks(); renderConfig(); loadSystem(false); poll(); })
+  }).then(function (c) { cat = c; renderChips(); renderApps(); renderTweaks(); renderConfig(); renderAppx(); loadSystem(false); poll(); })
     .catch(function () { document.body.innerHTML = '<p style="padding:40px;color:#fca5a5">Sessione non valida: riavviare WinRUtil.</p>'; });
 
   /* ---------- sistema ---------- */
-  function sysCard(title, icon, rows, extra) {
-    var c = el('article', 'card');
+  function sysCard(title, icon, rows, extra, after) {
+    var c = el('article', 'card' + (after ? ' wide' : ''));
     var h = el('h3'); h.innerHTML = icon; h.appendChild(document.createTextNode(title)); c.appendChild(h);
     if (extra) extra(c);
     var kv = el('div', 'kv');
-    rows.forEach(function (r) { if (r[1] == null || r[1] === '') return; kv.appendChild(el('span', '', r[0])); kv.appendChild(el('b', '', String(r[1]))); });
-    c.appendChild(kv); return c;
+    rows.forEach(function (r) { if (r[1] == null || r[1] === '') return; kv.appendChild(el('span', '', r[0])); var b = el('b', '', String(r[1])); if (r[2]) b.id = r[2]; kv.appendChild(b); });
+    c.appendChild(kv); if (after) after(c); return c;
   }
-  function barEl(pct, warn) { var b = el('div', 'bar' + (warn ? ' warn' : '')), i = el('i'); b.appendChild(i); setTimeout(function () { i.style.width = Math.max(2, Math.min(100, pct || 0)) + '%'; }, 50); return b; }
+  function barEl(pct, warn, id) { var b = el('div', 'bar' + (warn ? ' warn' : '')), i = el('i'); if (id) b.id = id; b.appendChild(i); setTimeout(function () { i.style.width = Math.max(2, Math.min(100, pct || 0)) + '%'; }, 50); return b; }
+  function setBar(id, pct, warn) { var b = $(id); if (!b) return; b.classList.toggle('warn', !!warn); b.firstChild.style.width = Math.max(2, Math.min(100, pct || 0)) + '%'; }
+  function setText(id, t) { var e = $(id); if (e && t != null) e.textContent = t; }
+  var COLOR = { SuccessColor: 'var(--ok)', WarningColor: 'var(--warn)', DangerColor: '#f87171' };
+  function pillEl(text, key) { var p = el('span', 'pill', text || ''); p.style.color = COLOR[key] || 'var(--mu)'; var w = el('div'); w.style.marginBottom = '10px'; w.appendChild(p); return w; }
   var IC = {
     win: '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8"/><rect x="13" y="3" width="8" height="8"/><rect x="3" y="13" width="8" height="8"/><rect x="13" y="13" width="8" height="8"/></svg>',
     hw: '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/></svg>',
@@ -15001,39 +15123,56 @@ tr:last-child td{border-bottom:0}
     disk: '<svg viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/></svg>',
     gpu: '<svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="9" cy="12" r="2.5"/><path d="M15 10h4M15 14h4"/></svg>',
     net: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>',
-    bat: '<svg viewBox="0 0 24 24"><rect x="2" y="7" width="18" height="10" rx="2"/><path d="M22 11v2"/></svg>'
+    bat: '<svg viewBox="0 0 24 24"><rect x="2" y="7" width="18" height="10" rx="2"/><path d="M22 11v2"/></svg>',
+    upd: '<svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>'
   };
   function loadSystem(refresh) {
     var g = $('sysGrid');
     if (!g.children.length || refresh) { g.textContent = ''; for (var i = 0; i < 6; i++) { var c = el('div', 'card'); c.appendChild(el('div', 'skel')); c.appendChild(el('div', 'skel')); c.appendChild(el('div', 'skel')); g.appendChild(c); } }
-    api('GET', '/api/system' + (refresh ? '?refresh=1' : '')).then(function (r) {
-      if (r.loading) { setTimeout(function () { loadSystem(false); }, 900); return; }
-      var s = r.data || {}; g.textContent = '';
-      g.appendChild(sysCard('Windows', IC.win, [['Versione', s.OSBuild], ['Nome PC', s.Hostname], ['Installato il', s.InstallDate], ['Acceso da', s.Uptime]], function (c) {
-        c.appendChild(el('div', 'big', s.OSCaption || 'Windows'));
-        var p = el('span', 'pill', s.ActivationText || ''); p.style.color = s.ActivationColor || '#8A93A6'; var w = el('div'); w.style.marginBottom = '10px'; w.appendChild(p); c.appendChild(w);
+    query('/api/system', refresh, 900).then(function (s) {
+      s = s || {}; g.textContent = '';
+      g.appendChild(sysCard('Windows', IC.win, [['Versione', s.OSBuild], ['Nome PC', s.Hostname], ['Installato il', s.InstallDate], ['Acceso da', s.Uptime, 'sysUptime']], function (c) {
+        c.appendChild(el('div', 'big', s.OSCaption || 'Windows')); c.appendChild(pillEl(s.ActivationText, s.ActivationColorKey));
       }));
-      g.appendChild(sysCard('Hardware', IC.hw, [['Produttore', s.Manufacturer], ['Modello', s.Model], ['Numero di serie', s.Serial], ['BIOS', s.Bios], ['Secure Boot', s.SecureBoot], ['TPM', s.Tpm]]));
-      g.appendChild(sysCard('Processore', IC.cpu, [['Core', s.CpuCores], ['Frequenza', s.CpuClock], ['Carico', s.CpuLoad]], function (c) { c.appendChild(el('div', 'big', s.CpuName || '')); c.appendChild(barEl(s.CpuLoadPct, s.CpuLoadPct >= 90)); c.lastChild.style.margin = '0 0 10px'; }));
-      g.appendChild(sysCard('Memoria', IC.ram, [['Libera', s.RamFree], ['Moduli', s.RamModules]], function (c) { c.appendChild(el('div', 'big', s.RamText || '')); c.appendChild(barEl(s.RamUsedPct, s.RamUsedPct >= 90)); c.lastChild.style.margin = '0 0 10px'; }));
+      g.appendChild(sysCard('Hardware e sicurezza', IC.hw, [['Produttore', s.Manufacturer], ['Modello', s.Model], ['Numero di serie', s.Serial], ['BIOS', s.Bios], ['Secure Boot', s.SecureBoot], ['TPM', s.Tpm], ['BitLocker', s.BitLocker]]));
+      g.appendChild(sysCard('Processore', IC.cpu, [['Core', s.CpuCores], ['Frequenza', s.CpuClock], ['Carico', s.CpuLoad, 'sysCpuLoad']], function (c) { c.appendChild(el('div', 'big', s.CpuName || '')); var b = barEl(s.CpuLoadPct, s.CpuLoadPct >= 90, 'sysCpuBar'); b.style.margin = '0 0 10px'; c.appendChild(b); }));
+      g.appendChild(sysCard('Memoria', IC.ram, [['Libera', s.RamFree, 'sysRamFree'], ['Moduli', s.RamModules]], function (c) { var t = el('div', 'big', s.RamText || ''); t.id = 'sysRamText'; c.appendChild(t); var b = barEl(s.RamUsedPct, s.RamUsedPct >= 90, 'sysRamBar'); b.style.margin = '0 0 10px'; c.appendChild(b); }));
       g.appendChild(sysCard('Archiviazione', IC.disk, [], function (c) {
-        var hp = el('span', 'pill', s.DiskHealthText || ''); hp.style.color = s.DiskHealthColor || '#8A93A6'; var w = el('div'); w.style.marginBottom = '10px'; w.appendChild(hp); c.appendChild(w);
-        (s.Disks || []).forEach(function (d) { var r = el('div'); r.style.margin = '0 0 10px'; var t = el('div', 'kv'); t.appendChild(el('span', '', d.Label)); t.appendChild(el('b', '', d.Text)); r.appendChild(t); r.appendChild(barEl(d.UsedPct, d.Warn)); r.lastChild.style.marginTop = '5px'; c.appendChild(r); });
+        c.appendChild(pillEl(s.DiskHealthText, s.DiskHealthColorKey));
+        (s.Disks || []).forEach(function (d) { var r = el('div'); r.style.margin = '0 0 10px'; var t = el('div', 'kv'); t.appendChild(el('span', '', d.Label)); t.appendChild(el('b', '', d.Text)); r.appendChild(t); var b = barEl(d.UsedPct, d.Warn); b.style.marginTop = '5px'; r.appendChild(b); c.appendChild(r); });
       }));
       g.appendChild(sysCard('Scheda video', IC.gpu, [['Memoria', s.GpuVram], ['Driver', s.GpuDriver], ['Risoluzione', s.GpuResolution]], function (c) { c.appendChild(el('div', 'big', s.GpuName || '')); }));
       g.appendChild(sysCard('Rete', IC.net, [['Stato', s.NetStatus], ['Scheda', s.NetAdapter], ['Indirizzo IP', s.NetIp], ['MAC', s.NetMac]]));
-      if (s.HasBattery) g.appendChild(sysCard('Batteria', IC.bat, [['Stato', s.BatteryStatus], ['Usura', s.BatteryHealth]], function (c) { c.appendChild(el('div', 'big', s.BatteryCharge || '')); c.appendChild(barEl(s.BatteryPct, s.BatteryPct <= 20)); c.lastChild.style.margin = '0 0 10px'; }));
+      if (s.HasBattery) g.appendChild(sysCard('Batteria', IC.bat, [['Stato', s.BatteryStatus], ['Usura', s.BatteryHealth]], function (c) { c.appendChild(el('div', 'big', s.BatteryCharge || '')); var b = barEl(s.BatteryPct, s.BatteryPct <= 20); b.style.margin = '0 0 10px'; c.appendChild(b); }));
+      g.appendChild(sysCard('Aggiornamenti di Windows', IC.upd, [['Ultima installazione', s.UpdatesLastInstall], ['Ultima ricerca', s.UpdatesLastSearch]], null, function (c) {
+        var list = s.UpdatesRecent || [];
+        if (!list.length) { c.appendChild(el('p', 'note', 'Nessun aggiornamento nella cronologia.')); return; }
+        var t = el('table'), th = el('thead'), hr = el('tr'); ['Data', 'Aggiornamento', 'Esito'].forEach(function (x) { hr.appendChild(el('th', '', x)); }); th.appendChild(hr); t.appendChild(th);
+        var tb = el('tbody'); list.forEach(function (u) { var tr = el('tr'); tr.appendChild(el('td', 'nw c-mu', u.Date)); tr.appendChild(el('td', '', u.Title)); tr.appendChild(el('td', 'nw ' + (LEVEL[u.Level] || ''), u.Result)); tb.appendChild(tr); });
+        t.appendChild(tb); t.style.marginTop = '12px'; c.appendChild(t);
+      }));
     }).catch(function (e) { g.textContent = ''; g.appendChild(el('div', 'empty', 'Informazioni non disponibili: ' + e.message)); });
   }
   $('btnSysRefresh').addEventListener('click', function () { loadSystem(true); });
+  $('btnSysExport').addEventListener('click', function () { run('/api/sysexport', {}); });
+  /* processore, memoria e tempo di accensione aggiornati ogni 3 secondi, come nella versione classica */
+  setInterval(function () {
+    if (current() !== 'sys' || document.hidden || !$('sysCpuBar')) return;
+    api('GET', '/api/live?refresh=1').then(function (x) {
+      if (x.loading || !x.data) return; var d = x.data;
+      setText('sysCpuLoad', d.CpuLoad); setBar('sysCpuBar', d.CpuLoadPct, d.CpuLoadPct >= 90);
+      setText('sysRamText', d.RamText); setText('sysRamFree', d.RamFree); setBar('sysRamBar', d.RamUsedPct, d.RamUsedPct >= 90); setText('sysUptime', d.Uptime);
+    }).catch(function () { });
+  }, 3000);
 
   /* ---------- elementi selezionabili ---------- */
-  function selItem(o, store, onChange) {
+  function selItem(o, store, onChange, icon, tag) {
     var lab = el('label', 'it' + (store[o.id] ? ' sel' : ''));
     var inp = el('input'); inp.type = 'checkbox'; inp.checked = !!store[o.id]; lab.appendChild(inp);
     var bx = el('span', 'box'); bx.innerHTML = CHECK; lab.appendChild(bx);
+    if (icon) lab.appendChild(icon);
     var tx = el('div'); tx.style.minWidth = '0'; tx.style.flex = '1';
-    var t = el('div', 't', o.name); if (o.foss) t.appendChild(el('span', 'foss', 'FOSS')); tx.appendChild(t);
+    var t = el('div', 't', o.name); if (o.foss) t.appendChild(el('span', 'foss', 'FOSS')); if (tag) t.appendChild(el('span', 'tag', tag)); tx.appendChild(t);
     if (o.desc) { var d = el('div', 'd', o.desc); d.title = o.desc; tx.appendChild(d); }
     lab.appendChild(tx);
     inp.addEventListener('change', function () { if (inp.checked) store[o.id] = true; else delete store[o.id]; lab.classList.toggle('sel', inp.checked); onChange(); });
@@ -15041,18 +15180,46 @@ tr:last-child td{border-bottom:0}
     return lab;
   }
   function groupBy(arr, key) { var m = {}, order = []; arr.forEach(function (x) { var k = x[key] || 'Altro'; if (!m[k]) { m[k] = []; order.push(k); } m[k].push(x); }); return order.sort().map(function (k) { return [k, m[k]]; }); }
+  function countHtml(id, n) { $(id).innerHTML = '<b>' + n + '</b> selezionate'; }
 
   /* ---------- installa ---------- */
-  var CAT_IT = { 'Browsers': 'Browser', 'Communications': 'Comunicazione', 'Development': 'Sviluppo', 'Document': 'Documenti', 'Games': 'Giochi', 'Microsoft Tools': 'Strumenti Microsoft', 'Multimedia Tools': 'Multimedia', 'Pro Tools': 'Strumenti professionali', 'Selfhosted Tools': 'Self-hosted', 'Utilities': 'Utilita\'' };
-  function appCount() { $('appCount').innerHTML = '<b>' + Object.keys(selApps).length + '</b> selezionate'; }
+  var CAT_IT = { 'Browsers': 'Browser', 'Communications': 'Comunicazione', 'Development': 'Sviluppo', 'Document': 'Documenti', 'Games': 'Giochi', 'Microsoft Tools': 'Strumenti Microsoft', 'Multimedia Tools': 'Multimedia', 'Pro Tools': 'Strumenti professionali', 'Selfhosted Tools': 'Self-hosted', 'Utilities': 'Utilit\u00e0' };
+  function catName(c) { return CAT_IT[c] || c; }
+  function appCount() { countHtml('appCount', Object.keys(selApps).length); }
+  /* icona del sito dell'app (come la versione classica), con l'iniziale finche' l'icona manca */
+  function appIcon(a) {
+    var w = el('span', 'ico'), f = el('b', '', ((a.name || '?').replace(/^\./, '').charAt(0) || '?').toUpperCase()); w.appendChild(f);
+    if (a.link && /^https?:/i.test(a.link)) {
+      var im = new Image(); im.alt = ''; im.loading = 'lazy'; im.decoding = 'async'; im.referrerPolicy = 'no-referrer';
+      im.onload = function () { if (im.naturalWidth > 1) f.style.visibility = 'hidden'; else im.remove(); };
+      im.onerror = function () { im.remove(); };
+      im.src = 'https://www.google.com/s2/favicons?sz=64&domain_url=' + encodeURIComponent(a.link);
+      w.appendChild(im);
+    }
+    return w;
+  }
+  function renderChips() {
+    var box = $('appChips'), cats = groupBy(cat.apps, 'cat');
+    var all = el('button', 'cchip on', 'Tutte'); all.type = 'button'; all.setAttribute('data-c', ''); box.appendChild(all);
+    cats.forEach(function (g) { var b = el('button', 'cchip', catName(g[0]) + ' ' + g[1].length); b.type = 'button'; b.setAttribute('data-c', g[0]); box.appendChild(b); });
+    box.title = 'Ctrl+clic per combinare pi\u00f9 categorie';
+    box.addEventListener('click', function (e) {
+      var b = e.target.closest('.cchip'); if (!b) return; var c = b.getAttribute('data-c');
+      if (!c) appCats = {};
+      else if (e.ctrlKey) { if (appCats[c]) delete appCats[c]; else appCats[c] = true; }
+      else { var only = Object.keys(appCats).length === 1 && appCats[c]; appCats = {}; if (!only) appCats[c] = true; }
+      box.querySelectorAll('.cchip').forEach(function (x) { var k = x.getAttribute('data-c'); x.classList.toggle('on', k ? !!appCats[k] : !Object.keys(appCats).length); });
+      renderApps();
+    });
+  }
   function renderApps() {
-    var q = ($('appSearch').value || '').toLowerCase(), box = $('appList'); box.textContent = '';
-    var list = cat.apps.filter(function (a) { return !q || (a.name + ' ' + a.desc).toLowerCase().indexOf(q) >= 0; });
+    var q = ($('appSearch').value || '').toLowerCase(), box = $('appList'), anyCat = Object.keys(appCats).length > 0; box.textContent = '';
+    var list = cat.apps.filter(function (a) { return (!anyCat || appCats[a.cat]) && (!q || (a.name + ' ' + a.desc).toLowerCase().indexOf(q) >= 0); });
     if (!list.length) { box.appendChild(el('div', 'empty', 'Nessuna applicazione trovata.')); return; }
     groupBy(list, 'cat').forEach(function (g) {
-      var s = el('div', 'sec'), h = el('h3', '', CAT_IT[g[0]] || g[0]); h.appendChild(el('span', 'n', String(g[1].length))); s.appendChild(h);
+      var s = el('div', 'sec'), h = el('h3', '', catName(g[0])); h.appendChild(el('span', 'n', String(g[1].length))); s.appendChild(h);
       var it = el('div', 'items');
-      g[1].sort(function (a, b) { return a.name.localeCompare(b.name); }).forEach(function (a) { it.appendChild(selItem(a, selApps, appCount)); });
+      g[1].sort(function (a, b) { return a.name.localeCompare(b.name); }).forEach(function (a) { it.appendChild(selItem(a, selApps, appCount, appIcon(a))); });
       s.appendChild(it); box.appendChild(s);
     });
   }
@@ -15063,19 +15230,73 @@ tr:last-child td{border-bottom:0}
   $('btnInstall').addEventListener('click', function () { run('/api/apps', { ids: Object.keys(selApps), manager: mgr, action: 'Install' }); });
   $('btnUninstall').addEventListener('click', function () {
     var n = Object.keys(selApps).length; if (!n) { toast('Seleziona almeno un\'applicazione.', true); return; }
-    confirmBox('Disinstallare ' + n + ' applicazioni?', 'Le applicazioni selezionate verranno rimosse dal PC.').then(function (ok) { if (ok) run('/api/apps', { ids: Object.keys(selApps), manager: mgr, action: 'Uninstall' }); });
+    confirmBox('Disinstallare ' + n + ' applicazioni?', 'Le applicazioni selezionate verranno rimosse dal PC.', 'Disinstalla').then(function (ok) { if (ok) run('/api/apps', { ids: Object.keys(selApps), manager: mgr, action: 'Uninstall' }); });
   });
-  $('btnUpgradeAll').addEventListener('click', function () { run('/api/upgrade', { manager: mgr }); });
+  function busyBtn(b, on, text) { if (on) { b._t = b.textContent; b.disabled = true; b.innerHTML = '<span class="spin"></span>' + text; } else { b.disabled = false; b.textContent = b._t; } }
+  $('btnAppInstalled').addEventListener('click', function () {
+    var b = this; busyBtn(b, true, 'Ricerca...');
+    query('/api/installed?manager=' + mgr, true, 1200).then(function (ids) {
+      var n = 0; (ids || []).forEach(function (i) { if (!selApps[i]) { selApps[i] = true; n++; } });
+      renderApps(); appCount(); toast('App dell\'elenco installate su questo PC: ' + (ids || []).length + '.');
+    }).catch(function (e) { toast('Ricerca non riuscita: ' + e.message, true); }).then(function () { busyBtn(b, false); });
+  });
+
+  /* ---------- aggiornamento delle applicazioni scelte ---------- */
+  var updList = [], updSel = {}, updDone = {};
+  function openUpdates() { $('updModal').classList.add('on'); if (!updList.length) loadUpdates(false); }
+  function updCount() {
+    var open = updList.filter(function (u) { return !updDone[u.id]; }), n = open.filter(function (u) { return updSel[u.id]; }).length;
+    $('updCount').textContent = open.length ? n + ' di ' + open.length + ' selezionate' : '';
+    $('updAll').checked = open.length > 0 && n === open.length; $('updStart').disabled = running || n === 0; $('updRefresh').disabled = running;
+  }
+  function renderUpdates(results) {
+    var tb = $('updBody'); tb.textContent = '';
+    if (!updList.length) { emptyRow(tb, 5, 'Nessun aggiornamento disponibile: tutte le applicazioni sono aggiornate.'); updCount(); return; }
+    updList.forEach(function (u) {
+      var tr = el('tr'), td = el('td'), cb = el('input'); cb.type = 'checkbox'; cb.checked = !!updSel[u.id]; cb.disabled = !!updDone[u.id] || running; cb.setAttribute('aria-label', u.name);
+      cb.addEventListener('change', function () { if (cb.checked) updSel[u.id] = true; else delete updSel[u.id]; updCount(); });
+      td.appendChild(cb); tr.appendChild(td);
+      var n = el('td'); n.appendChild(el('div', '', u.name)); var sm = el('div', 'note', u.id); sm.style.margin = '0'; n.appendChild(sm); tr.appendChild(n);
+      tr.appendChild(el('td', 'nw c-mu', u.version || '?')); tr.appendChild(el('td', 'nw', u.available));
+      var r = results && results[u.id]; tr.appendChild(el('td', 'nw ' + (r ? (LEVEL[r.l] || '') : ''), r ? r.t : ''));
+      tb.appendChild(tr);
+    });
+    updCount();
+  }
+  function loadUpdates(refresh) {
+    updList = []; updSel = {}; updDone = {}; skelRow($('updBody'), 5);
+    $('updStatus').innerHTML = '<span class="spin"></span>Ricerca degli aggiornamenti con ' + (mgr === 'Choco' ? 'Chocolatey' : 'WinGet') + ' in corso (pu\u00f2 richiedere un minuto)...';
+    $('updStart').disabled = true; $('updRefresh').disabled = true;
+    query('/api/updates?manager=' + mgr, refresh, 1500).then(function (list) {
+      updList = list || []; updList.forEach(function (u) { if (u.selected) updSel[u.id] = true; });
+      var t = updList.length === 0 ? 'Nessun aggiornamento disponibile.' : (updList.length === 1 ? '1 aggiornamento disponibile.' : updList.length + ' aggiornamenti disponibili.');
+      if (updList.length) t += ' Scegli quali installare.';
+      if (updList.some(function (u) { return !u.selected; })) t += ' Non sono preselezionate le app con versione sconosciuta e quelle che WinGet aggiorna solo su richiesta.';
+      $('updStatus').textContent = t; renderUpdates();
+    }).catch(function (e) { $('updStatus').textContent = 'Impossibile cercare gli aggiornamenti: ' + e.message; $('updBody').textContent = ''; updCount(); });
+  }
+  $('btnUpdates').addEventListener('click', openUpdates);
+  $('updRefresh').addEventListener('click', function () { loadUpdates(true); });
+  $('updClose').addEventListener('click', function () { $('updModal').classList.remove('on'); });
+  $('updAll').addEventListener('change', function () { var v = this.checked; updList.forEach(function (u) { if (!updDone[u.id]) { if (v) updSel[u.id] = true; else delete updSel[u.id]; } }); renderUpdates(lastResults); });
+  var lastResults = null;
+  $('updStart').addEventListener('click', function () {
+    var ids = updList.filter(function (u) { return updSel[u.id] && !updDone[u.id]; }).map(function (u) { return u.id; });
+    run('/api/updates', { ids: ids, manager: mgr }, function (s) {
+      Object.keys(s.results || {}).forEach(function (k) { if (s.results[k].ok) { updDone[k] = true; delete updSel[k]; } });
+      $('updStatus').textContent = 'Aggiornamento terminato: vedi l\'esito di ogni applicazione.'; renderUpdates(s.results);
+    });
+  });
 
   /* ---------- ottimizza ---------- */
   var twEls = {};
-  function twCount() { $('twCount').innerHTML = '<b>' + Object.keys(selTw).length + '</b> selezionate'; }
+  function twCount() { countHtml('twCount', Object.keys(selTw).length); }
   function renderTweaks() {
     var ess = $('twEss'), adv = $('twAdv'), pref = $('twPref'), perf = $('perfRow');
     var plain = cat.tweaks.filter(function (t) { return !t.type; });
     plain.filter(function (t) { return !t.advanced; }).forEach(function (t) { var e = selItem(t, selTw, twCount); twEls[t.id] = e; ess.appendChild(e); });
     $('nEss').textContent = String(plain.filter(function (t) { return !t.advanced; }).length);
-    var wb = el('div', 'warnbox', 'Queste modifiche sono profonde: applicarle solo se sai cosa fanno. Il punto di ripristino e\' consigliato.'); wb.style.gridColumn = '1/-1'; adv.appendChild(wb);
+    var wb = el('div', 'warnbox', 'Queste modifiche sono profonde: applicale solo se sai cosa fanno. Il punto di ripristino \u00e8 consigliato.'); wb.style.gridColumn = '1/-1'; adv.appendChild(wb);
     plain.filter(function (t) { return t.advanced; }).forEach(function (t) { var e = selItem(t, selTw, twCount); twEls[t.id] = e; adv.appendChild(e); });
     cat.tweaks.filter(function (t) { return t.type === 'Button'; }).forEach(function (t) {
       var b = el('button', 'btn sm', t.name); b.type = 'button'; b.title = t.desc || '';
@@ -15092,7 +15313,14 @@ tr:last-child td{border-bottom:0}
       });
       pref.appendChild(r);
     });
-    var ds = $('dnsSel'); cat.dns.forEach(function (d) { var o = el('option', '', d === 'Default' ? 'Non cambiare' : (d === 'DHCP' ? 'Automatico (DHCP)' : (d === 'Fastest' ? 'Il piu\' veloce (misurato ora)' : d.replace(/_/g, ' ')))); o.value = d; ds.appendChild(o); });
+    (cat.combos || []).forEach(function (c) {
+      var r = el('div', 'sw'), tx = el('div'); tx.appendChild(el('div', 't', c.name)); var d = el('div', 'd', c.desc || ''); tx.appendChild(d); r.appendChild(tx);
+      var s = el('select'); s.id = 'cb_' + c.id; s.disabled = true; s.setAttribute('aria-label', c.name); s.style.maxWidth = '210px';
+      c.items.forEach(function (i) { var o = el('option', '', i); o.value = i; o.title = (c.descs || {})[i] || ''; s.appendChild(o); });
+      s.addEventListener('change', function () { var v = s.value; d.textContent = (c.descs || {})[v] || c.desc || ''; run('/api/combo', { id: c.id, state: v }); });
+      r.appendChild(s); pref.appendChild(r);
+    });
+    var ds = $('dnsSel'); cat.dns.forEach(function (d) { var o = el('option', '', d === 'Default' ? 'Non cambiare' : (d === 'DHCP' ? 'Automatico (DHCP)' : (d === 'Fastest' ? 'Il pi\u00f9 veloce (misurato ora)' : d.replace(/_/g, ' ')))); o.value = d; ds.appendChild(o); });
     document.querySelectorAll('[data-preset]').forEach(function (b) {
       b.addEventListener('click', function () {
         var p = b.getAttribute('data-preset'), ids = p ? (cat.presets[p] || []) : [];
@@ -15104,14 +15332,57 @@ tr:last-child td{border-bottom:0}
   function loadToggles() {
     api('GET', '/api/toggles').then(function (t) { toggles = t; Object.keys(t).forEach(function (k) { var b = $('tg_' + k); if (b) { b.classList.toggle('on', !!t[k]); b.setAttribute('aria-checked', !!t[k]); b.disabled = false; } }); })
       .catch(function () { document.querySelectorAll('.tg').forEach(function (b) { b.disabled = false; }); });
+    api('GET', '/api/combos').then(function (c) { Object.keys(c).forEach(function (k) { var s = $('cb_' + k); if (s) { if (c[k]) s.value = c[k]; s.disabled = false; } }); })
+      .catch(function () { document.querySelectorAll('[id^="cb_"]').forEach(function (s) { s.disabled = false; }); });
   }
   $('btnTwRun').addEventListener('click', function () { run('/api/tweaks', { ids: Object.keys(selTw), undo: false, dns: $('dnsSel').value }); });
   $('btnTwUndo').addEventListener('click', function () { run('/api/tweaks', { ids: Object.keys(selTw), undo: true, dns: 'Default' }); });
+  $('btnTwApplied').addEventListener('click', function () {
+    var b = this; busyBtn(b, true, 'Controllo...');
+    query('/api/applied', true, 1000).then(function (ids) {
+      var n = 0; (ids || []).forEach(function (i) { if (twEls[i]) { selTw[i] = true; twEls[i]._set(true); n++; } }); twCount();
+      toast(n ? 'Ottimizzazioni gi\u00e0 applicate: ' + n + '.' : 'Nessuna ottimizzazione dell\'elenco risulta applicata.');
+    }).catch(function (e) { toast('Controllo non riuscito: ' + e.message, true); }).then(function () { busyBtn(b, false); });
+  });
+
+  /* ---------- app di Windows ---------- */
+  var axEls = {}, axInstalled = null;
+  function axCount() { countHtml('axCount', Object.keys(selAx).length); }
+  function renderAppx() {
+    var box = $('axList'); box.textContent = ''; axEls = {};
+    if (!cat.appx || !cat.appx.length) { box.appendChild(el('div', 'empty', 'Nessuna app nell\'elenco.')); return; }
+    groupBy(cat.appx, 'cat').forEach(function (g) {
+      var s = el('div', 'sec'), h = el('h3', '', g[0]); h.appendChild(el('span', 'n', String(g[1].length))); s.appendChild(h);
+      var it = el('div', 'items wide');
+      g[1].sort(function (a, b) { return a.name.localeCompare(b.name); }).forEach(function (a) {
+        var tag = axInstalled ? (axInstalled[a.id] ? 'Installata' : 'Non installata') : null;
+        var e = selItem(a, selAx, axCount, null, tag); axEls[a.id] = e; it.appendChild(e);
+      });
+      s.appendChild(it); box.appendChild(s);
+    });
+  }
+  function loadAppx(refresh) {
+    $('axState').innerHTML = '<span class="spin"></span>Lettura delle app installate...';
+    return query('/api/appx', refresh, 1000).then(function (ids) {
+      axInstalled = {}; (ids || []).forEach(function (i) { axInstalled[i] = true; });
+      $('axState').textContent = 'Installate su questo PC: ' + (ids || []).length + ' di ' + cat.appx.length + '.'; renderAppx();
+      return ids || [];
+    }).catch(function (e) { $('axState').textContent = 'Lettura non riuscita: ' + e.message; return []; });
+  }
+  $('btnAxInstalled').addEventListener('click', function () { loadAppx(true).then(function (ids) { ids.forEach(function (i) { selAx[i] = true; if (axEls[i]) axEls[i]._set(true); }); axCount(); }); });
+  $('btnAxClear').addEventListener('click', function () { selAx = {}; Object.keys(axEls).forEach(function (i) { axEls[i]._set(false); }); axCount(); });
+  $('btnAxInstall').addEventListener('click', function () { run('/api/appx', { ids: Object.keys(selAx), action: 'Install' }); });
+  $('btnAxRemove').addEventListener('click', function () {
+    var ids = Object.keys(selAx); if (!ids.length) { toast('Seleziona almeno un\'app di Windows.', true); return; }
+    var names = cat.appx.filter(function (a) { return selAx[a.id]; }).map(function (a) { return a.name; });
+    confirmBox('Rimuovere ' + ids.length + ' app di Windows?', 'Per tutti gli utenti: ' + names.slice(0, 8).join(', ') + (names.length > 8 ? '...' : '') + '. Potrai reinstallarle con "Reinstalla selezionate".', 'Rimuovi').then(function (ok) { if (ok) run('/api/appx', { ids: ids, action: 'Remove' }); });
+  });
 
   /* ---------- configura ---------- */
+  var featEls = {};
   function renderConfig() {
     cat.features.forEach(function (f) {
-      if (!f.type) { $('featList').appendChild(selItem(f, selFeat, function () { })); return; }
+      if (!f.type) { var e = selItem(f, selFeat, function () { }); featEls[f.id] = e; $('featList').appendChild(e); return; }
       var row = /riparaz|fixes/i.test(f.cat) ? 'fixRow' : (/pannelli|panels/i.test(f.cat) ? 'panelRow' : 'remoteRow');
       var b = el('button', 'btn sm', f.name); b.type = 'button'; b.title = f.desc || '';
       b.addEventListener('click', function () { run('/api/button', { id: f.id, label: f.name }); });
@@ -15127,47 +15398,152 @@ tr:last-child td{border-bottom:0}
     });
   });
 
-  /* ---------- wifi ---------- */
-  function loadWifi(refresh) {
-    var tb = $('wifiBody'); tb.innerHTML = '<tr><td colspan="4"><div class="skel"></div><div class="skel"></div></td></tr>';
-    (function ask(r) {
-      api('GET', '/api/wifi' + (r ? '?refresh=1' : '')).then(function (x) {
-        if (x.loading) { setTimeout(function () { ask(false); }, 700); return; }
-        wifi = x.data || []; tb.textContent = '';
-        if (!wifi.length) { var tr = el('tr'), td = el('td', 'empty', 'Nessuna rete Wi-Fi salvata.'); td.colSpan = 4; tr.appendChild(td); tb.appendChild(tr); return; }
-        wifi.forEach(function (w) {
-          var tr = el('tr'); tr.appendChild(el('td', '', w.ssid));
-          var td = el('td'), pw = el('span', 'pw', w.password ? MASK : '(nessuna)'); td.appendChild(pw);
-          if (w.password) {
-            var eye = el('button', 'ib', 'Mostra'); eye.type = 'button';
-            eye.addEventListener('click', function () { var s = eye.textContent === 'Mostra'; pw.textContent = s ? w.password : MASK; eye.textContent = s ? 'Nascondi' : 'Mostra'; });
-            var cp = el('button', 'ib', 'Copia'); cp.type = 'button';
-            cp.addEventListener('click', function () { copy(w.password, 'Password copiata.'); });
-            td.appendChild(eye); td.appendChild(cp);
-          }
-          tr.appendChild(td); tr.appendChild(el('td', '', w.security)); tr.appendChild(el('td', '', w.auto)); tb.appendChild(tr);
-        });
-      }).catch(function (e) { tb.innerHTML = ''; toast(e.message, true); });
-    })(refresh);
+  /* ---------- stampanti ---------- */
+  var prnSel = null;
+  var PRN = { Normal: 'Pronta', Idle: 'Pronta', Printing: 'In stampa', Offline: 'Non in linea', Error: 'Errore', Paused: 'In pausa', PaperJam: 'Carta inceppata', PaperOut: 'Carta esaurita', PaperProblem: 'Problema con la carta', TonerLow: 'Toner in esaurimento', NoToner: 'Toner esaurito', DoorOpen: 'Sportello aperto', Busy: 'Occupata', Processing: 'In elaborazione', Warmup: 'Riscaldamento', NotAvailable: 'Non disponibile', OutputBinFull: 'Vassoio di uscita pieno', UserIntervention: 'Richiede intervento', PendingDeletion: 'In rimozione' };
+  function loadPrinters(refresh) {
+    var tb = $('prnBody'); skelRow(tb, 5); prnSel = null; $('btnPrnRemove').disabled = true;
+    query('/api/printers', refresh, 700).then(function (list) {
+      tb.textContent = ''; list = list || [];
+      if (!list.length) { emptyRow(tb, 5, 'Nessuna stampante installata.'); return; }
+      list.forEach(function (p) {
+        var tr = el('tr', 'pick'); tr.tabIndex = 0;
+        tr.appendChild(el('td', '', p.name)); tr.appendChild(el('td', '', p.driver)); tr.appendChild(el('td', 'c-mu', p.port));
+        var ok = /^(Normal|Idle|Printing)$/.test(p.status); tr.appendChild(el('td', 'nw ' + (ok ? 'c-ok' : 'c-warn'), PRN[p.status] || p.status)); tr.appendChild(el('td', '', String(p.jobs)));
+        var pick = function () { tb.querySelectorAll('tr').forEach(function (x) { x.classList.toggle('sel', x === tr); }); prnSel = p; $('btnPrnRemove').disabled = running; $('prnHint').textContent = 'Selezionata: ' + p.name + ' (driver ' + p.driver + ')'; };
+        tr.addEventListener('click', pick); tr.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } });
+        tb.appendChild(tr);
+      });
+    }).catch(function (e) { tb.textContent = ''; emptyRow(tb, 5, 'Impossibile elencare le stampanti: ' + e.message); });
   }
+  $('btnPrnRefresh').addEventListener('click', function () { loadPrinters(true); });
+  $('btnPrnDriver').addEventListener('click', function () { run('/api/printer', { action: 'driver' }); });
+  $('btnPrnRestart').addEventListener('click', function () { run('/api/printer', { action: 'restart' }); });
+  $('btnPrnRemove').addEventListener('click', function () {
+    if (!prnSel) { toast('Seleziona prima una stampante.', true); return; }
+    confirmBox('Rimuovere il driver?', 'Il driver "' + prnSel.driver + '" viene rimosso da Windows. Se una stampante lo usa ancora, la rimozione non riesce.', 'Rimuovi').then(function (ok) { if (ok) run('/api/printer', { action: 'remove', driver: prnSel.driver }); });
+  });
+  $('btnPrnClear').addEventListener('click', function () {
+    confirmBox('Svuotare la coda di stampa?', 'Tutti i documenti in attesa di stampa vengono cancellati e lo spooler viene riavviato.', 'Svuota').then(function (ok) { if (ok) run('/api/printer', { action: 'clear' }); });
+  });
+
+  /* ---------- wifi ---------- */
+  var qrNet = null;
+  function loadWifi(refresh) {
+    var tb = $('wifiBody'); skelRow(tb, 5);
+    query('/api/wifi', refresh, 700).then(function (list) {
+      wifi = list || []; tb.textContent = '';
+      if (!wifi.length) { emptyRow(tb, 5, 'Nessuna rete Wi-Fi salvata.'); return; }
+      wifi.forEach(function (w) {
+        var tr = el('tr'); tr.appendChild(el('td', '', w.ssid));
+        var td = el('td'), pw = el('span', 'pw', w.password ? MASK : '(nessuna)'); td.appendChild(pw);
+        if (w.password) {
+          var eye = el('button', 'ib', 'Mostra'); eye.type = 'button';
+          eye.addEventListener('click', function () { var s = eye.textContent === 'Mostra'; pw.textContent = s ? w.password : MASK; eye.textContent = s ? 'Nascondi' : 'Mostra'; });
+          var cp = el('button', 'ib', 'Copia'); cp.type = 'button';
+          cp.addEventListener('click', function () { copy(w.password, 'Password copiata.'); });
+          td.appendChild(eye); td.appendChild(cp);
+        }
+        tr.appendChild(td); tr.appendChild(el('td', '', w.security)); tr.appendChild(el('td', '', w.auto));
+        var qa = el('td', 'nw'), qb = el('button', 'ib', 'QR code'); qb.type = 'button'; qb.disabled = !w.canShare;
+        qb.title = w.canShare ? 'Mostra il QR code per collegare un telefono' : (/Enterprise/.test(w.security) ? 'Non disponibile: le reti aziendali usano credenziali personali' : 'Non disponibile: password non salvata su questo PC');
+        qb.addEventListener('click', function () { showQr(w); }); qa.appendChild(qb); tr.appendChild(qa);
+        tb.appendChild(tr);
+      });
+    }).catch(function (e) { tb.textContent = ''; toast(e.message, true); });
+  }
+  function showQr(w) {
+    api('POST', '/api/wifiqr', { ssid: w.ssid }).then(function (q) {
+      var n = q.size, q4 = n + 8, d = '';
+      for (var y = 0; y < n; y++) { var x = 0; while (x < n) { if (q.modules.charAt(y * n + x) !== '1') { x++; continue; } var s = x; while (x < n && q.modules.charAt(y * n + x) === '1') x++; d += 'M' + (s + 4) + ' ' + (y + 4) + 'h' + (x - s) + 'v1h-' + (x - s) + 'z'; } }
+      var ns = 'http://www.w3.org/2000/svg', svg = document.createElementNS(ns, 'svg'), bg = document.createElementNS(ns, 'rect'), p = document.createElementNS(ns, 'path');
+      svg.setAttribute('viewBox', '0 0 ' + q4 + ' ' + q4); svg.setAttribute('role', 'img'); svg.setAttribute('aria-label', 'QR code della rete ' + q.ssid);
+      bg.setAttribute('width', q4); bg.setAttribute('height', q4); bg.setAttribute('fill', '#fff'); p.setAttribute('d', d); p.setAttribute('fill', '#000');
+      svg.appendChild(bg); svg.appendChild(p);
+      var box = $('qrBox'); box.textContent = ''; box.appendChild(svg);
+      $('qrSsid').textContent = q.ssid; $('qrInfo').textContent = q.open ? 'Rete aperta, senza password' : 'Sicurezza: ' + q.security;
+      qrNet = q.ssid; $('qrModal').classList.add('on'); $('qrClose').focus();
+    }).catch(function (e) { toast(e.message, true); });
+  }
+  function closeQr() { $('qrModal').classList.remove('on'); $('qrBox').textContent = ''; qrNet = null; }
+  $('qrClose').addEventListener('click', closeQr);
+  $('qrSave').addEventListener('click', function () { if (qrNet) run('/api/wifiqrsave', { ssid: qrNet }); });
   function copy(text, msg) {
     var done = function () { toast(msg); };
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fallback); else fallback();
     function fallback() { var t = el('textarea'); t.value = text; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); done(); } catch (e) { toast('Copia non riuscita.', true); } t.remove(); }
   }
   $('btnWifiRefresh').addEventListener('click', function () { loadWifi(true); });
+  $('btnWifiExport').addEventListener('click', function () { run('/api/wifiexport', {}); });
+  $('btnWifiImport').addEventListener('click', function () { run('/api/wifiimport', {}, function () { loadWifi(true); }); });
   $('btnWifiCopy').addEventListener('click', function () {
     if (!wifi.length) { toast('Nessuna rete da copiare.', true); return; }
     copy('Rete\tPassword\tSicurezza\n' + wifi.map(function (w) { return w.ssid + '\t' + w.password + '\t' + w.security; }).join('\n'), 'Elenco copiato negli appunti.');
   });
 
+  /* ---------- rapporto ---------- */
+  var REP_ST = { Success: 'c-ok', Error: 'c-bad', Info: 'c-mu' };
+  function loadReport(first) {
+    api('GET', '/api/report').then(function (r) {
+      if (first) { if (!$('repTechnician').value) $('repTechnician').value = r.technician || ''; if (!$('repHeader').value) $('repHeader').value = r.header || ''; }
+      var tb = $('repBody'); tb.textContent = ''; var a = r.actions || [];
+      $('repN').textContent = String(a.length);
+      if (!a.length) { emptyRow(tb, 4, 'Nessuna operazione eseguita in questa sessione. Le operazioni fatte con WinRUtil compaiono qui.'); return; }
+      a.forEach(function (x) { var tr = el('tr'); tr.appendChild(el('td', 'nw c-mu', x.time)); tr.appendChild(el('td', 'nw', x.area)); tr.appendChild(el('td', '', x.text)); tr.appendChild(el('td', 'nw ' + (REP_ST[x.status] || ''), x.result)); tb.appendChild(tr); });
+    }).catch(function (e) { toast(e.message, true); });
+  }
+  $('btnRepCreate').addEventListener('click', function () {
+    run('/api/report', { customer: $('repCustomer').value, reference: $('repReference').value, technician: $('repTechnician').value, header: $('repHeader').value, notes: $('repNotes').value });
+  });
+  $('btnRepClear').addEventListener('click', function () {
+    if ($('repN').textContent === '0') return;
+    confirmBox('Svuotare l\'elenco?', 'Le operazioni tolte non compariranno nel rapporto.', 'Svuota').then(function (ok) { if (ok) api('POST', '/api/report/clear', {}).then(function () { loadReport(false); }); });
+  });
+
+  /* ---------- esporta / importa le selezioni (stesso file della versione classica) ---------- */
+  $('btnSelExport').addEventListener('click', function () {
+    var ids = Object.keys(selApps).concat(Object.keys(selTw), Object.keys(selFeat), Object.keys(selAx));
+    if (!ids.length) { toast('Non hai selezionato nulla da esportare.', true); return; }
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(ids, null, 2)], { type: 'application/json' }));
+    a.download = 'WinRUtil-selezioni.json'; a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+    toast('Selezioni esportate nella cartella Download.');
+  });
+  $('btnSelImport').addEventListener('click', function () { $('selFile').value = ''; $('selFile').click(); });
+  $('selFile').addEventListener('change', function () {
+    var f = this.files && this.files[0]; if (!f) return;
+    f.text().then(function (t) {
+      var j = JSON.parse(t), ids = [];
+      if (Array.isArray(j)) ids = j; else if (j && typeof j === 'object') Object.keys(j).forEach(function (k) { if (/^WPF(Install|Tweaks|Toggle|Feature|Appx)/.test(k)) [].concat(j[k]).forEach(function (v) { if (typeof v === 'string') ids.push(v); }); });
+      var known = {};
+      selApps = {}; selTw = {}; selFeat = {}; selAx = {};
+      cat.apps.forEach(function (a) { known[a.id] = 'a'; }); Object.keys(twEls).forEach(function (i) { known[i] = 't'; }); Object.keys(featEls).forEach(function (i) { known[i] = 'f'; }); (cat.appx || []).forEach(function (a) { known[a.id] = 'x'; });
+      var n = 0, skip = 0, store = { a: selApps, t: selTw, f: selFeat, x: selAx };
+      ids.forEach(function (i) { i = String(i); if (known[i]) { store[known[i]][i] = true; n++; } else if (!/^WPFToggle/.test(i)) skip++; });
+      renderApps(); appCount(); Object.keys(twEls).forEach(function (i) { twEls[i]._set(!!selTw[i]); }); twCount();
+      Object.keys(featEls).forEach(function (i) { featEls[i]._set(!!selFeat[i]); }); renderAppx(); axCount();
+      toast('Importate ' + n + ' selezioni' + (skip ? ' (' + skip + ' voci non esistono in questa versione)' : '') + '. Controllale prima di applicarle.', !n);
+    }).catch(function () { toast('File non valido: scegli un file .json esportato da WinRUtil.', true); });
+  });
+
   /* ---------- operazioni e attivita' ---------- */
-  function run(path, body) {
+  function run(path, body, onDone) {
     if (running) { toast('Attendi la fine dell\'operazione in corso.', true); return; }
-    api('POST', path, body).then(function () { running = true; setBusy(true); $('dock').classList.add('on'); startPoll(); })
+    api('POST', path, body).then(function () { running = true; afterRun = onDone || null; setBusy(true); $('dock').classList.add('on'); startPoll(); })
       .catch(function (e) { toast(e.message, true); });
   }
-  function setBusy(b) { document.querySelectorAll('main .btn, .tg').forEach(function (x) { if (x.id !== 'btnSysRefresh' && x.id !== 'btnWifiRefresh' && x.id !== 'btnWifiCopy') x.disabled = b; }); if (!b && loaded.tg) loadToggles(); }
+  var FREE = { btnSysRefresh: 1, btnWifiRefresh: 1, btnWifiCopy: 1, btnPrnRefresh: 1, qrClose: 1, updClose: 1, btnSelExport: 1, btnSelImport: 1 };
+  function setBusy(b) {
+    document.querySelectorAll('main .btn, .tg, main select, .side .foot .btn, .modal .btn').forEach(function (x) { if (!FREE[x.id] && x.closest('#modal') === null) x.disabled = b; });
+    if (!b) { $('btnPrnRemove').disabled = !prnSel; if (loaded.tg) loadToggles(); }
+    updCount();
+  }
+  function finished(s) {
+    var k = s.kind;
+    if (afterRun) { try { afterRun(s); } catch (e) { } afterRun = null; }
+    if (k === 'appx' && loaded.ax) loadAppx(true);
+    if (k === 'printer' && loaded.prn) loadPrinters(true);
+    if (loaded.rep) loadReport(false);
+  }
   function startPoll() { clearTimeout(pollT); poll(); }
   function poll() {
     api('GET', '/api/status?since=' + logIndex).then(function (s) {
@@ -15180,16 +15556,30 @@ tr:last-child td{border-bottom:0}
       $('dockFill').style.width = (s.phase === 'running' ? Math.max(4, s.percent) : 100) + '%';
       $('dockBar').classList.toggle('indet', s.phase === 'running' && s.percent <= 0);
       $('dockDot').className = 'dot' + (s.phase === 'running' ? '' : (s.error ? ' err' : ' done'));
+      if (s.kind === 'upgradesel') { lastResults = s.results; if ($('updModal').classList.contains('on')) renderUpdates(s.results); }
       var was = running; running = s.phase === 'running';
-      if (was && !running) { setBusy(false); toast(s.error ? 'Operazione terminata con errori: vedi Dettagli.' : 'Operazione completata.', !!s.error); }
+      if (was && !running) { setBusy(false); finished(s); toast(s.error ? 'Operazione terminata con errori: vedi Dettagli.' : 'Operazione completata.', !!s.error); }
       if (running && !was) setBusy(true);
       pollT = setTimeout(poll, running ? 600 : 4000);
     }).catch(function () { pollT = setTimeout(poll, 2000); });
   }
   $('btnLog').addEventListener('click', function () { var o = $('dock').classList.toggle('open'); $('btnLog').textContent = o ? 'Nascondi' : 'Dettagli'; if (o) $('log').scrollTop = $('log').scrollHeight; });
   $('btnDockClose').addEventListener('click', function () { if (!running) $('dock').classList.remove('on', 'open'); $('btnLog').textContent = 'Dettagli'; });
-  $('btnClassic').addEventListener('click', function () { api('POST', '/api/classic').then(function () { toast('Avvio della versione classica...'); }); });
-  window.addEventListener('keydown', function (e) { if (e.key === 'Escape' && $('modal').classList.contains('on')) $('mNo').click(); });
+  $('btnClassic').addEventListener('click', function () { run('/api/classic', {}); });
+
+  /* ---------- scorciatoie da tastiera (come la versione classica) ---------- */
+  var KEYS = { s: 'sys', i: 'inst', t: 'tw', a: 'appx', c: 'cfg', u: 'upd', p: 'prn', f: 'wifi', r: 'rep' };
+  window.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      if ($('modal').classList.contains('on')) { $('mNo').click(); return; }
+      if ($('qrModal').classList.contains('on')) { closeQr(); return; }
+      if ($('updModal').classList.contains('on')) { $('updModal').classList.remove('on'); return; }
+      if (document.activeElement === $('appSearch') && $('appSearch').value) { $('appSearch').value = ''; renderApps(); }
+      return;
+    }
+    if (e.altKey && !e.ctrlKey && KEYS[(e.key || '').toLowerCase()]) { e.preventDefault(); show(KEYS[e.key.toLowerCase()]); return; }
+    if (e.ctrlKey && !e.altKey && (e.key || '').toLowerCase() === 'f') { e.preventDefault(); show('inst'); $('appSearch').focus(); $('appSearch').select(); }
+  });
 })();
 </script>
 </body>
@@ -15203,13 +15593,18 @@ tr:last-child td{border-bottom:0}
 
 $script:RWeb = [hashtable]::Synchronized(@{
         Log = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
-        Label = ''; Percent = 0; Title = ''
+        Label = ''; Percent = 0; Title = ''; Kind = ''
+        # Esito di ogni applicazione nell'aggiornamento delle applicazioni scelte, letto dalla pagina
+        Results = [hashtable]::Synchronized(@{})
     })
 $script:RWebState = @{
     Phase = 'idle'; PS = $null; RS = $null; Handle = $null; Started = $null; Read = @{ I = 0; W = 0; E = 0 }
     Queries = @{}; LastActivity = (Get-Date).AddSeconds(40); Quit = $false; Browser = $null; BrowserProc = $null; ProfileDir = ''
-    Token = ''; Port = 0; Iss = $null; Catalog = $null; Error = ''
+    Token = ''; Port = 0; Iss = $null; Catalog = $null; Error = ''; ClassicFile = ''
 }
+
+# Icone delle applicazioni: le stesse della versione classica (servizio delle icone dei siti di Google)
+$script:RWebIconSources = 'https://www.google.com https://*.gstatic.com'
 
 function Add-RWebLog {
     param([string]$Text, [string]$Level = 'info')
@@ -15219,6 +15614,24 @@ function Add-RWebLog {
         if (-not $t -or $t -match '^[\s\-\\|/=]+$') { continue }
         [void]$script:RWeb.Log.Add(@{ t = (Get-Date).ToString('HH:mm:ss'); m = $t; c = $Level })
     }
+}
+
+function Show-WinRUtilWebFileDialog {
+    # Finestra Apri/Salva di Windows sopra la finestra di WinRUtil (gira nel runspace STA dell'operazione)
+    param([ValidateSet('Open', 'Save')][string]$Mode, [string]$Title, [string]$Filter, [string]$FileName = '', [switch]$Multi)
+    Add-Type -AssemblyName System.Windows.Forms
+    if ($Mode -eq 'Save') { $dlg = New-Object System.Windows.Forms.SaveFileDialog } else { $dlg = New-Object System.Windows.Forms.OpenFileDialog; $dlg.Multiselect = [bool]$Multi }
+    $dlg.Title = $Title; $dlg.Filter = $Filter; $dlg.InitialDirectory = [Environment]::GetFolderPath('Desktop')
+    if ($FileName) { $dlg.FileName = $FileName }
+    $owner = New-Object System.Windows.Forms.Form
+    $owner.TopMost = $true; $owner.ShowInTaskbar = $false; $owner.FormBorderStyle = 'None'; $owner.Opacity = 0
+    $owner.StartPosition = 'CenterScreen'; $owner.Size = New-Object System.Drawing.Size(1, 1)
+    try {
+        $owner.Show(); $owner.Activate()
+        if ($dlg.ShowDialog($owner) -ne [System.Windows.Forms.DialogResult]::OK) { return @() }
+        if ($Mode -eq 'Open' -and $Multi) { return @($dlg.FileNames) }
+        return @($dlg.FileName)
+    } finally { $owner.Close(); $owner.Dispose(); $dlg.Dispose() }
 }
 
 function New-RWebSessionState {
@@ -15242,10 +15655,19 @@ function Get-RWebCatalog {
         $apps.Add(@{ id = $p.Name; name = [string]$a.content; desc = [string]$a.description; cat = [string]$a.category; foss = [bool]$a.foss; link = [string]$a.link; winget = [string]$a.winget; choco = [string]$a.choco })
     }
     $tweaks = New-Object System.Collections.Generic.List[object]
+    $combos = New-Object System.Collections.Generic.List[object]
     foreach ($p in $sync.configs.tweaks.PSObject.Properties) {
         $t = $p.Value
         $type = [string]$t.Type
-        if ($type -eq 'Combobox') { continue }
+        if ($type -eq 'Combobox') {
+            # Il DNS ha il suo menu; gli altri menu scrivono valori del registro (es. Multiplane Overlay)
+            if ($t.registry) {
+                $descs = @{}
+                if ($t.ComboDescriptions) { foreach ($d in $t.ComboDescriptions.PSObject.Properties) { $descs[$d.Name] = [string]$d.Value } }
+                $combos.Add(@{ id = $p.Name; name = [string]$t.Content; desc = [string]$t.Description; items = @(([string]$t.ComboItems) -split '\|' | Where-Object { $_ }); descs = $descs })
+            }
+            continue
+        }
         $tweaks.Add(@{ id = $p.Name; name = [string]$t.Content; desc = [string]$t.Description; cat = ([string]$t.category -replace '^z__', ''); advanced = ([string]$t.category -like 'z__*'); type = $type })
     }
     $features = New-Object System.Collections.Generic.List[object]
@@ -15254,12 +15676,19 @@ function Get-RWebCatalog {
         if ($p.Name -eq 'WPFFeatureInstall') { continue }
         $features.Add(@{ id = $p.Name; name = [string]$f.Content; desc = [string]$f.Description; cat = ([string]$f.category -replace '^z__', ''); type = [string]$f.Type })
     }
+    $appx = New-Object System.Collections.Generic.List[object]
+    if ($sync.configs.appx) {
+        foreach ($p in $sync.configs.appx.PSObject.Properties) {
+            $x = $p.Value
+            $appx.Add(@{ id = $p.Name; name = [string]$x.Content; desc = [string]$x.Description; cat = [string]$x.Category; pkg = [string]$x.PackageId })
+        }
+    }
     $presets = @{}
     foreach ($p in $sync.configs.preset.PSObject.Properties) { $presets[$p.Name] = @($p.Value) }
     # Stesse voci del menu DNS della versione classica (compreso "Fastest"), altrimenti quelle di dns.json
     $dns = @(([string]$sync.configs.tweaks.WPFchangedns.ComboItems) -split '\s+' | Where-Object { $_ })
     if ($dns.Count -eq 0) { $dns = @('Default', 'DHCP') + @($sync.configs.dns.PSObject.Properties.Name) }
-    return @{ apps = $apps.ToArray(); tweaks = $tweaks.ToArray(); features = $features.ToArray(); presets = $presets; dns = $dns }
+    return @{ apps = $apps.ToArray(); tweaks = $tweaks.ToArray(); combos = $combos.ToArray(); features = $features.ToArray(); appx = $appx.ToArray(); presets = $presets; dns = $dns }
 }
 
 function Get-RWebButtonIds {
@@ -15288,6 +15717,24 @@ $script:RWebTasks = @{
         else { Install-WinUtilWinget; & winget upgrade --all --include-unknown --silent --accept-source-agreements --accept-package-agreements 2>&1 | ForEach-Object { Write-Host $_ } }
         Write-Host 'Aggiornamento completato.'
     }
+    upgradesel = {
+        param($Programs)
+        $RWeb.Results.Clear()
+        $list = @($Programs)
+        foreach ($p in $list) { $RWeb.Results[[string]$p.Id] = @{ t = 'In attesa'; l = 'Muted'; ok = $false } }
+        $updated = 0
+        for ($i = 0; $i -lt $list.Count; $i++) {
+            $p = $list[$i]
+            Set-WinUtilProgressbar -Label ("Aggiornamento {0} di {1}: {2}" -f ($i + 1), $list.Count, $p.Name) -Percent (100 * $i / $list.Count)
+            $RWeb.Results[[string]$p.Id] = @{ t = 'In corso...'; l = 'Running'; ok = $false }
+            $r = Update-WinUtilProgram -Program $p
+            if ($r.Success) { $updated++ }
+            $RWeb.Results[[string]$p.Id] = @{ t = [string]$r.Text; l = [string]$r.Level; ok = [bool]$r.Success }
+            Add-WinUtilSessionAction -Area 'Programmi' -Text ("Aggiornamento di {0} alla versione {1}" -f $p.Name, $p.Available) -Status $(if ($r.Success) { 'Success' } else { 'Error' })
+        }
+        if ($updated -lt $list.Count) { Write-Warning ("Applicazioni aggiornate: {0} su {1}. Quelle non riuscite restano selezionate, per riprovare." -f $updated, $list.Count) }
+        else { Write-Host ("Applicazioni aggiornate: {0} su {1}." -f $updated, $list.Count) }
+    }
     tweaks = {
         param($Ids, $Undo, $Dns)
         $ids = @($Ids)
@@ -15306,6 +15753,18 @@ $script:RWebTasks = @{
         param($Id, $On)
         if ($On) { Invoke-WinUtilTweaks $Id } else { Invoke-WinUtilTweaks $Id -undo $true }
         Write-Host 'Impostazione aggiornata.'
+    }
+    combo = {
+        param($Id, $State)
+        $cfg = $sync.configs.tweaks.$Id
+        try {
+            Set-WinUtilRegistryComboState -Registry $cfg.registry -State $State
+            Write-Host "$($cfg.Content): $State"
+            Add-WinUtilSessionAction -Area 'Ottimizzazione' -Text "$($cfg.Content): $State"
+        } catch {
+            Write-Error "$($cfg.Content): $($_.Exception.Message)"
+            Add-WinUtilSessionAction -Area 'Ottimizzazione' -Text "$($cfg.Content): $State" -Status 'Error'
+        }
     }
     features = {
         param($Ids)
@@ -15331,6 +15790,202 @@ $script:RWebTasks = @{
         }
         Write-Host 'Fatto.'
     }
+    appx = {
+        param($Ids, $Action)
+        $ids = @($Ids); $apps = $sync.configs.appxHashtable; $ok = 0
+        $packages = New-Object System.Collections.Generic.List[string]
+        for ($i = 0; $i -lt $ids.Count; $i++) {
+            $key = $ids[$i]; $app = $apps[$key]
+            if ($Action -eq 'Remove') {
+                Set-WinUtilProgressbar -Label ("Rimozione {0} di {1}: {2}" -f ($i + 1), $ids.Count, $app.Content) -Percent (100 * $i / $ids.Count)
+                if ($key -eq 'WPFAppxMicrosoft_XboxGamingOverlay') {
+                    Stop-Process -Name GameBarFTServer -Force -Confirm:$false -ErrorAction SilentlyContinue
+                    Set-ItemProperty -Path HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\GameDVR -Name AppCaptureEnabled -Value 0 -ErrorAction SilentlyContinue
+                }
+                if ($key -eq 'WPFAppxMicrosoft_WindowsNotepad') { Stop-Process -Name dllhost -Force -Confirm:$false -ErrorAction SilentlyContinue }
+                $done = Remove-WinUtilAPPX -Name $app.PackageId
+                $packages.Add($app.PackageId)
+                if ($key -eq 'WPFAppxMSTeams') { Get-Package -Name 'Microsoft Teams*' -ErrorAction SilentlyContinue | Uninstall-Package -Force -ErrorAction SilentlyContinue | Out-Null }
+                Add-WinUtilSessionAction -Area 'App di Windows' -Text ("Rimozione di {0}" -f $app.Content) -Status $(if ($done) { 'Success' } else { 'Error' })
+            } else {
+                Set-WinUtilProgressbar -Label ("Installazione {0} di {1}: {2}" -f ($i + 1), $ids.Count, $app.Content) -Percent (100 * $i / $ids.Count)
+                $done = Install-WinUtilAPPX -Name $app.PackageId -StoreId $app.StoreId
+                Add-WinUtilSessionAction -Area 'App di Windows' -Text ("Installazione di {0}" -f $app.Content) -Status $(if ($done) { 'Success' } else { 'Error' })
+            }
+            if ($done) { $ok++ }
+        }
+        if ($Action -eq 'Remove' -and $packages.Count -gt 0) {
+            Set-WinUtilProgressbar -Label 'Rimozione delle app per i nuovi profili utente' -Percent 95
+            try { Remove-WinUtilProvisionedAPPX -PackageList $packages.ToArray() } catch { Write-Warning "Alcune app potrebbero comparire di nuovo nei profili utente creati in seguito. $($_.Exception.Message)" }
+        }
+        $verb = 'Installate'; if ($Action -eq 'Remove') { $verb = 'Rimosse' }
+        if ($ok -lt $ids.Count) { Write-Warning ("{0} {1} app su {2}." -f $verb, $ok, $ids.Count) } else { Write-Host ("{0} {1} app su {2}." -f $verb, $ok, $ids.Count) }
+    }
+    printer = {
+        param($Action, $Driver)
+        switch ($Action) {
+            'driver' {
+                $f = @(Show-WinRUtilWebFileDialog -Mode Open -Title 'Seleziona il file del driver (.inf)' -Filter 'File driver (*.inf)|*.inf|Tutti i file (*.*)|*.*')
+                if ($f.Count -eq 0) { Write-Warning 'Installazione del driver annullata.'; return }
+                $text = "Installazione del driver di stampa {0}" -f [IO.Path]::GetFileName($f[0])
+                Write-Host "Installazione del driver da: $($f[0])"
+                $out = & pnputil.exe /add-driver "$($f[0])" /install 2>&1
+                $out | ForEach-Object { Write-Host $_ }
+                if ($LASTEXITCODE -eq 0) { Write-Host 'Driver installato.'; Add-WinUtilSessionAction -Area 'Stampanti' -Text $text }
+                else { Write-Warning "pnputil ha restituito il codice $LASTEXITCODE."; Add-WinUtilSessionAction -Area 'Stampanti' -Text $text -Status 'Error' }
+            }
+            'remove' {
+                try {
+                    Remove-PrinterDriver -Name $Driver -ErrorAction Stop
+                    Write-Host "Driver '$Driver' rimosso."
+                    Add-WinUtilSessionAction -Area 'Stampanti' -Text "Rimozione del driver di stampa $Driver"
+                } catch {
+                    Write-Error "Driver non rimosso (forse e' ancora usato da una stampante): $($_.Exception.Message)"
+                    Add-WinUtilSessionAction -Area 'Stampanti' -Text "Rimozione del driver di stampa $Driver" -Status 'Error'
+                }
+            }
+            'restart' {
+                try {
+                    Restart-Service -Name Spooler -Force -ErrorAction Stop
+                    Write-Host 'Spooler di stampa riavviato.'
+                    Add-WinUtilSessionAction -Area 'Stampanti' -Text 'Riavvio dello spooler di stampa'
+                } catch {
+                    Write-Error "Riavvio dello spooler non riuscito: $($_.Exception.Message)"
+                    Add-WinUtilSessionAction -Area 'Stampanti' -Text 'Riavvio dello spooler di stampa' -Status 'Error'
+                }
+            }
+            'clear' {
+                $spool = Join-Path $env:SystemRoot 'System32\spool\PRINTERS'
+                try {
+                    Stop-Service -Name Spooler -Force -ErrorAction Stop
+                    if (Test-Path $spool) { Get-ChildItem -Path $spool -File -Force -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue }
+                    Start-Service -Name Spooler -ErrorAction Stop
+                    Write-Host 'Coda di stampa svuotata e spooler riavviato.'
+                    Add-WinUtilSessionAction -Area 'Stampanti' -Text 'Svuotamento della coda di stampa'
+                } catch {
+                    Write-Error "Svuotamento della coda non riuscito: $($_.Exception.Message)"
+                    Add-WinUtilSessionAction -Area 'Stampanti' -Text 'Svuotamento della coda di stampa' -Status 'Error'
+                    try { Start-Service -Name Spooler -ErrorAction SilentlyContinue } catch { }
+                }
+            }
+        }
+    }
+    wifiexport = {
+        if (-not (Test-WinUtilWlanService)) { return }
+        $f = @(Show-WinRUtilWebFileDialog -Mode Save -Title 'Esporta i profili Wi-Fi' -Filter 'Archivio ZIP (*.zip)|*.zip' -FileName ("WinRUtil-WiFi_{0}_{1}.zip" -f $env:COMPUTERNAME, (Get-Date -Format 'yyyyMMdd-HHmm')))
+        if ($f.Count -eq 0) { Write-Warning 'Esportazione annullata.'; return }
+        try {
+            $n = Export-WinUtilWifiProfiles -Path $f[0]
+            if (-not $n) { Write-Warning 'Nessun profilo Wi-Fi da esportare.'; return }
+            Write-Host ("Esportati {0} profili in {1}" -f $n, $f[0])
+            Write-Warning 'Il file contiene le password in chiaro: conservalo in un luogo sicuro.'
+            Add-WinUtilSessionAction -Area 'Wi-Fi' -Text ("Backup di {0} {1}" -f $n, $(if ($n -eq 1) { 'profilo Wi-Fi' } else { 'profili Wi-Fi' }))
+        } catch {
+            Write-Error "Esportazione non riuscita: $($_.Exception.Message)"
+            Add-WinUtilSessionAction -Area 'Wi-Fi' -Text 'Backup dei profili Wi-Fi' -Status 'Error'
+        }
+    }
+    wifiimport = {
+        if (-not (Test-WinUtilWlanService)) { return }
+        $f = @(Show-WinRUtilWebFileDialog -Mode Open -Multi -Title 'Importa profili Wi-Fi' -Filter 'Profili Wi-Fi (*.zip;*.xml)|*.zip;*.xml')
+        if ($f.Count -eq 0) { Write-Warning 'Importazione annullata.'; return }
+        try {
+            $res = @(Import-WinUtilWifiProfiles -Path $f)
+            foreach ($r in $res) { if ($r.Success) { Write-Host "Importata: $($r.Name)" } else { Write-Warning "Non importata: $($r.Name) - $($r.Message)" } }
+            $okNames = @($res | Where-Object { $_.Success } | ForEach-Object { $_.Name })
+            $koNames = @($res | Where-Object { -not $_.Success } | ForEach-Object { $_.Name })
+            if ($res.Count -eq 0) { Write-Warning 'Nessun profilo Wi-Fi trovato nei file scelti.' }
+            elseif ($koNames.Count -eq 0) { Write-Host ("Importate {0} reti." -f $okNames.Count) }
+            else { Write-Warning ("Importate {0} reti su {1}." -f $okNames.Count, $res.Count) }
+            if ($okNames.Count) { Add-WinUtilSessionAction -Area 'Wi-Fi' -Text ("Configurazione {0}: {1}" -f $(if ($okNames.Count -eq 1) { 'della rete Wi-Fi' } else { 'delle reti Wi-Fi' }), ($okNames -join ', ')) }
+            if ($koNames.Count) { Add-WinUtilSessionAction -Area 'Wi-Fi' -Text ("Configurazione {0}: {1}" -f $(if ($koNames.Count -eq 1) { 'della rete Wi-Fi' } else { 'delle reti Wi-Fi' }), ($koNames -join ', ')) -Status 'Error' }
+        } catch {
+            Write-Error "Importazione non riuscita: $($_.Exception.Message)"
+            Add-WinUtilSessionAction -Area 'Wi-Fi' -Text 'Importazione dei profili Wi-Fi' -Status 'Error'
+        }
+    }
+    wifiqrsave = {
+        param($Ssid)
+        $net = @(Get-WinRUtilWifiProfiles | Where-Object { $_.Ssid -eq $Ssid })
+        if ($net.Count -eq 0 -or -not $net[0].CanShare) { Write-Error "Rete $Ssid non disponibile."; return }
+        $net = $net[0]
+        $f = @(Show-WinRUtilWebFileDialog -Mode Save -Title 'Salva il QR code della rete Wi-Fi' -Filter 'Immagine PNG (*.png)|*.png' -FileName ("WiFi-{0}.png" -f ($net.Ssid -replace '[\\/:*?"<>|]', '_')))
+        if ($f.Count -eq 0) { Write-Warning 'Salvataggio annullato.'; return }
+        Add-Type -AssemblyName PresentationCore, PresentationFramework, WindowsBase
+        $qr = ConvertTo-WinUtilQRCode -Text (Get-WinUtilWifiQRText -Network $net)
+        $enc = [System.Windows.Media.Imaging.PngBitmapEncoder]::new()
+        $enc.Frames.Add([System.Windows.Media.Imaging.BitmapFrame]::Create((ConvertTo-WinUtilWifiQRCard -QRCode $qr -Network $net)))
+        $stream = [System.IO.File]::Create($f[0])
+        try { $enc.Save($stream) } finally { $stream.Dispose() }
+        Write-Host "QR code salvato: $($f[0])"
+        if ($net.Password) { Write-Warning 'L''immagine contiene la password della rete: condividila solo con chi deve collegarsi.' }
+    }
+    report = {
+        param($Details)
+        Save-WinUtilReportSettings -Technician $Details.Technician -Header $Details.Header
+        $name = $Details.Customer; if (-not $name) { $name = $env:COMPUTERNAME }
+        $date = Get-Date
+        $fileName = "Rapporto_{0}_{1}" -f (($name -replace '[\\/:*?"<>|]', '' -replace '\s+', '-').Trim('-.')), $date.ToString('yyyyMMdd-HHmm')
+        $f = @(Show-WinRUtilWebFileDialog -Mode Save -Title 'Salva il rapporto di intervento' -Filter 'Pagina HTML (*.html)|*.html' -FileName $fileName)
+        if ($f.Count -eq 0) { Write-Warning 'Creazione del rapporto annullata.'; return }
+        Set-WinUtilProgressbar -Label 'Lettura dei dati del computer' -Percent 30
+        $d = @{
+            Customer = $Details.Customer; Technician = $Details.Technician; Reference = $Details.Reference; Header = $Details.Header; Notes = $Details.Notes
+            Actions = @(if ($sync.SessionActions) { $sync.SessionActions.ToArray() }); Date = $date
+        }
+        $html = ConvertTo-WinUtilInterventionReportHtml -Details $d -Report (Get-WinUtilSystemReport)
+        [System.IO.File]::WriteAllText($f[0], $html, [System.Text.UTF8Encoding]::new($true))
+        Write-Host "Rapporto salvato: $($f[0])"
+        Start-Process -FilePath $f[0]
+    }
+    sysexport = {
+        $f = @(Show-WinRUtilWebFileDialog -Mode Save -Title 'Esporta il report di sistema' -Filter 'Report HTML (*.html)|*.html|Testo semplice (*.txt)|*.txt' -FileName ("WinRUtil-Sistema_{0}_{1}" -f $env:COMPUTERNAME, (Get-Date -Format 'yyyyMMdd-HHmmss')))
+        if ($f.Count -eq 0) { Write-Warning 'Esportazione annullata.'; return }
+        Set-WinUtilProgressbar -Label 'Lettura dei dati del computer' -Percent 30
+        $r = Get-WinUtilSystemReport
+        $isText = [IO.Path]::GetExtension($f[0]) -ieq '.txt'
+        if ($isText) { $content = ConvertTo-WinUtilSystemReportText -Report $r } else { $content = ConvertTo-WinUtilSystemReportHtml -Report $r }
+        [System.IO.File]::WriteAllText($f[0], $content, [System.Text.UTF8Encoding]::new($true))
+        Write-Host "Report salvato: $($f[0])"
+        if (-not $isText) { Start-Process -FilePath $f[0] }
+    }
+    classic = {
+        # Niente download ed esecuzione sulla riga di comando di un nuovo PowerShell: gli antivirus lo bloccano.
+        # Il file della versione classica si scarica qui e si avvia come file.
+        param($LocalFile)
+        $file = $LocalFile
+        if (-not $file -or -not (Test-Path -LiteralPath $file)) {
+            $file = Join-Path $winutildir 'winrutil.ps1'
+            Set-WinUtilProgressbar -Label 'Download della versione classica' -Percent 30
+            try {
+                [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+                $tmp = "$file.download"
+                Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/rtecnocopy89/WinRUtil/master/winrutil.ps1' -OutFile $tmp -UseBasicParsing -ErrorAction Stop
+                Move-Item -LiteralPath $tmp -Destination $file -Force
+            } catch {
+                if (-not (Test-Path -LiteralPath $file)) { throw "Download della versione classica non riuscito: $($_.Exception.Message)" }
+                Write-Warning 'Download non riuscito: avvio la copia scaricata in precedenza.'
+            }
+        }
+        $exe = (Get-Process -Id $PID).Path
+        Start-Process -FilePath $exe -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$file`"")
+        Write-Host 'Versione classica avviata in una nuova finestra.'
+    }
+}
+
+$script:RWebStrictKinds = @('printer', 'combo', 'wifiexport', 'wifiimport', 'wifiqrsave', 'report', 'sysexport', 'classic')
+
+$script:RWebQueries = @{
+    system   = '$r = Get-WinUtilSystemReport; $r.Disks = @($r.Disks | ForEach-Object { [pscustomobject]$_ }); [pscustomobject]$r'
+    live     = '$l = [math]::Round([double](Get-CimInstance -ClassName Win32_Processor -Property LoadPercentage | Measure-Object -Property LoadPercentage -Average).Average); $o = Get-CimInstance -ClassName Win32_OperatingSystem -Property FreePhysicalMemory,LastBootUpTime; $cs = Get-CimInstance -ClassName Win32_ComputerSystem -Property TotalPhysicalMemory; $r = @{ CpuLoadPct = $l; CpuLoad = "$l%"; Uptime = (Format-WinUtilUptime $o.LastBootUpTime) }; Set-WinUtilSystemMemory -Report $r -TotalGB ([math]::Round([double]$cs.TotalPhysicalMemory / 1GB, 1)) -FreeGB (([double]$o.FreePhysicalMemory * 1KB) / 1GB); [pscustomobject]$r'
+    wifi     = '@(Get-WinRUtilWifiProfiles)'
+    appx     = '@(Get-WinUtilInstalledAPPX)'
+    printers = '@(Get-Printer -ErrorAction Stop | ForEach-Object { $j = 0; try { $j = @(Get-PrintJob -PrinterName $_.Name -ErrorAction Stop).Count } catch { }; [pscustomobject]@{ name = [string]$_.Name; driver = [string]$_.DriverName; port = [string]$_.PortName; status = [string]$_.PrinterStatus; jobs = $j } })'
+    updWinget = 'if ((Test-WinUtilPackageManager -winget) -ne ''installed'') { Install-WinUtilWinget }; @(Get-WinUtilProgramUpdates -Manager Winget)'
+    updChoco = 'if (-not (Get-Command choco -ErrorAction SilentlyContinue)) { throw ''Chocolatey non e'''' installato: nessuna applicazione da aggiornare con Chocolatey.'' }; @(Get-WinUtilProgramUpdates -Manager Choco)'
+    instWinget = '@(Invoke-WinUtilCurrentSystem -CheckBox winget)'
+    instChoco = '@(Invoke-WinUtilCurrentSystem -CheckBox choco)'
+    applied  = '@(Invoke-WinUtilCurrentSystem -CheckBox tweaks)'
 }
 
 function Start-RWebTask {
@@ -15339,7 +15994,7 @@ function Start-RWebTask {
     if ($st.Phase -eq 'running') { return $false }
     Stop-RWebTask
     if (-not $st.Iss) { $st.Iss = New-RWebSessionState }
-    $script:RWeb.Label = $Title; $script:RWeb.Percent = 0; $script:RWeb.Title = $Title
+    $script:RWeb.Label = $Title; $script:RWeb.Percent = 0; $script:RWeb.Title = $Title; $script:RWeb.Kind = $Kind
     Add-RWebLog "== $Title" 'head'
     $rs = [runspacefactory]::CreateRunspace($Host, $st.Iss)
     $rs.ApartmentState = 'STA'; $rs.ThreadOptions = 'ReuseThread'; $rs.Open()
@@ -15367,6 +16022,9 @@ function Update-RWebPhase {
     if ($st.Handle -and $st.Handle.IsCompleted) {
         try { [void]$st.PS.EndInvoke($st.Handle) } catch { $st.Error = $_.Exception.Message; Add-RWebLog $st.Error 'error' }
         Read-RWebStreams
+        # Per le operazioni di questa variante un errore scritto vale come operazione non riuscita;
+        # le funzioni della versione classica possono scrivere errori secondari senza fallire
+        if (-not $st.Error -and $script:RWeb.Kind -in $script:RWebStrictKinds -and $st.PS.Streams.Error.Count -gt 0) { $st.Error = [string]$st.PS.Streams.Error[0].Exception.Message }
         $script:RWeb.Percent = 100
         $st.Phase = 'done'
         Add-RWebLog 'Terminato.' 'ok'
@@ -15383,8 +16041,8 @@ function Stop-RWebTask {
     $st.PS = $null; $st.RS = $null; $st.Handle = $null
 }
 
-function Get-RWebQuery {
-    # Letture lente (sistema, Wi-Fi) in un runspace separato: la pagina resta reattiva
+function Get-RWebQueryEntry {
+    # Letture lente (sistema, Wi-Fi, stampanti...) in un runspace separato: la pagina resta reattiva
     param([string]$Name, [switch]$Refresh)
     $q = $script:RWebState.Queries
     if ($Refresh -and $q.ContainsKey($Name) -and $q[$Name].Done) { [void]$q.Remove($Name) }
@@ -15392,21 +16050,35 @@ function Get-RWebQuery {
         if (-not $script:RWebState.Iss) { $script:RWebState.Iss = New-RWebSessionState }
         $rs = [runspacefactory]::CreateRunspace($script:RWebState.Iss); $rs.Open()
         $ps = [powershell]::Create(); $ps.Runspace = $rs
-        switch ($Name) {
-            'system' { [void]$ps.AddScript('$r = Get-WinUtilSystemReport; $r.Disks = @($r.Disks | ForEach-Object { [pscustomobject]$_ }); [pscustomobject]$r') }
-            'wifi' { [void]$ps.AddScript('@(Get-WinRUtilWifiProfiles)') }
-        }
-        $q[$Name] = @{ PS = $ps; RS = $rs; Handle = $ps.BeginInvoke(); Done = $false; Data = $null }
+        [void]$ps.AddScript($script:RWebQueries[$Name])
+        $q[$Name] = @{ PS = $ps; RS = $rs; Handle = $ps.BeginInvoke(); Done = $false; Data = $null; Error = '' }
     }
     $e = $q[$Name]
     if (-not $e.Done -and $e.Handle.IsCompleted) {
-        try { $e.Data = @($e.PS.EndInvoke($e.Handle)) } catch { $e.Data = @() }
+        try { $e.Data = @($e.PS.EndInvoke($e.Handle)) } catch { $e.Data = @(); $e.Error = [string]$_.Exception.InnerException.Message; if (-not $e.Error) { $e.Error = [string]$_.Exception.Message } }
         try { $e.PS.Dispose(); $e.RS.Close(); $e.RS.Dispose() } catch { }
         $e.Done = $true
     }
+    return $e
+}
+
+function Get-RWebQuery {
+    param([string]$Name, [switch]$Refresh)
+    $e = Get-RWebQueryEntry $Name -Refresh:$Refresh
     if (-not $e.Done) { return @{ loading = $true } }
-    if ($Name -eq 'system') { return @{ loading = $false; data = @($e.Data)[0] } }
-    return @{ loading = $false; data = @($e.Data | ForEach-Object { @{ ssid = [string]$_.Ssid; password = [string]$_.Password; security = [string]$_.Security; auto = [string]$_.AutoConnect } }) }
+    $data = @($e.Data)
+    switch -Regex ($Name) {
+        '^(system|live)$' { $out = $null; if ($data.Count) { $out = $data[$data.Count - 1] } }
+        '^wifi$' { $out = @($data | ForEach-Object { @{ ssid = [string]$_.Ssid; password = [string]$_.Password; security = [string]$_.Security; auto = [string]$_.AutoConnect; hidden = [bool]$_.Hidden; canShare = [bool]$_.CanShare } }) }
+        '^appx$' {
+            $names = @($data | ForEach-Object { [string]$_ })
+            $out = @($script:RWebState.Catalog.appx | Where-Object { $names -contains $_.pkg } | ForEach-Object { $_.id })
+        }
+        '^upd' { $out = @($data | ForEach-Object { @{ id = [string]$_.Id; name = [string]$_.Name; version = [string]$_.Version; available = [string]$_.Available; source = [string]$_.Source; manager = [string]$_.Manager; selected = [bool]$_.Selected } }) }
+        '^(inst|applied)' { $out = @($data | ForEach-Object { [string]$_ } | Select-Object -Unique) }
+        default { $out = $data }
+    }
+    return @{ loading = $false; data = $out; error = [string]$e.Error }
 }
 
 function Get-RWebToggles {
@@ -15416,6 +16088,36 @@ function Get-RWebToggles {
         try { $o[$p.Name] = [bool](Get-WinUtilToggleStatus $p.Name) } catch { $o[$p.Name] = $false }
     }
     return $o
+}
+
+function Get-RWebCombos {
+    $o = @{}
+    foreach ($c in @($script:RWebState.Catalog.combos)) {
+        try { $o[$c.id] = [string](Get-WinUtilRegistryComboState -Registry $sync.configs.tweaks.($c.id).registry) } catch { $o[$c.id] = '' }
+    }
+    return $o
+}
+
+function Get-RWebReport {
+    $src = @(); if ($sync.SessionActions) { $src = $sync.SessionActions.ToArray() }
+    $actions = @($src | ForEach-Object { @{ time = [string]$_.Time; area = [string]$_.Area; text = [string]$_.Text; status = [string]$_.Status; result = [string]$_.Result } })
+    $s = Get-WinUtilReportSettings
+    return @{ actions = $actions; technician = [string]$s.Technician; header = [string]$s.Header }
+}
+
+function Get-RWebWifiNetwork {
+    # Rete dell'ultimo elenco letto (lo stesso mostrato nella pagina)
+    param([string]$Ssid)
+    $e = $script:RWebState.Queries['wifi']
+    if (-not $e -or -not $e.Done) { return $null }
+    return @($e.Data | Where-Object { $_.Ssid -eq $Ssid })[0]
+}
+
+function ConvertTo-RWebQRModules {
+    param($QR)
+    $sb = New-Object System.Text.StringBuilder ($QR.Size * $QR.Size)
+    foreach ($m in $QR.Modules) { if ($m) { [void]$sb.Append('1') } else { [void]$sb.Append('0') } }
+    return $sb.ToString()
 }
 
 function Test-RWebTokenEqual {
@@ -15459,6 +16161,13 @@ function Select-RWebIds {
     return @(@($Ids) | ForEach-Object { [string]$_ } | Where-Object { $Valid -contains $_ } | Select-Object -Unique)
 }
 
+function Get-RWebText {
+    param($Value, [int]$Max = 2000)
+    $t = ([string]$Value).Trim()
+    if ($t.Length -gt $Max) { $t = $t.Substring(0, $Max) }
+    return $t
+}
+
 function Get-RWebStatus {
     param([int]$Since)
     Update-RWebPhase
@@ -15469,7 +16178,8 @@ function Get-RWebStatus {
     for ($i = $Since; $i -lt $count; $i++) { $items.Add($log[$i]) }
     $st = $script:RWebState
     $el = 0; if ($st.Started) { $el = [int]((Get-Date) - $st.Started).TotalSeconds }
-    return @{ phase = $st.Phase; title = [string]$script:RWeb.Title; label = [string]$script:RWeb.Label; percent = [int]$script:RWeb.Percent; logIndex = $count; log = $items.ToArray(); elapsed = $el; error = [string]$st.Error }
+    $results = @{}; foreach ($k in @($script:RWeb.Results.Keys)) { $results[$k] = $script:RWeb.Results[$k] }
+    return @{ phase = $st.Phase; kind = [string]$script:RWeb.Kind; title = [string]$script:RWeb.Title; label = [string]$script:RWeb.Label; percent = [int]$script:RWeb.Percent; logIndex = $count; log = $items.ToArray(); elapsed = $el; error = [string]$st.Error; results = $results }
 }
 
 function Invoke-RWebRequest {
@@ -15482,7 +16192,7 @@ function Invoke-RWebRequest {
         $nb = New-Object byte[] 16
         $rng = [Security.Cryptography.RandomNumberGenerator]::Create(); $rng.GetBytes($nb); $rng.Dispose()
         $nonce = [Convert]::ToBase64String($nb)
-        $csp = "default-src 'none'; script-src 'nonce-$nonce'; style-src 'unsafe-inline'; img-src data:; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+        $csp = "default-src 'none'; script-src 'nonce-$nonce'; style-src 'unsafe-inline'; img-src data: $script:RWebIconSources; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
         Send-RWebBytes $Ctx ([Text.Encoding]::UTF8.GetBytes($Html.Replace('__NONCE__', $nonce))) 'text/html; charset=utf-8' 200 @{ 'Content-Security-Policy' = $csp }
         return
     }
@@ -15495,6 +16205,12 @@ function Invoke-RWebRequest {
     if ($req.HttpMethod -eq 'POST') { $b = Read-RWebBody $req }
     $cat = $st.Catalog
     $busy = @{ error = 'Un''altra operazione e'' in corso.' }
+    $refresh = [string]$req.QueryString['refresh'] -eq '1'
+    $mgrQ = 'Winget'; if ([string]$req.QueryString['manager'] -eq 'Choco') { $mgrQ = 'Choco' }
+    $start = {
+        param($Kind, $Title, $Params)
+        if (Start-RWebTask $Kind $Title $Params) { Send-RWebJson $Ctx @{ ok = $true } } else { Send-RWebJson $Ctx $busy 409 }
+    }
     switch ("$($req.HttpMethod) $path") {
         'GET /api/ping' { Send-RWebJson $Ctx @{ ok = $true } }
         'GET /api/info' {
@@ -15503,8 +16219,16 @@ function Invoke-RWebRequest {
         }
         'GET /api/catalog' { Send-RWebJson $Ctx $cat }
         'GET /api/toggles' { Send-RWebJson $Ctx (Get-RWebToggles) }
-        'GET /api/system' { Send-RWebJson $Ctx (Get-RWebQuery 'system' -Refresh:([string]$req.QueryString['refresh'] -eq '1')) }
-        'GET /api/wifi' { Send-RWebJson $Ctx (Get-RWebQuery 'wifi' -Refresh:([string]$req.QueryString['refresh'] -eq '1')) }
+        'GET /api/combos' { Send-RWebJson $Ctx (Get-RWebCombos) }
+        'GET /api/system' { Send-RWebJson $Ctx (Get-RWebQuery 'system' -Refresh:$refresh) }
+        'GET /api/live' { Send-RWebJson $Ctx (Get-RWebQuery 'live' -Refresh:$refresh) }
+        'GET /api/wifi' { Send-RWebJson $Ctx (Get-RWebQuery 'wifi' -Refresh:$refresh) }
+        'GET /api/appx' { Send-RWebJson $Ctx (Get-RWebQuery 'appx' -Refresh:$refresh) }
+        'GET /api/printers' { Send-RWebJson $Ctx (Get-RWebQuery 'printers' -Refresh:$refresh) }
+        'GET /api/updates' { Send-RWebJson $Ctx (Get-RWebQuery "upd$mgrQ" -Refresh:$refresh) }
+        'GET /api/installed' { Send-RWebJson $Ctx (Get-RWebQuery "inst$mgrQ" -Refresh:$refresh) }
+        'GET /api/applied' { Send-RWebJson $Ctx (Get-RWebQuery 'applied' -Refresh:$refresh) }
+        'GET /api/report' { Send-RWebJson $Ctx (Get-RWebReport) }
         'GET /api/status' {
             $since = 0; [void][int]::TryParse([string]$req.QueryString['since'], [ref]$since)
             Send-RWebJson $Ctx (Get-RWebStatus $since)
@@ -15515,11 +16239,21 @@ function Invoke-RWebRequest {
             $mgr = 'Winget'; if ([string]$b.manager -eq 'Choco') { $mgr = 'Choco' }
             if ($ids.Count -eq 0) { Send-RWebJson $Ctx @{ error = 'Seleziona almeno un''applicazione.' } 400; return }
             $t = "Installazione di $($ids.Count) applicazioni"; if ($act -eq 'Uninstall') { $t = "Disinstallazione di $($ids.Count) applicazioni" }
-            if (Start-RWebTask 'apps' $t @{ Ids = $ids; Manager = $mgr; Action = $act }) { Send-RWebJson $Ctx @{ ok = $true } } else { Send-RWebJson $Ctx $busy 409 }
+            & $start 'apps' $t @{ Ids = $ids; Manager = $mgr; Action = $act }
         }
         'POST /api/upgrade' {
             $mgr = 'Winget'; if ([string]$b.manager -eq 'Choco') { $mgr = 'Choco' }
-            if (Start-RWebTask 'upgrade' 'Aggiornamento di tutte le applicazioni' @{ Manager = $mgr }) { Send-RWebJson $Ctx @{ ok = $true } } else { Send-RWebJson $Ctx $busy 409 }
+            & $start 'upgrade' 'Aggiornamento di tutte le applicazioni' @{ Manager = $mgr }
+        }
+        'POST /api/updates' {
+            # Solo applicazioni dell'ultimo elenco degli aggiornamenti trovati
+            $mgr = 'Winget'; if ([string]$b.manager -eq 'Choco') { $mgr = 'Choco' }
+            $e = $st.Queries["upd$mgr"]
+            if (-not $e -or -not $e.Done) { Send-RWebJson $Ctx @{ error = 'Cerca prima gli aggiornamenti.' } 400; return }
+            $ids = @(@($b.ids) | ForEach-Object { [string]$_ })
+            $programs = @($e.Data | Where-Object { $ids -contains [string]$_.Id })
+            if ($programs.Count -eq 0) { Send-RWebJson $Ctx @{ error = 'Seleziona almeno un''applicazione da aggiornare.' } 400; return }
+            & $start 'upgradesel' "Aggiornamento di $($programs.Count) applicazioni" @{ Programs = $programs }
         }
         'POST /api/tweaks' {
             $ids = Select-RWebIds $b.ids @($cat.tweaks | Where-Object { -not $_.type } | ForEach-Object { $_.id })
@@ -15527,40 +16261,83 @@ function Invoke-RWebRequest {
             $undo = [bool]$b.undo
             if ($ids.Count -eq 0 -and $dns -eq 'Default') { Send-RWebJson $Ctx @{ error = 'Seleziona almeno un''ottimizzazione.' } 400; return }
             $t = "Applicazione di $($ids.Count) ottimizzazioni"; if ($undo) { $t = "Annullamento di $($ids.Count) ottimizzazioni" }
-            if (Start-RWebTask 'tweaks' $t @{ Ids = $ids; Undo = $undo; Dns = $dns }) { Send-RWebJson $Ctx @{ ok = $true } } else { Send-RWebJson $Ctx $busy 409 }
+            & $start 'tweaks' $t @{ Ids = $ids; Undo = $undo; Dns = $dns }
         }
         'POST /api/toggle' {
             $id = [string]$b.id
             $t = @($cat.tweaks | Where-Object { $_.id -eq $id -and $_.type -eq 'Toggle' })
             if ($t.Count -ne 1) { Send-RWebJson $Ctx @{ error = 'id' } 400; return }
             $lbl = "$($t[0].name): disattivato"; if ([bool]$b.on) { $lbl = "$($t[0].name): attivato" }
-            if (Start-RWebTask 'toggle' $lbl @{ Id = $id; On = [bool]$b.on }) { Send-RWebJson $Ctx @{ ok = $true } } else { Send-RWebJson $Ctx $busy 409 }
+            & $start 'toggle' $lbl @{ Id = $id; On = [bool]$b.on }
+        }
+        'POST /api/combo' {
+            $id = [string]$b.id; $state = [string]$b.state
+            $c = @($cat.combos | Where-Object { $_.id -eq $id })
+            if ($c.Count -ne 1 -or $c[0].items -notcontains $state) { Send-RWebJson $Ctx @{ error = 'id' } 400; return }
+            & $start 'combo' "$($c[0].name): $state" @{ Id = $id; State = $state }
         }
         'POST /api/features' {
             $ids = Select-RWebIds $b.ids @($cat.features | Where-Object { -not $_.type } | ForEach-Object { $_.id })
             if ($ids.Count -eq 0) { Send-RWebJson $Ctx @{ error = 'Seleziona almeno una funzionalita''.' } 400; return }
-            if (Start-RWebTask 'features' "Installazione di $($ids.Count) funzionalita'" @{ Ids = $ids }) { Send-RWebJson $Ctx @{ ok = $true } } else { Send-RWebJson $Ctx $busy 409 }
+            & $start 'features' "Installazione di $($ids.Count) funzionalita'" @{ Ids = $ids }
         }
         'POST /api/button' {
             $id = [string]$b.id
             if ((Get-RWebButtonIds) -notcontains $id) { Send-RWebJson $Ctx @{ error = 'id' } 400; return }
-            if ($id -eq 'WPFInstallUpgrade') { $ok = Start-RWebTask 'upgrade' 'Aggiornamento di tutte le applicazioni' @{ Manager = 'Winget' } }
-            else {
-                $name = [string]$b.label; if (-not $name) { $name = $id }
-                $ok = Start-RWebTask 'button' $name @{ Id = $id }
-            }
-            if ($ok) { Send-RWebJson $Ctx @{ ok = $true } } else { Send-RWebJson $Ctx $busy 409 }
+            if ($id -eq 'WPFInstallUpgrade') { & $start 'upgrade' 'Aggiornamento di tutte le applicazioni' @{ Manager = 'Winget' }; return }
+            $name = Get-RWebText $b.label 120; if (-not $name) { $name = $id }
+            & $start 'button' $name @{ Id = $id }
         }
+        'POST /api/appx' {
+            $ids = Select-RWebIds $b.ids @($cat.appx | ForEach-Object { $_.id })
+            if ($ids.Count -eq 0) { Send-RWebJson $Ctx @{ error = 'Seleziona almeno un''app di Windows.' } 400; return }
+            if ([string]$b.action -eq 'Remove') { & $start 'appx' "Rimozione di $($ids.Count) app di Windows" @{ Ids = $ids; Action = 'Remove' } }
+            else { & $start 'appx' "Installazione di $($ids.Count) app di Windows" @{ Ids = $ids; Action = 'Install' } }
+        }
+        'POST /api/printer' {
+            $act = [string]$b.action
+            $titles = @{ driver = 'Installazione di un driver di stampa'; remove = 'Rimozione del driver di stampa'; restart = 'Riavvio dello spooler di stampa'; clear = 'Svuotamento della coda di stampa' }
+            if (-not $titles.ContainsKey($act)) { Send-RWebJson $Ctx @{ error = 'azione' } 400; return }
+            $drv = ''
+            if ($act -eq 'remove') {
+                # Solo driver di una stampante dell'elenco mostrato
+                $e = $st.Queries['printers']
+                $drv = [string]$b.driver
+                if (-not $e -or -not $e.Done -or -not @($e.Data | Where-Object { $_.driver -eq $drv }).Count) { Send-RWebJson $Ctx @{ error = 'Seleziona una stampante dell''elenco.' } 400; return }
+            }
+            & $start 'printer' $titles[$act] @{ Action = $act; Driver = $drv }
+        }
+        'POST /api/wifiqr' {
+            $n = Get-RWebWifiNetwork ([string]$b.ssid)
+            if (-not $n) { Send-RWebJson $Ctx @{ error = 'Rete non trovata: aggiorna l''elenco.' } 400; return }
+            if (-not $n.CanShare) {
+                $msg = 'QR code non disponibile: la password non risulta salvata su questo PC.'
+                if ($n.Security -match 'Enterprise') { $msg = 'QR code non disponibile: le reti aziendali (802.1X) usano credenziali personali.' }
+                Send-RWebJson $Ctx @{ error = $msg } 400; return
+            }
+            try { $qr = ConvertTo-WinUtilQRCode -Text (Get-WinUtilWifiQRText -Network $n) }
+            catch { Send-RWebJson $Ctx @{ error = "Impossibile creare il QR code: $($_.Exception.Message)" } 500; return }
+            Send-RWebJson $Ctx @{ ssid = [string]$n.Ssid; security = [string]$n.Security; open = (-not $n.Password); size = [int]$qr.Size; modules = (ConvertTo-RWebQRModules $qr) }
+        }
+        'POST /api/wifiqrsave' {
+            $n = Get-RWebWifiNetwork ([string]$b.ssid)
+            if (-not $n -or -not $n.CanShare) { Send-RWebJson $Ctx @{ error = 'Rete non disponibile.' } 400; return }
+            & $start 'wifiqrsave' "QR code della rete $($n.Ssid)" @{ Ssid = [string]$n.Ssid }
+        }
+        'POST /api/wifiexport' { & $start 'wifiexport' 'Esportazione dei profili Wi-Fi' @{} }
+        'POST /api/wifiimport' { & $start 'wifiimport' 'Importazione dei profili Wi-Fi' @{} }
+        'POST /api/report' {
+            $d = @{ Customer = (Get-RWebText $b.customer 200); Technician = (Get-RWebText $b.technician 200); Reference = (Get-RWebText $b.reference 200); Header = (Get-RWebText $b.header 1000); Notes = (Get-RWebText $b.notes 4000) }
+            & $start 'report' 'Rapporto di intervento' @{ Details = $d }
+        }
+        'POST /api/report/clear' { if ($sync.SessionActions) { $sync.SessionActions.Clear() }; Send-RWebJson $Ctx @{ ok = $true } }
+        'POST /api/sysexport' { & $start 'sysexport' 'Esportazione del report di sistema' @{} }
         'POST /api/manager' {
             $m = [string]$b.manager
             if ($m -in @('Winget', 'Choco')) { $sync.preferences.packagemanager = [PackageManagers]$m; try { Set-Preferences -save } catch { } }
             Send-RWebJson $Ctx @{ ok = $true }
         }
-        'POST /api/classic' {
-            Send-RWebJson $Ctx @{ ok = $true }
-            $cmd = 'irm https://raw.githubusercontent.com/rtecnocopy89/WinRUtil/master/winrutil.ps1 | iex'
-            Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -Command `"$cmd`""
-        }
+        'POST /api/classic' { & $start 'classic' 'Apertura della versione classica' @{ LocalFile = $st.ClassicFile } }
         'POST /api/exit' { Send-RWebJson $Ctx @{ ok = $true }; if ($st.Phase -ne 'running') { $st.Quit = $true } }
         default { Send-RWebJson $Ctx @{ error = 'not found' } 404 }
     }
@@ -15645,8 +16422,18 @@ $sync.configs.applicationsHashtable = @{}
 $sync.configs.applications.PSObject.Properties | ForEach-Object {
     $sync.configs.applicationsHashtable[$_.Name] = $_.Value
 }
+$sync.configs.appxHashtable = @{}
+$sync.configs.appx.PSObject.Properties | ForEach-Object {
+    $sync.configs.appxHashtable[$_.Name] = $_.Value
+}
 try { Set-Preferences } catch { }
 if (-not $sync.preferences.packagemanager) { $sync.preferences.packagemanager = [PackageManagers]::Winget }
+
+# Avviata da file (es. Compile.ps1 -RunWeb): la versione classica e' il winrutil.ps1 accanto, senza scaricarla
+if ($PSCommandPath) {
+    $classicFile = Join-Path (Split-Path -Parent $PSCommandPath) 'winrutil.ps1'
+    if (Test-Path -LiteralPath $classicFile) { $script:RWebState.ClassicFile = $classicFile }
+}
 
 $Host.UI.RawUI.WindowTitle = "WinRUtil (Admin) - interfaccia web"
 Show-WinRUtilLogo

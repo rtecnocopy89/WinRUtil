@@ -31,6 +31,8 @@ if (-not ('PackageManagers' -as [type])) { Add-Type 'public enum PackageManagers
 $PARAM_NOUI = $true
 $sync.configs.applicationsHashtable = @{}
 $sync.configs.applications.PSObject.Properties | ForEach-Object { $sync.configs.applicationsHashtable[$_.Name] = $_.Value }
+$sync.configs.appxHashtable = @{}
+$sync.configs.appx.PSObject.Properties | ForEach-Object { $sync.configs.appxHashtable[$_.Name] = $_.Value }
 . (Import-Utf8Script (Join-Path $PSScriptRoot 'server.ps1'))
 
 if ($Serve) {
@@ -50,7 +52,38 @@ foreach ($f in @('server.ps1', 'main.ps1')) {
     Assert "$f senza errori di sintassi" { $t = $null; $e = $null; [void][System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PSScriptRoot $f), [ref]$t, [ref]$e); $e.Count -eq 0 }
 }
 $html = [IO.File]::ReadAllText((Join-Path $PSScriptRoot 'index.html'))
-Assert 'Pagina senza risorse esterne' { $html -notmatch '(?i)(src|href)\s*=\s*"https?:' -and $html -notmatch '(?i)@import|url\(\s*["'']?https?:' }
+Assert 'Pagina senza risorse esterne (solo le icone dei siti delle app)' {
+    $urls = @([regex]::Matches($html, 'https?://[^\s"''<>)\\]+') | ForEach-Object { $_.Value })
+    $html -notmatch '(?i)(src|href)\s*=\s*"https?:' -and $html -notmatch '(?i)@import|url\(\s*["'']?https?:' -and
+    @($urls | Where-Object { $_ -notmatch '^(http://www\.w3\.org/2000/svg|https://www\.google\.com/s2/favicons\?)' }).Count -eq 0
+}
+$server = [IO.File]::ReadAllText((Join-Path $PSScriptRoot 'server.ps1'))
+Assert 'Tutte le sezioni della versione classica nella barra laterale' {
+    @('sys', 'inst', 'tw', 'appx', 'cfg', 'upd', 'prn', 'wifi', 'rep' | Where-Object { $html -notlike "*data-v=""$_""*" -or $html -notlike "*id=""v-$_""*" }).Count -eq 0
+}
+Assert 'Ogni chiamata della pagina ha il suo percorso nel server' {
+    $routes = @([regex]::Matches($server, "'(GET|POST) (/api/[a-z/]+)'") | ForEach-Object { "$($_.Groups[1].Value) $($_.Groups[2].Value)" })
+    $calls = @([regex]::Matches($html, "api\('(GET|POST)', '(/api/[a-z/]+)") | ForEach-Object { "$($_.Groups[1].Value) $($_.Groups[2].Value)" })
+    $calls += @([regex]::Matches($html, "query\('(/api/[a-z/]+)") | ForEach-Object { "GET $($_.Groups[1].Value)" })
+    $calls += @([regex]::Matches($html, "run\('(/api/[a-z/]+)") | ForEach-Object { "POST $($_.Groups[1].Value)" })
+    $miss = @($calls | Select-Object -Unique | Where-Object { $routes -notcontains $_ })
+    if ($miss.Count) { Write-Host "    mancano: $($miss -join ', ')" -ForegroundColor DarkYellow }
+    $calls.Count -gt 20 -and $miss.Count -eq 0
+}
+Assert 'Ogni elemento cercato dallo script esiste nella pagina' {
+    $dynamic = @('sysCpuLoad', 'sysCpuBar', 'sysRamText', 'sysRamFree', 'sysRamBar', 'sysUptime')
+    $miss = @([regex]::Matches($html, "\`$\('([A-Za-z]+)'\)") | ForEach-Object { $_.Groups[1].Value } | Select-Object -Unique | Where-Object { $dynamic -notcontains $_ -and $html -notlike "*id=""$_""*" })
+    if ($miss.Count) { Write-Host "    mancano: $($miss -join ', ')" -ForegroundColor DarkYellow }
+    $miss.Count -eq 0
+}
+Assert 'Ogni operazione avviata dal server esiste' {
+    $kinds = @([regex]::Matches($server, "& \`$start '([a-z]+)'") | ForEach-Object { $_.Groups[1].Value } | Select-Object -Unique)
+    $kinds.Count -gt 10 -and @($kinds | Where-Object { -not $script:RWebTasks.ContainsKey($_) }).Count -eq 0
+}
+Assert 'Versione classica aperta da file, senza irm | iex sulla riga di comando (bloccato dagli antivirus)' {
+    $c = $script:RWebTasks['classic'].ToString()
+    $c -match "'-File'" -and $c -notmatch '\|\s*iex|Invoke-Expression|-Command' -and $server -notmatch '\|\s*iex'
+}
 Assert 'Pagina con script protetto da nonce (CSP)' { $html -like '*<script nonce="__NONCE__">*' -and ([regex]::Matches($html, '<script')).Count -eq 1 }
 foreach ($f in @('index.html', 'server.ps1', 'main.ps1')) {
     Assert "$f solo ASCII (il file unico deve essere ASCII)" { @([IO.File]::ReadAllBytes((Join-Path $PSScriptRoot $f)) | Where-Object { $_ -gt 127 }).Count -eq 0 }
@@ -80,6 +113,31 @@ Assert 'Ogni pulsante ha una funzione o uno script' {
 }
 Assert 'Funzioni usate dalle operazioni disponibili' { @('Invoke-WinUtilTweaks', 'Invoke-WinUtilFeatureInstall', 'Install-WinUtilProgramWinget', 'Install-WinUtilProgramChoco', 'Get-WinUtilSelectedPackages', 'Set-WinUtilDNS', 'Invoke-WPFUltimatePerformance', 'Invoke-WPFUpdatesdefault', 'Get-WinUtilSystemReport', 'Get-WinRUtilWifiProfiles' | Where-Object { -not (Get-Command $_ -ErrorAction SilentlyContinue) }).Count -eq 0 }
 Assert 'Filtro id: accetta solo voci del catalogo' { $r = @(Select-RWebIds @('WPFInstall7zip', 'Remove-Item', 'WPFInstall7zip') @('WPFInstall7zip')); $r.Count -eq 1 -and $r[0] -eq 'WPFInstall7zip' }
+Assert 'App di Windows nel catalogo, con il nome del pacchetto' { $cat.appx.Count -eq @($sync.configs.appx.PSObject.Properties).Count -and $cat.appx.Count -gt 10 -and @($cat.appx | Where-Object { -not $_.pkg }).Count -eq 0 }
+Assert 'Menu Multiplane Overlay con le sue tre scelte' { $m = @($cat.combos | Where-Object { $_.id -eq 'WPFMultiplaneOverlay' }); $m.Count -eq 1 -and $m[0].items.Count -eq 3 }
+Assert 'Funzioni della versione classica usate dalle nuove sezioni disponibili' {
+    $need = @('Remove-WinUtilAPPX', 'Install-WinUtilAPPX', 'Remove-WinUtilProvisionedAPPX', 'Get-WinUtilInstalledAPPX', 'Export-WinUtilWifiProfiles', 'Import-WinUtilWifiProfiles', 'Test-WinUtilWlanService',
+        'ConvertTo-WinUtilQRCode', 'Get-WinUtilWifiQRText', 'ConvertTo-WinUtilWifiQRCard', 'Save-WinUtilReportSettings', 'Get-WinUtilReportSettings', 'ConvertTo-WinUtilInterventionReportHtml',
+        'ConvertTo-WinUtilSystemReportHtml', 'ConvertTo-WinUtilSystemReportText', 'Update-WinUtilProgram', 'Get-WinUtilProgramUpdates', 'Invoke-WinUtilCurrentSystem', 'Set-WinUtilRegistryComboState',
+        'Get-WinUtilRegistryComboState', 'Test-WinUtilPackageManager', 'Format-WinUtilUptime', 'Set-WinUtilSystemMemory', 'Add-WinUtilSessionAction')
+    $miss = @($need | Where-Object { -not (Get-Command $_ -ErrorAction SilentlyContinue) })
+    if ($miss.Count) { Write-Host "    mancano: $($miss -join ', ')" -ForegroundColor DarkYellow }
+    $miss.Count -eq 0
+}
+$iss = New-RWebSessionState
+Assert 'Le operazioni vedono le funzioni della versione classica e la finestra Apri/Salva' { $names = @($iss.Commands | ForEach-Object { $_.Name }); $names -contains 'Show-WinRUtilWebFileDialog' -and $names -contains 'Update-WinUtilProgram' -and $names -contains 'ConvertTo-WinUtilWifiQRCard' }
+Assert 'QR code Wi-Fi: moduli per la pagina con i riquadri di posizione' {
+    $qr = ConvertTo-WinUtilQRCode -Text (Get-WinUtilWifiQRText -Network ([pscustomobject]@{ Ssid = 'Casa; prova'; Password = 'pass:word'; Security = 'WPA2-Personal'; Hidden = $false }))
+    $m = ConvertTo-RWebQRModules $qr
+    $m.Length -eq $qr.Size * $qr.Size -and $m.Substring(0, 7) -eq '1111111' -and $m.Substring($qr.Size - 7, 7) -eq '1111111'
+}
+Assert 'Testo del QR code Wi-Fi con i caratteri speciali protetti' { (Get-WinUtilWifiQRText -Network ([pscustomobject]@{ Ssid = 'Casa; prova'; Password = 'pass:word'; Security = 'WPA2-Personal'; Hidden = $false })) -eq 'WIFI:T:WPA;S:Casa\; prova;P:pass\:word;;' }
+Assert 'Stato dei menu (Multiplane Overlay) letto dal registro' { $script:RWebState.Catalog = $cat; $c = Get-RWebCombos; $c.ContainsKey('WPFMultiplaneOverlay') -and ($c['WPFMultiplaneOverlay'] -eq '' -or ($cat.combos | Where-Object { $_.id -eq 'WPFMultiplaneOverlay' }).items -contains $c['WPFMultiplaneOverlay']) }
+[void]$sync.SessionActions.Clear()
+Add-WinUtilSessionAction -Area 'Prova' -Text 'Operazione di prova'
+Assert 'Rapporto: operazioni della sessione per la pagina' { $r = Get-RWebReport; @($r.actions).Count -eq 1 -and $r.actions[0].area -eq 'Prova' -and $r.actions[0].result -eq 'Eseguito' -and (ConvertTo-Json -InputObject $r -Depth 5) -like '*Operazione di prova*' }
+[void]$sync.SessionActions.Clear()
+Assert 'Testi limitati nella lunghezza' { (Get-RWebText ('x' * 5000) 200).Length -eq 200 -and (Get-RWebText '  a  ') -eq 'a' }
 
 Write-Host "`n== Esecuzione delle operazioni ==" -ForegroundColor Cyan
 $script:RWebTasks['prova'] = { param($Testo) Set-WinUtilProgressbar -Label 'passo di prova' -Percent 40; Write-Host "eco: $Testo"; Write-Host "etichetta: $($RWeb.Label)"; Write-Warning 'avviso di prova'; if (-not $PARAM_NOUI) { throw 'PARAM_NOUI non attivo' }; if (-not (Get-Command Invoke-WinUtilTweaks -ErrorAction SilentlyContinue)) { throw 'funzioni mancanti' } }
@@ -99,6 +157,15 @@ $script:RWebTasks['errore'] = { throw 'errore voluto' }
 [void](Start-RWebTask 'errore' 'Errore' @{})
 $t0 = Get-Date; while ($script:RWebState.Phase -eq 'running' -and ((Get-Date) - $t0).TotalSeconds -lt 30) { Start-Sleep -Milliseconds 200; Update-RWebPhase }
 Assert 'Errore dell''operazione riportato alla pagina' { (Get-RWebStatus 0).error -like '*errore voluto*' }
+$script:RWebTasks['scritto'] = { Write-Error 'errore scritto' }
+$script:RWebStrictKinds += 'scritto'
+[void](Start-RWebTask 'scritto' 'Errore scritto' @{})
+$t0 = Get-Date; while ($script:RWebState.Phase -eq 'running' -and ((Get-Date) - $t0).TotalSeconds -lt 30) { Start-Sleep -Milliseconds 200; Update-RWebPhase }
+Assert 'Errore scritto dalle operazioni di questa variante = non riuscita' { (Get-RWebStatus 0).error -like '*errore scritto*' }
+$script:RWebTasks['risultati'] = { $RWeb.Results['app1'] = @{ t = 'Aggiornata'; l = 'Success'; ok = $true } }
+[void](Start-RWebTask 'risultati' 'Risultati' @{})
+$t0 = Get-Date; while ($script:RWebState.Phase -eq 'running' -and ((Get-Date) - $t0).TotalSeconds -lt 30) { Start-Sleep -Milliseconds 200; Update-RWebPhase }
+Assert 'Esito di ogni applicazione aggiornata passato alla pagina' { $s = Get-RWebStatus 0; $s.kind -eq 'risultati' -and $s.results['app1'].ok -and (ConvertTo-Json -InputObject $s -Depth 6) -like '*Aggiornata*' }
 
 Write-Host "`n== Letture ==" -ForegroundColor Cyan
 $t0 = Get-Date; do { $q = Get-RWebQuery 'system'; if ($q.loading) { Start-Sleep -Milliseconds 300 } } while ($q.loading -and ((Get-Date) - $t0).TotalSeconds -lt 90)
@@ -106,6 +173,11 @@ Assert 'Informazioni di sistema lette in background' { -not $q.loading -and $q.d
 Assert 'Informazioni di sistema convertibili in JSON' { $j = ConvertTo-Json -InputObject $q -Depth 6 -Compress; $j -like '*OSCaption*' -and $j -like '*Disks*' }
 $t0 = Get-Date; do { $w = Get-RWebQuery 'wifi'; if ($w.loading) { Start-Sleep -Milliseconds 300 } } while ($w.loading -and ((Get-Date) - $t0).TotalSeconds -lt 60)
 Assert 'Reti Wi-Fi lette (anche nessuna) senza errori' { -not $w.loading -and $null -ne $w.data }
+Assert 'Reti Wi-Fi con l''indicazione del QR code' { @($w.data | Where-Object { -not $_.ContainsKey('canShare') }).Count -eq 0 }
+$t0 = Get-Date; do { $l = Get-RWebQuery 'live' -Refresh; if ($l.loading) { Start-Sleep -Milliseconds 300 } } while ($l.loading -and ((Get-Date) - $t0).TotalSeconds -lt 30)
+Assert 'Processore e memoria aggiornati in tempo reale' { -not $l.loading -and $l.data.RamText -like '*GB*' -and $l.data.CpuLoad -like '*%' -and $l.data.Uptime }
+$t0 = Get-Date; do { $p = Get-RWebQuery 'printers'; if ($p.loading) { Start-Sleep -Milliseconds 300 } } while ($p.loading -and ((Get-Date) - $t0).TotalSeconds -lt 60)
+Assert 'Stampanti lette (o errore spiegato)' { -not $p.loading -and ($p.error -or @($p.data | Where-Object { -not $_.name }).Count -eq 0) }
 
 Write-Host "`n== Server HTTP ==" -ForegroundColor Cyan
 $psExe = (Get-Process -Id $PID).Path
@@ -154,6 +226,15 @@ if ($url) {
     Assert 'Interruttore non previsto rifiutato' { (Send-T POST '/api/toggle' '{"id":"WPFTweaksActivity","on":true}').Code -eq 400 }
     Assert 'Funzionalita'' non previste rifiutate' { (Send-T POST '/api/features' '{"ids":["WPFPanelControl"]}').Code -eq 400 }
     Assert 'Percorso sconosciuto = 404' { (Send-T GET '/api/niente').Code -eq 404 }
+    Assert 'Icone delle app ammesse dalla CSP solo dal servizio delle icone' { $p.Csp -match "img-src data: https://www\.google\.com https://\*\.gstatic\.com;" }
+    Assert 'App di Windows non previste rifiutate' { (Send-T POST '/api/appx' '{"ids":["Remove-Item"],"action":"Remove"}').Code -eq 400 }
+    Assert 'Scelta del menu non prevista rifiutata' { (Send-T POST '/api/combo' '{"id":"WPFMultiplaneOverlay","state":"Evil"}').Code -eq 400 }
+    Assert 'Azione stampanti non prevista rifiutata' { (Send-T POST '/api/printer' '{"action":"format"}').Code -eq 400 }
+    Assert 'Rimozione di un driver non in elenco rifiutata' { (Send-T POST '/api/printer' '{"action":"remove","driver":"Microsoft Print To PDF"}').Code -eq 400 }
+    Assert 'Aggiornamento senza ricerca rifiutato' { (Send-T POST '/api/updates' '{"ids":["Microsoft.Edge"],"manager":"Winget"}').Code -eq 400 }
+    Assert 'QR code di una rete sconosciuta rifiutato' { (Send-T POST '/api/wifiqr' '{"ssid":"rete-che-non-esiste"}').Code -eq 400 }
+    Assert 'Rapporto: elenco delle operazioni' { $r = Send-T GET '/api/report'; $r.Code -eq 200 -and $null -ne ($r.Text | ConvertFrom-Json).actions }
+    Assert 'Stato dei menu via HTTP' { $r = Send-T GET '/api/combos'; $r.Code -eq 200 -and $r.Text -like '*WPFMultiplaneOverlay*' }
     $s = Send-T GET '/api/status?since=0'
     Assert 'Stato iniziale: nessuna operazione' { $s.Code -eq 200 -and ($s.Text | ConvertFrom-Json).phase -eq 'idle' }
     Assert 'Uscita richiesta dalla pagina chiude il server' { (Send-T POST '/api/exit' '{}').Code -eq 200 -and $proc.WaitForExit(15000) }
