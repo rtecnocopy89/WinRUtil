@@ -1066,6 +1066,12 @@
                             <TextBlock Text="Wi-Fi" FontSize="14" VerticalAlignment="Center" Foreground="{DynamicResource MainForegroundColor}"/>
                         </StackPanel>
                     </ToggleButton>
+                    <ToggleButton Name="WPFTab10BT">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xEA18;" FontSize="15" Width="24" VerticalAlignment="Center" Foreground="{DynamicResource MainForegroundColor}"/>
+                            <TextBlock Text="Sicurezza" FontSize="14" VerticalAlignment="Center" Foreground="{DynamicResource MainForegroundColor}"/>
+                        </StackPanel>
+                    </ToggleButton>
                     <ToggleButton Name="WPFTab5BT">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE9F9;" FontSize="15" Width="24" VerticalAlignment="Center" Foreground="{DynamicResource MainForegroundColor}"/>
@@ -2556,6 +2562,237 @@
                             <TextBlock Name="WPFAppxStatus" Margin="12,0,5,0" VerticalAlignment="Center" TextWrapping="Wrap"
                                        FontSize="12" Foreground="{DynamicResource MutedForegroundColor}"/>
                         </DockPanel>
+                    </Border>
+                </Grid>
+            </TabItem>
+            <TabItem Header="Security" Visibility="Collapsed" Name="WPFTab10">
+                <Grid Margin="{DynamicResource TabContentMargin}" Background="Transparent">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Toolbar -->
+                    <Border Grid.Row="0" Background="{DynamicResource GroupBorderBackgroundColor}" CornerRadius="12"
+                            BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="16,13" Margin="6,6,6,6">
+                        <StackPanel>
+                            <TextBlock Text="Sicurezza home banking" FontSize="{DynamicResource HeaderFontSize}" FontWeight="Bold"
+                                       Foreground="{DynamicResource MainForegroundColor}"/>
+                            <TextBlock Text="Cerca i segni delle truffe sui bonifici (IBAN cambiato, password rubate) e controlla le impostazioni di sicurezza. Come problemi segnala solo cose certe. L'analisi è in sola lettura: non cancella e non modifica nulla, e nessun dato lascia il PC."
+                                       FontSize="12" Foreground="{DynamicResource MutedForegroundColor}" TextWrapping="Wrap" Margin="0,2,0,10"/>
+                            <WrapPanel Orientation="Horizontal">
+                                <CheckBox Name="WPFSecurityFast" Content="Analisi rapida (senza la scansione della memoria)" VerticalAlignment="Center" Margin="0,0,16,8"/>
+                                <Button Name="WPFSecurityOpenFolder" Content="Cartella rapporti" Width="Auto" MinWidth="130" Padding="12,0" Margin="0,0,8,8"
+                                        ToolTip="Apre la cartella con i rapporti delle analisi eseguite su questo PC"/>
+                                <Button Name="WPFSecurityEditConfig" Content="Banche ed elementi autorizzati" Width="Auto" MinWidth="130" Padding="12,0" Margin="0,0,8,8"
+                                        ToolTip="Apre config.json: i domini della banca da sorvegliare e gli elementi verificati che non vanno più segnalati"/>
+                            </WrapPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Alert raised by the monitor while the transfer is being made -->
+                    <Border Name="WPFSecurityAlert" Grid.Row="1" Visibility="Collapsed" Background="{DynamicResource DangerColor}"
+                            CornerRadius="12" Padding="16,12" Margin="6,0,6,6">
+                        <TextBlock Name="WPFSecurityAlertText" Foreground="{DynamicResource BadgeForegroundColor}" FontWeight="Bold" FontSize="14" TextWrapping="Wrap"/>
+                    </Border>
+
+                    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Margin="6,0,6,6">
+
+                            <!-- Actions -->
+                            <UniformGrid Name="WPFSecurityActions" Columns="3" Margin="0,0,0,0">
+                                <Border Background="{DynamicResource GroupBorderBackgroundColor}" CornerRadius="12" BorderBrush="{DynamicResource BorderColor}"
+                                        BorderThickness="1" Padding="14,12" Margin="0,0,6,6">
+                                    <DockPanel>
+                                        <DockPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
+                                            <Button Name="WPFSecurityFull" DockPanel.Dock="Right" Content="Avvia analisi" Width="Auto" MinWidth="120" Padding="12,0" Margin="0"/>
+                                            <TextBlock Text="3-10 minuti" FontSize="11" Foreground="{DynamicResource MutedForegroundColor}" VerticalAlignment="Center"/>
+                                        </DockPanel>
+                                        <StackPanel>
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xEA18;" FontSize="16" Foreground="{DynamicResource AccentColor}" VerticalAlignment="Center" Margin="0,0,9,0"/>
+                                                <TextBlock Text="Analisi completa" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource MainForegroundColor}" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                            <TextBlock Text="Browser ed estensioni, memoria, programmi all'avvio, controllo remoto, rete, impostazioni di sicurezza e test degli appunti."
+                                                       FontSize="12" Foreground="{DynamicResource MutedForegroundColor}" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Border>
+                                <Border Background="{DynamicResource GroupBorderBackgroundColor}" CornerRadius="12" BorderBrush="{DynamicResource BorderColor}"
+                                        BorderThickness="1" Padding="14,12" Margin="0,0,6,6">
+                                    <DockPanel>
+                                        <DockPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
+                                            <Button Name="WPFSecurityClipTest" DockPanel.Dock="Right" Content="Avvia test" Width="Auto" MinWidth="120" Padding="12,0" Margin="0"/>
+                                            <TextBlock Text="circa 30 secondi" FontSize="11" Foreground="{DynamicResource MutedForegroundColor}" VerticalAlignment="Center"/>
+                                        </DockPanel>
+                                        <StackPanel>
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE77F;" FontSize="16" Foreground="{DynamicResource AccentColor}" VerticalAlignment="Center" Margin="0,0,9,0"/>
+                                                <TextBlock Text="Test degli appunti" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource MainForegroundColor}" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                            <TextBlock Text="Copia un IBAN di prova e controlla che nessun programma lo cambi, poi ripristina gli appunti."
+                                                       FontSize="12" Foreground="{DynamicResource MutedForegroundColor}" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Border>
+                                <Border Background="{DynamicResource GroupBorderBackgroundColor}" CornerRadius="12" BorderBrush="{DynamicResource BorderColor}"
+                                        BorderThickness="1" Padding="14,12" Margin="0,0,0,6">
+                                    <DockPanel>
+                                        <DockPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
+                                            <Button Name="WPFSecurityMonitor" DockPanel.Dock="Right" Content="Avvia monitor" Width="Auto" MinWidth="120" Padding="12,0" Margin="0"/>
+                                            <ComboBox Name="WPFSecurityMonitorMinutes" Width="96" HorizontalAlignment="Left" VerticalAlignment="Center" SelectedIndex="1"
+                                                      ToolTip="Per quanto tempo sorvegliare il PC">
+                                                <ComboBoxItem Content="10 minuti" Tag="10"/>
+                                                <ComboBoxItem Content="30 minuti" Tag="30"/>
+                                                <ComboBoxItem Content="60 minuti" Tag="60"/>
+                                            </ComboBox>
+                                        </DockPanel>
+                                        <StackPanel>
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE9D9;" FontSize="16" Foreground="{DynamicResource AccentColor}" VerticalAlignment="Center" Margin="0,0,9,0"/>
+                                                <TextBlock Text="Monitor durante il bonifico" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource MainForegroundColor}" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                            <TextBlock Text="Resta attivo mentre il cliente fa il bonifico e avvisa subito se qualcosa cambia l'IBAN o il collegamento."
+                                                       FontSize="12" Foreground="{DynamicResource MutedForegroundColor}" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Border>
+                            </UniformGrid>
+
+                            <!-- Progress of the running analysis -->
+                            <Border Name="WPFSecurityRunPanel" Visibility="Collapsed" Background="{DynamicResource GroupBorderBackgroundColor}" CornerRadius="12"
+                                    BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="16,13" Margin="0,0,0,6">
+                                <StackPanel>
+                                    <DockPanel>
+                                        <TextBlock Name="WPFSecurityPercent" DockPanel.Dock="Right" FontSize="22" FontWeight="Bold"
+                                                   Foreground="{DynamicResource AccentColor}" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                                        <StackPanel>
+                                            <TextBlock Name="WPFSecurityRunTitle" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource MainForegroundColor}"/>
+                                            <TextBlock Name="WPFSecurityStep" FontSize="12" Foreground="{DynamicResource MutedForegroundColor}" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </DockPanel>
+                                    <ProgressBar Name="WPFSecurityProgress" Height="8" Minimum="0" Maximum="100" Margin="0,10,0,6"/>
+                                    <DockPanel>
+                                        <Button Name="WPFSecurityCancel" DockPanel.Dock="Right" Content="Interrompi" Width="Auto" MinWidth="110" Padding="12,0" Margin="0"/>
+                                        <TextBlock Name="WPFSecurityElapsed" FontSize="12" Foreground="{DynamicResource MutedForegroundColor}" VerticalAlignment="Center"/>
+                                    </DockPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Result summary -->
+                            <Border Name="WPFSecuritySummary" Visibility="Collapsed" Background="{DynamicResource GroupBorderBackgroundColor}" CornerRadius="12"
+                                    BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="16,14" Margin="0,0,0,6">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="150"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,0,12,0">
+                                        <TextBlock Name="WPFSecurityScore" FontSize="46" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="su 100" FontSize="11" Foreground="{DynamicResource MutedForegroundColor}" HorizontalAlignment="Center"/>
+                                        <TextBlock Name="WPFSecurityVerdict" FontSize="13" FontWeight="Bold" TextWrapping="Wrap" TextAlignment="Center" Margin="0,6,0,0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Name="WPFSecurityMessage" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource MainForegroundColor}" TextWrapping="Wrap"/>
+                                        <UniformGrid Columns="4" Margin="0,12,0,0">
+                                            <StackPanel Margin="0,0,8,0">
+                                                <TextBlock Name="WPFSecurityCountConfirmed" FontSize="22" FontWeight="Bold" Foreground="{DynamicResource DangerColor}"/>
+                                                <TextBlock Text="Problemi confermati" FontSize="11" Foreground="{DynamicResource MutedForegroundColor}" TextWrapping="Wrap"/>
+                                            </StackPanel>
+                                            <StackPanel Margin="0,0,8,0">
+                                                <TextBlock Name="WPFSecurityCountCheck" FontSize="22" FontWeight="Bold" Foreground="{DynamicResource WarningColor}"/>
+                                                <TextBlock Text="Da controllare" FontSize="11" Foreground="{DynamicResource MutedForegroundColor}" TextWrapping="Wrap"/>
+                                            </StackPanel>
+                                            <StackPanel Margin="0,0,8,0">
+                                                <TextBlock Name="WPFSecurityCountFix" FontSize="22" FontWeight="Bold" Foreground="{DynamicResource WarningColor}"/>
+                                                <TextBlock Text="Impostazioni da correggere" FontSize="11" Foreground="{DynamicResource MutedForegroundColor}" TextWrapping="Wrap"/>
+                                            </StackPanel>
+                                            <StackPanel>
+                                                <TextBlock Name="WPFSecurityCountSections" FontSize="22" FontWeight="Bold" Foreground="{DynamicResource MainForegroundColor}"/>
+                                                <TextBlock Text="Controlli eseguiti" FontSize="11" Foreground="{DynamicResource MutedForegroundColor}" TextWrapping="Wrap"/>
+                                            </StackPanel>
+                                        </UniformGrid>
+                                        <TextBlock Name="WPFSecurityReportPath" FontSize="11" Foreground="{DynamicResource MutedForegroundColor}" TextWrapping="Wrap" Margin="0,10,0,0"/>
+                                        <WrapPanel Margin="0,10,0,0">
+                                            <Button Name="WPFSecurityOpenReport" Content="Apri rapporto completo" Width="Auto" MinWidth="150" Padding="12,0" Margin="0,0,8,0"
+                                                    ToolTip="Il rapporto HTML con tutti i dettagli, da stampare o salvare in PDF"/>
+                                            <Button Name="WPFSecurityOpenResult" Content="Apri cartella" Width="Auto" MinWidth="110" Padding="12,0" Margin="0"
+                                                    ToolTip="La cartella del rapporto, con l'archivio ZIP da conservare come prova"/>
+                                        </WrapPanel>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <!-- Findings -->
+                            <StackPanel Name="WPFSecurityFindingsPanel" Visibility="Collapsed">
+                                <DockPanel Margin="2,6,2,8">
+                                    <CheckBox Name="WPFSecurityShowDetails" DockPanel.Dock="Right" VerticalAlignment="Center"
+                                              ToolTip="Mostra anche i dettagli tecnici: elementi raccolti che non sono problemi"/>
+                                    <TextBlock Text="ELEMENTI TROVATI" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource MutedForegroundColor}" VerticalAlignment="Center"/>
+                                </DockPanel>
+                                <TextBlock Name="WPFSecurityNoFindings" Text="Nessun problema confermato, nessun elemento da controllare e nessuna impostazione da correggere."
+                                           FontSize="12" Foreground="{DynamicResource MutedForegroundColor}" TextWrapping="Wrap" Margin="2,0,2,8"/>
+                                <ItemsControl Name="WPFSecurityFindings">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="{DynamicResource GroupBorderBackgroundColor}" CornerRadius="10" BorderBrush="{DynamicResource BorderColor}"
+                                                    BorderThickness="1" Padding="14,10" Margin="0,0,0,6">
+                                                <StackPanel>
+                                                    <DockPanel>
+                                                        <Border x:Name="SecurityPill" DockPanel.Dock="Left" CornerRadius="6" Padding="8,2" Margin="0,0,10,0" VerticalAlignment="Top"
+                                                                Background="{DynamicResource MutedForegroundColor}">
+                                                            <TextBlock Text="{Binding Label}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BadgeForegroundColor}"/>
+                                                        </Border>
+                                                        <TextBlock DockPanel.Dock="Right" Text="{Binding Area}" FontSize="11" Foreground="{DynamicResource MutedForegroundColor}"
+                                                                   VerticalAlignment="Top" Margin="10,1,0,0"/>
+                                                        <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"
+                                                                   Foreground="{DynamicResource MainForegroundColor}"/>
+                                                    </DockPanel>
+                                                    <TextBlock x:Name="SecurityDetail" Text="{Binding Detail}" FontSize="12" TextWrapping="Wrap"
+                                                               Foreground="{DynamicResource MutedForegroundColor}" Margin="0,6,0,0"/>
+                                                    <TextBlock x:Name="SecurityAdvice" FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource MainForegroundColor}" Margin="0,6,0,0">
+                                                        <Run Text="Cosa fare: " FontWeight="SemiBold"/><Run Text="{Binding Advice, Mode=OneWay}"/>
+                                                    </TextBlock>
+                                                </StackPanel>
+                                            </Border>
+                                            <DataTemplate.Triggers>
+                                                <DataTrigger Binding="{Binding Kind}" Value="ALTA">
+                                                    <Setter TargetName="SecurityPill" Property="Background" Value="{DynamicResource DangerColor}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Kind}" Value="MEDIA">
+                                                    <Setter TargetName="SecurityPill" Property="Background" Value="{DynamicResource WarningColor}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Kind}" Value="CRIT">
+                                                    <Setter TargetName="SecurityPill" Property="Background" Value="{DynamicResource WarningColor}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Detail}" Value="">
+                                                    <Setter TargetName="SecurityDetail" Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Advice}" Value="">
+                                                    <Setter TargetName="SecurityAdvice" Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </DataTemplate.Triggers>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- Log -->
+                    <Border Grid.Row="3" Background="{DynamicResource GroupBorderBackgroundColor}" CornerRadius="12"
+                            BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="10" Margin="6,2,6,6">
+                        <StackPanel>
+                            <TextBlock Text="Registro dell'analisi" FontSize="{DynamicResource FontSize}" FontWeight="Bold"
+                                       Foreground="{DynamicResource MainForegroundColor}" Margin="0,0,0,4"/>
+                            <TextBox Name="WPFSecurityLog" IsReadOnly="True" TextWrapping="Wrap" Height="110" FontFamily="Consolas" FontSize="12"
+                                     VerticalScrollBarVisibility="Auto" Background="Transparent"
+                                     Foreground="{DynamicResource MainForegroundColor}" BorderBrush="{DynamicResource BorderColor}"
+                                     BorderThickness="1" Padding="6"
+                                     Text="Pronto. Scegli un'analisi: i rapporti restano su questo PC."/>
+                        </StackPanel>
                     </Border>
                 </Grid>
             </TabItem>

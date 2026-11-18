@@ -11,7 +11,7 @@
     try {
         Set-WinUtilTaskbaritem -state "Indeterminate" -overlay "logo"
         Write-Host "==> Starting WinGet Repair"
-        Install-WinUtilWinget
+        Install-WinUtilWinget -Force
         Add-WinUtilSessionAction -Area "Riparazione" -Text "WinGet - Reinstalla"
     } catch {
         Write-Error "Failed to install WinGet: $_"

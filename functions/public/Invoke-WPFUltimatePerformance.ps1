@@ -3,6 +3,8 @@
         [switch]$Do
     )
 
+    $guidPattern = '[A-Fa-f0-9]{8}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{12}'
+
     if ($Do) {
         if (-not (powercfg /list | Select-String "WinRUtil - Ultimate Power Plan")) {
             if (-not (powercfg /list | Select-String "8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c")) {
@@ -12,7 +14,12 @@
                     return
                 }
             }
-            $guid = ((powercfg /duplicatescheme 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c) -split '\s+')[3]
+            # Match the GUID itself: the label before it is localized (e.g. Italian Windows).
+            $guid = [regex]::Match(((powercfg /duplicatescheme 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c) -join ' '), $guidPattern).Value
+            if (-not $guid) {
+                Write-Host "Failed to create the WinRUtil - Ultimate Power Plan plan." -ForegroundColor Red
+                return
+            }
             powercfg /changename $guid "WinRUtil - Ultimate Power Plan"
             powercfg /setacvalueindex $guid SUB_PROCESSOR IDLEDISABLE 1
             powercfg /setacvalueindex $guid 54533251-82be-4824-96c1-47b60b740d00 4d2b0152-7d5c-498b-88e2-34345392a2c5 1
@@ -25,9 +32,15 @@
             return
         }
     } else {
-        if (powercfg /list | Select-String "WinRUtil - Ultimate Power Plan") {
+        $planLines = @(powercfg /list | Select-String "WinRUtil - Ultimate Power Plan")
+        if ($planLines.Count -gt 0) {
             powercfg /setactive SCHEME_BALANCED
-            powercfg /delete ((powercfg /list | Select-String "WinRUtil - Ultimate Power Plan").ToString().Split()[3])
+            foreach ($planLine in $planLines) {
+                $guid = [regex]::Match($planLine.Line, $guidPattern).Value
+                if ($guid) {
+                    powercfg /delete $guid
+                }
+            }
             Write-Host "WinRUtil - Ultimate Power Plan plan was removed." -ForegroundColor Red
             Add-WinUtilSessionAction -Area "Ottimizzazione" -Text "Profilo Prestazioni eccellenti - Disattiva"
         } else {

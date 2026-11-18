@@ -2,76 +2,107 @@
 
 # WinRUtil
 
-**Un toolkit moderno per Windows — installa app, applica ottimizzazioni, gestisci aggiornamenti, stampanti e reti Wi-Fi e consegna al cliente il rapporto dell'intervento, da un'unica interfaccia glassmorphism.**
+**Il toolkit per i tecnici Windows: installa app, ottimizza, ripara, controlla la sicurezza del PC e consegna al cliente il rapporto dell'intervento, da un'unica finestra.**
 
 </div>
 
-## Distribuzione e Avvio Rapido
+## Avvio
 
-Per eseguire WinRUtil, apri una sessione di **PowerShell con privilegi di Amministratore** ed esegui il seguente comando:
+In PowerShell come **Amministratore**:
 
 ```powershell
 irm bit.ly/WinRUtil | iex
 ```
 
-In alternativa, puoi usare il link diretto a GitHub:
+Il link corto punta a `https://raw.githubusercontent.com/rtecnocopy89/WinRUtil/master/winrutil.ps1`. Se PowerShell non è elevato, WinRUtil si riavvia da solo come Amministratore.
 
-```powershell
-irm https://raw.githubusercontent.com/rtecnocopy89/WinRUtil/master/winrutil.ps1 | iex
-```
+## Schede
 
-> Se PowerShell non è elevato, WinRUtil tenterà automaticamente di riavviarsi come Amministratore.
+| Scheda | Cosa fa |
+|---|---|
+| **Sistema** | Windows e attivazione, hardware (Secure Boot, TPM, BitLocker), CPU e memoria in tempo reale, dischi con stato di salute, rete, batteria, cronologia degli aggiornamenti con i codici di errore. Esporta il report in HTML o testo. |
+| **Installa** | Oltre 230 applicazioni tramite WinGet o Chocolatey, con filtri per categoria e ricerca. *Aggiorna applicazioni* elenca gli aggiornamenti di tutti i programmi installati e installa quelli scelti. |
+| **Ottimizza** | Ottimizzazioni per privacy, prestazioni e uso quotidiano, con i preset Standard, Minima e Avanzata e annullamento con un clic. DNS anche sul più veloce misurato al momento, con DNS-over-HTTPS. |
+| **App di Windows** | Rimuove le app preinstallate (Copilot, Xbox, Notizie, Meteo, Clipchamp...) per tutti gli utenti, anche futuri, o le reinstalla. |
+| **Configura** | Funzionalità di Windows, pannelli classici e riparazioni: Windows Update, rete, CHKDSK, SFC e DISM con la spiegazione degli errori, WinGet. |
+| **Aggiornamenti** | Criteri di Windows Update (predefinito, solo sicurezza, disabilitato) senza toccare gli altri criteri, ad esempio WSUS. |
+| **Stampanti** | Stampanti installate con driver, porta, stato e coda; installa o rimuove driver INF, riavvia lo spooler, svuota la coda. |
+| **Wi-Fi** | Reti salvate con la password, copia, esportazione e importazione su un altro PC, QR code per collegare un telefono (anche come immagine da stampare). |
+| **Sicurezza** | Analisi in sola lettura dei PC usati per l'home banking: trova le cause delle frodi sui bonifici (IBAN sostituito, credenziali rubate). Vedi sotto. |
+| **Rapporto** | Rapporto di intervento per il cliente: intestazione dell'azienda, cliente, tecnico, dati del PC, operazioni eseguite nella sessione con il loro esito, note e firme. Pagina HTML da stampare o salvare in PDF. |
 
-## Funzionalità
+## Sicurezza
 
-- **Sistema** — panoramica di Windows e attivazione, hardware (con Secure Boot, TPM e BitLocker), processore e memoria aggiornati in tempo reale, dischi (con stato di salute), grafica, rete, batteria e cronologia degli aggiornamenti di Windows con l'esito di ognuno (anche quelli non riusciti, con il codice di errore), con esportazione del report in HTML (pronto da stampare o salvare in PDF) o in testo.
-- **Installa** — installa e aggiorna oltre 230 applicazioni tramite WinGet o Chocolatey, ognuna con l'icona del suo sito; i filtri per categoria (Ctrl+clic per combinarne più di una) e la ricerca restringono l'elenco. "Aggiorna applicazioni" elenca gli aggiornamenti disponibili per tutti i programmi installati: scegli quali installare e segui l'esito di ognuno.
-- **Ottimizza** — ottimizzazioni per privacy, prestazioni e qualità d'uso, con i preset Standard, Minima e Avanzata e annullamento con un clic, tutte descritte in italiano. Il DNS si può impostare anche sul più veloce (misurato al momento) e usa DNS-over-HTTPS quando Windows lo supporta.
-- **App di Windows** — rimuovi le app preinstallate di Windows (Copilot, Xbox, Notizie, Meteo, Clipchamp...) per tutti gli utenti, anche per i profili creati in seguito, oppure reinstallale dalla copia rimasta sul PC o dal Microsoft Store.
-- **Configura** — attiva le funzionalità di Windows, apri i pannelli classici ed esegui le riparazioni (Windows Update, rete, controllo del sistema con CHKDSK, SFC e DISM con la spiegazione degli errori, WinGet).
-- **Aggiornamenti** — gestisci i criteri di Windows Update (predefinito / solo sicurezza / disabilitato) senza toccare gli altri criteri, ad esempio un server WSUS aziendale.
-- **Stampanti** — rileva le stampanti installate (driver, porta, stato, lavori in coda), installa/aggiorna i driver da un pacchetto INF, rimuovi i driver, riavvia lo spooler e svuota la coda di stampa.
-- **Wi-Fi** — elenca le reti Wi-Fi salvate con la relativa password (nascosta finché non la mostri), copiale negli appunti, esportale in un file .zip e importale su un altro PC, oppure mostra il QR code di una rete: il telefono lo inquadra e si collega senza digitare la password. Il QR code si può salvare come immagine PNG da stampare, con il nome della rete e la password.
-- **Rapporto** — prepara il rapporto di intervento da consegnare al cliente: intestazione della tua azienda, cliente, tecnico, dati del PC, elenco delle operazioni eseguite con WinRUtil nella sessione (app installate, ottimizzazioni, riparazioni, stampanti, Wi-Fi) con il loro esito, note e spazio per le firme. Il rapporto è una pagina HTML pronta da stampare o salvare in PDF; il tecnico e l'intestazione vengono ricordati per i rapporti successivi.
+Tre analisi:
 
-## Interfaccia
+- **Analisi completa** (3-10 minuti): estensioni dei browser e loro provenienza, codice iniettato nella memoria del browser (trojan come Ramnit con il kit drIBAN), programmi all'avvio e persistenza, comandi incollati in Esegui (ClickFix), controllo remoto con i log delle connessioni, proxy, file hosts, DNS, ARP, certificati, eventi di sicurezza, antivirus, impostazioni di sicurezza con punteggio da 0 a 100 e test degli appunti. *Analisi rapida* salta la scansione della memoria.
+- **Test degli appunti** (30 secondi): copia un IBAN di prova e verifica che nessun programma lo cambi.
+- **Monitor durante il bonifico** (10-60 minuti): avvisa subito se qualcosa modifica l'IBAN negli appunti, il proxy o il file hosts mentre il cliente esegue il bonifico.
 
-Tema scuro glassmorphism (sfondo OLED, pannelli smerigliati, accento verde menta neon) e tema chiaro abbinato, selezionabili dal pulsante in alto a destra: *Auto* segue la modalità app di Windows. Navigazione laterale e barra del titolo personalizzata. Realizzata con il design system `ui-ux-pro-max` — vedi [`docs/DESIGN-SYSTEM.md`](docs/DESIGN-SYSTEM.md).
+Come problemi vengono segnalate solo cose certe:
 
-### Scorciatoie da tastiera
+| Esito | Significato |
+|---|---|
+| **CONFERMATO** | indicatore specifico di attacco o manomissione, che un software legittimo non produce |
+| **DA CONTROLLARE** | fatto certo che può avere una spiegazione legittima (es. *AnyDesk è installato*) |
+| **DA CORREGGERE** | impostazione di sicurezza sbagliata (firewall spento, Windows non supportato, macro abilitate...) |
+| **DETTAGLIO** | tutto il resto, nascosto finché non lo chiedi |
+
+Se meno dell'80% dei controlli riesce, il giudizio è *Analisi incompleta*: WinRUtil non dichiara mai "tutto a posto" senza aver controllato. Nessun dato lascia il PC (tranne il confronto dei DNS della banca con DNS pubblici, disattivabile). Ogni analisi produce un rapporto HTML, i CSV di dettaglio, `SHA256SUMS.txt` e uno ZIP da conservare come prova; il rapporto si apre in una finestra di Edge o Chrome con profilo temporaneo ed estensioni disattivate. Ripetendo l'analisi sullo stesso PC, ciò che è comparso dall'ultima volta è indicato come **NUOVO**.
+
+Con *Banche ed elementi autorizzati* si modifica `config.json`: i domini della banca da sorvegliare (`BankDomains`) e gli elementi verificati che non vanno più segnalati (`AllowExtensionIds`, `AllowRemoteTools`, `AllowCertThumbprints`, `AllowPaths`).
+
+Nessuno strumento automatico trova tutto: se il rapporto è pulito ma il problema continua, servono una scansione offline (Microsoft Defender Offline) e i log della banca.
+
+## Scorciatoie da tastiera
 
 | Tasti | Azione |
 |---|---|
-| `Alt+S` / `Alt+I` / `Alt+T` / `Alt+C` | Sistema / Installa / Ottimizza / Configura |
-| `Alt+U` / `Alt+P` / `Alt+F` / `Alt+R` | Aggiornamenti / Stampanti / Wi-Fi / Rapporto |
-| `Alt+A` | App di Windows |
-| `Ctrl+F` / `Esc` | Cerca nell'elenco / azzera la ricerca e chiude il QR code |
-| `Ctrl++` / `Ctrl+-` / `Ctrl+0` / `Ctrl`+rotellina | Testo più grande / più piccolo / normale |
-| `Ctrl+Q` | Chiudi WinRUtil |
+| `Alt+S` `Alt+I` `Alt+T` `Alt+A` `Alt+C` | Sistema, Installa, Ottimizza, App di Windows, Configura |
+| `Alt+U` `Alt+P` `Alt+F` `Alt+B` `Alt+R` | Aggiornamenti, Stampanti, Wi-Fi, Sicurezza, Rapporto |
+| `Ctrl+F` / `Esc` | Cerca nell'elenco / azzera la ricerca e chiude le finestre sovrapposte |
+| `Ctrl++` `Ctrl+-` `Ctrl+0`, `Ctrl`+rotellina | Dimensione del testo |
+| `Ctrl+Q` | Chiudi |
 
-### Avvio automatico
-
-Con `-Preset` (Standard, Minimal o Advanced) WinRUtil seleziona all'avvio le ottimizzazioni di un preset; con `-Config` importa le selezioni da un file esportato con *Impostazioni > Esporta*. Aggiungendo `-Run` le applica senza altri clic, e con `-Noui` lavora senza aprire la finestra:
+## Parametri
 
 ```powershell
-& ([ScriptBlock]::Create((irm 'https://raw.githubusercontent.com/rtecnocopy89/WinRUtil/master/winrutil.ps1'))) -Preset Standard -Run
+& ([ScriptBlock]::Create((irm bit.ly/WinRUtil))) -Preset Standard -Run
 ```
 
-### Dati salvati
+| Parametro | Effetto |
+|---|---|
+| `-Preset Standard\|Minimal\|Advanced` | seleziona le ottimizzazioni del preset |
+| `-Config <file>` | importa le selezioni esportate con *Impostazioni > Esporta* |
+| `-Run` | applica preset e configurazione senza altri clic; con `-Sicurezza` avvia l'analisi completa |
+| `-Sicurezza` | apre la scheda Sicurezza |
+| `-Noui` | lavora in console senza finestra (con `-Sicurezza` esegue l'analisi completa in console) |
+| `-Offline` | disattiva la scheda Installa |
 
-WinRUtil salva i suoi dati in `%LOCALAPPDATA%\WinRUtil`: le preferenze (`preferences.ini`), il registro di ogni avvio (`logs`) e il tecnico e l'intestazione del rapporto (`rapporto.json`). Al primo avvio le preferenze salvate dalle versioni precedenti in `%LOCALAPPDATA%\winutil` vengono copiate nella nuova cartella.
+## Dati salvati
 
-## Compilazione dai sorgenti
+Tutto resta in `%LOCALAPPDATA%\WinRUtil`: preferenze (`preferences.ini`), registro di ogni avvio (`logs`), tecnico e intestazione del rapporto (`rapporto.json`) e, in `Sicurezza`, `config.json` e i rapporti delle analisi (`Report`). La configurazione del vecchio CyberRSecurityCheck, se presente, viene ripresa al primo utilizzo.
+
+## Sviluppo
 
 ```powershell
 git clone https://github.com/rtecnocopy89/WinRUtil
 cd WinRUtil
-.\Compile.ps1          # produce winrutil.ps1
-.\Compile.ps1 -Run     # compila e avvia
+.\Compile.ps1                                  # crea winrutil.ps1 (con -Run lo avvia)
+powershell -File .\tests\Test-Security.ps1     # test del motore di sicurezza e del file compilato
 ```
 
-Il file `winrutil.ps1` generato è ASCII puro, così funziona sia con `irm | iex` sia come file locale in Windows PowerShell 5.1 e PowerShell 7. I caratteri accentati in XAML e JSON vengono convertiti automaticamente; nel codice PowerShell vanno scritti con `[char]` (es. `"Modalit$([char]0x00E0)"`). La compilazione si interrompe se trova caratteri non ASCII.
+| Percorso | Contenuto |
+|---|---|
+| `scripts/` | avvio (parametri, elevazione) e creazione della finestra |
+| `functions/` | funzioni delle schede |
+| `config/` | catalogo app, ottimizzazioni, preset, temi |
+| `xaml/inputXML.xaml` | interfaccia |
+| `security/` | motore dell'analisi di sicurezza e configurazione predefinita, incorporati così come sono |
+| `tests/` | test automatici |
 
-## Crediti e Licenza
+`winrutil.ps1` è ASCII puro e funziona sia con `irm | iex` sia come file locale in Windows PowerShell 5.1 e PowerShell 7: nel codice PowerShell i caratteri accentati si scrivono con `[char]` (es. `"Modalit$([char]0x00E0)"`), in XAML e JSON vengono convertiti automaticamente. La compilazione si interrompe se trova caratteri non ASCII. Il design dell'interfaccia è descritto in [`docs/DESIGN-SYSTEM.md`](docs/DESIGN-SYSTEM.md).
 
-WinRUtil è basato su [ChrisTitusTech/winutil](https://github.com/ChrisTitusTech/winutil) ed è distribuito sotto **Licenza MIT**. L'avviso di copyright originale è mantenuto in [`LICENSE`](LICENSE). La scheda Sistema, la gestione delle stampanti e delle reti Wi-Fi, il rapporto di intervento e l'interfaccia glassmorphism sono aggiunte di questo progetto; le novità di winutil vengono riportate e tradotte in italiano.
+## Crediti e licenza
+
+Basato su [ChrisTitusTech/winutil](https://github.com/ChrisTitusTech/winutil), distribuito sotto **licenza MIT** con l'avviso di copyright originale in [`LICENSE`](LICENSE). Le schede Sistema, Stampanti, Wi-Fi, Sicurezza e Rapporto e l'interfaccia sono aggiunte di questo progetto; le novità di winutil vengono riportate e tradotte in italiano.

@@ -76,6 +76,14 @@ Set-Preferences
 
 if ($PARAM_NOUI) {
     Show-WinRUtilLogo
+    if ($PARAM_SECURITY) {
+        Invoke-WinUtilSecurityConsole
+        $sync.runspace.Dispose()
+        $sync.runspace.Close()
+        [System.GC]::Collect()
+        Stop-Transcript
+        return
+    }
     if ($PARAM_PRESET -or ($PARAM_CONFIG -and -not [string]::IsNullOrWhiteSpace($PARAM_CONFIG))) {
         if ($PARAM_PRESET) {
             Write-Host "Selecting the $PARAM_PRESET preset..."
@@ -279,6 +287,14 @@ Set-WinUtilTaskbaritem -state "None"
 $sync["Form"].title = $sync["Form"].title + " " + $sync.version
 # Set the commands that will run when the form is closed
 $sync["Form"].Add_Closing({
+    param($form, $closingArgs)
+    # A running security check is stopped only if the user confirms
+    if (-not (Confirm-WinUtilSecurityClose)) {
+        $closingArgs.Cancel = $true
+        return
+    }
+    Remove-WinUtilSecurityBrowserProfiles
+    Write-Host "Bye bye!"
     Stop-WinUtilSystemLiveUpdate
     $sync.runspace.Dispose()
     $sync.runspace.Close()
@@ -323,6 +339,7 @@ $commonKeyEvents = {
             "F" { Invoke-WPFButton "WPFTab8BT"; $keyEventArgs.Handled = $true } # Navigate to Wi-Fi tab
             "R" { Invoke-WPFButton "WPFTab5BT"; $keyEventArgs.Handled = $true } # Navigate to Report tab
             "A" { Invoke-WPFButton "WPFTab9BT"; $keyEventArgs.Handled = $true } # Navigate to Windows apps tab
+            "B" { Invoke-WPFButton "WPFTab10BT"; $keyEventArgs.Handled = $true } # Navigate to Security (home banking) tab
         }
     }
     # Handle Ctrl key combinations for specific actions
@@ -435,6 +452,12 @@ $sync["Form"].Add_ContentRendered({
     }
     if ($PARAM_RUN -and ($PARAM_PRESET -or $PARAM_CONFIG)) {
         Invoke-WinUtilAutoRun
+    }
+    if ($PARAM_SECURITY) {
+        Invoke-WPFTab "WPFTab10BT"
+        if ($PARAM_RUN) {
+            Start-WinUtilSecurityScan -Mode "Completo"
+        }
     }
 
 })
@@ -594,6 +617,11 @@ $sync["WPFUpgradeList"].AddHandler([System.Windows.Controls.Primitives.ButtonBas
         Update-WinUtilUpgradeView
     }
 })
+# Security tab: technical details shown on request
+$sync["WPFSecurityShowDetails"].Add_Click({
+    Update-WinUtilSecurityFindings
+})
+
 $sync["WPFUpgradeSelectAll"].Add_Click({
     Invoke-WPFUpgradeSelectAll
 })

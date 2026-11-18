@@ -93,7 +93,8 @@
     "DataGridAlternatingRowColor": "#F5F7FA",
     "SuccessColor": "#047857",
     "WarningColor": "#B45309",
-    "DangerColor": "#DC2626"
+    "DangerColor": "#DC2626",
+    "BadgeForegroundColor": "#FFFFFF"
   },
   "Dark": {
     "AppInstallUnselectedColor": "#14FFFFFF",
@@ -147,6 +148,7 @@
     "DataGridAlternatingRowColor": "#14FFFFFF",
     "SuccessColor": "#3DF5A0",
     "WarningColor": "#F5A623",
-    "DangerColor": "#EF4444"
+    "DangerColor": "#EF4444",
+    "BadgeForegroundColor": "#0B0E16"
   }
 }

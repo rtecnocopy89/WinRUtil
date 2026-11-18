@@ -54,6 +54,29 @@
 
     Write-Host "Reenabling Windows Update Services..." -ForegroundColor Green
 
+    # Other tweak tools can deny SYSTEM write access to these keys. Set-Service goes through the Service
+    # Control Manager, which runs as SYSTEM, so clear those rules before restoring startup types.
+    foreach ($serviceName in @("BITS", "wuauserv", "UsoSvc", "WaaSMedicSvc")) {
+        $serviceKeyPath = "HKLM:\SYSTEM\CurrentControlSet\Services\$serviceName"
+        try {
+            $serviceKeyAcl = Get-Acl -Path $serviceKeyPath -ErrorAction Stop
+            # Match the SID because the SYSTEM account name is localized.
+            $systemDenyRules = @($serviceKeyAcl.GetAccessRules($true, $false, [System.Security.Principal.SecurityIdentifier]) | Where-Object {
+                $_.AccessControlType -eq "Deny" -and $_.IdentityReference.Value -eq "S-1-5-18"
+            })
+
+            if ($systemDenyRules.Count -gt 0) {
+                foreach ($denyRule in $systemDenyRules) {
+                    $serviceKeyAcl.RemoveAccessRule($denyRule) | Out-Null
+                }
+                Set-Acl -Path $serviceKeyPath -AclObject $serviceKeyAcl -ErrorAction Stop
+                Write-Host "Removed SYSTEM deny rules from $serviceName"
+            }
+        } catch {
+            Write-Host "Could not check SYSTEM deny rules on $serviceName" -ForegroundColor Yellow
+        }
+    }
+
     Write-Host "Restored BITS to Manual"
     Set-Service -Name BITS -StartupType Manual -ErrorAction SilentlyContinue
 
@@ -63,6 +86,17 @@
     Write-Host "Restored UsoSvc to Automatic"
     Set-Service -Name UsoSvc -StartupType Automatic -ErrorAction SilentlyContinue
     Start-Service -Name UsoSvc -ErrorAction SilentlyContinue
+
+    # WaaSMedicSvc is launch protected, so Set-Service is denied even for administrators.
+    $waaSMedicKeyPath = "HKLM:\SYSTEM\CurrentControlSet\Services\WaaSMedicSvc"
+    if ((Get-ItemProperty -Path $waaSMedicKeyPath -Name "Start" -ErrorAction SilentlyContinue).Start -ne 3) {
+        try {
+            Set-ItemProperty -Path $waaSMedicKeyPath -Name "Start" -Type DWord -Value 3 -ErrorAction Stop
+            Write-Host "Restored WaaSMedicSvc to Manual"
+        } catch {
+            Write-Host "Could not restore WaaSMedicSvc to Manual" -ForegroundColor Yellow
+        }
+    }
 
     Write-Host "Enabling update related scheduled tasks..." -ForegroundColor Green
 

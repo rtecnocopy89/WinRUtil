@@ -6,14 +6,25 @@
 
     .DESCRIPTION
         installs winGet if needed
+
+    .PARAMETER Force
+        Reinstalls WinGet even when it is already available
     #>
-    if ((Test-WinUtilPackageManager -winget) -eq "installed") {
+    param(
+        [switch]$Force
+    )
+
+    if (-not $Force -and (Test-WinUtilPackageManager -winget) -eq "installed") {
         return
     }
 
-    Write-Host "WinGet is not installed. Installing now..." -ForegroundColor Red
+    if ($Force) {
+        Write-Host "Reinstalling WinGet..." -ForegroundColor Yellow
+    } else {
+        Write-Host "WinGet is not installed. Installing now..." -ForegroundColor Red
+    }
 
     Install-PackageProvider -Name NuGet -Force
     Install-Module -Name Microsoft.WinGet.Client -Force
-    Repair-WinGetPackageManager -AllUsers
+    Repair-WinGetPackageManager -AllUsers -Force:$Force
 }

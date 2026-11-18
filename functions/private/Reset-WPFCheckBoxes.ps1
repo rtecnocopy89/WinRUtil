@@ -24,7 +24,7 @@
     $CheckBoxesToCheck = @($sync.selectedApps) + @($sync.selectedTweaks) + @($sync.selectedFeatures) + @($sync.selectedAppx)
     # Imported keys can differ in case from the names of the checkboxes
     $selectedSet = [System.Collections.Generic.HashSet[string]]::new([string[]]$CheckBoxesToCheck, [StringComparer]::OrdinalIgnoreCase)
-    $CheckBoxes = ($sync.GetEnumerator()).where{ $_.Value -is [System.Windows.Controls.CheckBox] -and $_.Name -notlike "WPFToggle*" -and $_.Name -like "$checkboxfilterpattern"}
+    $CheckBoxes = ($sync.GetEnumerator()).where{ $_.Value -is [System.Windows.Controls.CheckBox] -and $_.Name -notlike "WPFToggle*" -and $_.Name -notlike "WPFSecurity*" -and $_.Name -like "$checkboxfilterpattern"}
     Write-Debug "Getting checkboxes to set, number of checkboxes: $($CheckBoxes.Count)"
 
     if ($CheckBoxesToCheck -ne "") {

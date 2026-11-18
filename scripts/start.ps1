@@ -13,7 +13,8 @@ param (
     [string]$Preset,
     [switch]$Run,
     [switch]$Noui,
-    [switch]$Offline
+    [switch]$Offline,
+    [switch]$Sicurezza
 )
 
 if ($Config) {
@@ -39,6 +40,12 @@ if ($Run) {
 $PARAM_NOUI = $false
 if ($Noui) {
     $PARAM_NOUI = $true
+}
+
+# Opens the Security tab; with -Run the full analysis starts, with -Noui it runs in the console
+$PARAM_SECURITY = $false
+if ($Sicurezza) {
+    $PARAM_SECURITY = $true
 }
 
 $PARAM_OFFLINE = $false

@@ -44,7 +44,7 @@
 
     # Fallback to hard-coded switch for buttons not in feature.json
     Switch -Wildcard ($Button) {
-        "WPFTab?BT" {Invoke-WPFTab $Button}
+        "WPFTab*BT" {Invoke-WPFTab $Button}
         "WPFInstall" {Invoke-WPFInstall}
         "WPFUninstall" {Invoke-WPFUnInstall}
         "WPFInstallUpgrade" {Invoke-WPFInstallUpgrade}
@@ -93,8 +93,16 @@
         "WPFReportCreate" {Invoke-WPFReportCreate}
         "WPFReportClear" {Invoke-WPFReportClear}
         "WPFSystemInfoRefresh" {Invoke-WPFSystemInfoRefresh}
+        "WPFSecurityFull" {Start-WinUtilSecurityScan -Mode "Completo"}
+        "WPFSecurityClipTest" {Start-WinUtilSecurityScan -Mode "ClipTest"}
+        "WPFSecurityMonitor" {Start-WinUtilSecurityScan -Mode "Monitor"}
+        "WPFSecurityCancel" {Invoke-WPFSecurityCancel}
+        "WPFSecurityOpenReport" {Invoke-WPFSecurityOpenReport}
+        "WPFSecurityOpenResult" {Invoke-WPFSecurityOpenFolder -LastReport}
+        "WPFSecurityOpenFolder" {Invoke-WPFSecurityOpenFolder}
+        "WPFSecurityEditConfig" {Invoke-WPFSecurityEditConfig}
         "WPFSystemInfoExport" {Invoke-WPFSystemInfoExport}
-        "WPFCloseButton" {$sync.Form.Close(); Write-Host "Bye bye!"}
+        "WPFCloseButton" {$sync.Form.Close()}
         "WPFMinimizeButton" {[Windows.SystemCommands]::MinimizeWindow($sync.Form)}
         "WPFMaximizeButton" {
             if ($sync.Form.WindowState -eq [Windows.WindowState]::Maximized) {

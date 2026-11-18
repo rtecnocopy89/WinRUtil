@@ -67,6 +67,9 @@ $excludedFiles = @()
 if (Test-Path '.\.git\') { $excludedFiles += '.\.git\' }
 if (Test-Path '.\.vs\') { $excludedFiles += '.\.vs\' }
 if (Test-Path '.\binary\') { $excludedFiles += '.\binary\' }
+# The security check engine is embedded verbatim and the tests are not part of the bundle
+if (Test-Path '.\security\') { $excludedFiles += '.\security\' }
+if (Test-Path '.\tests\') { $excludedFiles += '.\tests\' }
 
 # Add files that should always be excluded
 $excludedFiles += @(
@@ -115,6 +118,22 @@ $($jsonAsObject | ConvertTo-Json -Depth 10)
 
     $sync.configs.$($psitem.BaseName) = $json | ConvertFrom-Json
     $script_content.Add($(Write-Output "`$sync.configs.$($psitem.BaseName) = @'`r`n$json`r`n'@ `| ConvertFrom-Json" ))
+}
+
+Update-Progress "Adding: Security check engine" 80
+# The engine of the Sicurezza tab runs in its own runspace, so it is embedded as text and not
+# dot-sourced: its script-scoped state and parameters stay separate from WinRUtil.
+foreach ($securityPart in @(
+    @{ Variable = "SecurityEngine"; Path = "security\engine.ps1" },
+    @{ Variable = "SecurityConfigDefault"; Path = "security\config.json" }
+)) {
+    $partText = [System.IO.File]::ReadAllText((Join-Path $workingdir $securityPart.Path), [System.Text.Encoding]::UTF8).TrimStart([char]0xFEFF)
+    $partText = $partText.Replace("`r`n", "`n").TrimEnd().Replace("`n", "`r`n")
+    if ($partText -match "(?m)^'@") {
+        Write-Warning "$($securityPart.Path): a line starting with '@ would end the embedding here-string, use a double-quoted here-string there"
+        exit 1
+    }
+    $script_content.Add("`$sync.$($securityPart.Variable) = @'`r`n$partText`r`n'@")
 }
 
 # Read the entire XAML file as a single string, preserving line breaks
