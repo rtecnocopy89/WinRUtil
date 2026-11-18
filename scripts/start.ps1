@@ -61,34 +61,47 @@ if ($ExecutionContext.SessionState.LanguageMode -ne 'FullLanguage') {
 if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     Write-Output "WinRUtil needs to be run as Administrator. Attempting to relaunch."
     $argList = @()
+    $fileArgList = @()
 
     $PSBoundParameters.GetEnumerator() | ForEach-Object {
-        $argList += if ($_.Value -is [switch] -and $_.Value) {
-            "-$($_.Key)"
-        } elseif ($_.Value -is [array]) {
-            "-$($_.Key) $($_.Value -join ',')"
+        if ($_.Value -is [switch] -and $_.Value) {
+            $argList += "-$($_.Key)"
+            $fileArgList += "-$($_.Key)"
         } elseif ($_.Value) {
             # An apostrophe in a path is doubled, so that it stays inside the quotes
-            "-$($_.Key) '$($_.Value -replace "'", "''")'"
+            $argList += "-$($_.Key) '$($_.Value -replace "'", "''")'"
+            $fileArgList += "-$($_.Key) `"$($_.Value)`""
         }
     }
 
-    $script = if ($PSCommandPath) {
-        "& { & `'$($PSCommandPath)`' $($argList -join ' ') }"
+    $scriptUrl = "https://raw.githubusercontent.com/rtecnocopy89/WinRUtil/master/winrutil.ps1"
+    $launch = if ($PSCommandPath) {
+        "-Command `"& { & `'$($PSCommandPath)`' $($argList -join ' ') }`""
     } else {
-        "&([ScriptBlock]::Create((irm https://raw.githubusercontent.com/rtecnocopy89/WinRUtil/master/winrutil.ps1))) $($argList -join ' ')"
+        # Antivirus programs block a new PowerShell whose command line downloads and runs a script:
+        # the script is saved to a file first and the elevated PowerShell runs that file
+        $downloadedScript = Join-Path $env:LOCALAPPDATA "WinRUtil\winrutil.ps1"
+        try {
+            New-Item -ItemType Directory -Path (Split-Path $downloadedScript) -Force | Out-Null
+            [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+            Invoke-WebRequest -Uri $scriptUrl -OutFile $downloadedScript -UseBasicParsing -ErrorAction Stop
+            "-File `"$downloadedScript`" $($fileArgList -join ' ')"
+        } catch {
+            "-Command `"&([ScriptBlock]::Create((irm $scriptUrl))) $($argList -join ' ')`""
+        }
     }
 
     $powershellCmd = if (Get-Command pwsh -ErrorAction SilentlyContinue) { "pwsh" } else { "powershell" }
     $processCmd = if (Get-Command wt.exe -ErrorAction SilentlyContinue) { "wt.exe" } else { "$powershellCmd" }
 
     if ($processCmd -eq "wt.exe") {
-        Start-Process $processCmd -ArgumentList "$powershellCmd -ExecutionPolicy Bypass -NoProfile -Command `"$script`"" -Verb RunAs
+        Start-Process $processCmd -ArgumentList "$powershellCmd -ExecutionPolicy Bypass -NoProfile $launch" -Verb RunAs
     } else {
-        Start-Process $processCmd -ArgumentList "-ExecutionPolicy Bypass -NoProfile -Command `"$script`"" -Verb RunAs
+        Start-Process $processCmd -ArgumentList "-ExecutionPolicy Bypass -NoProfile $launch" -Verb RunAs
     }
 
-    break
+    # return rather than break: outside a loop, break would also stop the script or loop that started WinRUtil
+    return
 }
 
 # Load DLLs
